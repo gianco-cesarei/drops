@@ -8,12 +8,14 @@ os.environ["DROPS_STATE_DIR"] = _STATE.name
 os.environ["DROPS_DEFAULT_SAVE_DIR"] = _STATE.name
 
 import main  # noqa: E402
+from history_store import DownloadHistory  # noqa: E402
 
 
 class MainHelpersTest(unittest.TestCase):
     def setUp(self):
         main.HISTORY_FILE.unlink(missing_ok=True)
         main.preview_cache.clear()
+        main.jobs.clear()
 
     def test_supported_url_checks_hostname_boundary(self):
         self.assertTrue(main.is_supported_url("https://soundcloud.com/user/track"))
@@ -158,6 +160,45 @@ class MainHelpersTest(unittest.TestCase):
         self.assertLess(main.version_tuple("1.1.0-beta.1"), main.version_tuple("1.1.0"))
         self.assertGreater(main.version_tuple("1.1.0-beta.2"), main.version_tuple("1.1.0-beta.1"))
         self.assertGreater(main.version_tuple("1.1.0-beta.1"), main.version_tuple("1.0.5"))
+
+    def test_beta_history_combines_primary_and_stable_read_only(self):
+        main.append_download_history(
+            {
+                "id": "beta-record",
+                "title": "Beta",
+                "saved_path": "/tmp/beta.mp3",
+                "completed_at": 200,
+                "batch_id": "latest-batch",
+            }
+        )
+        with tempfile.TemporaryDirectory() as folder:
+            shared = DownloadHistory(main.Path(folder) / "download-history.json")
+            shared.upsert(
+                {
+                    "id": "stable-record",
+                    "title": "Stable",
+                    "saved_path": "/tmp/stable.mp3",
+                    "completed_at": 100,
+                }
+            )
+            with patch.object(main, "shared_history_store", shared):
+                result = main.download_history()
+
+        self.assertEqual(result["total"], 2)
+        self.assertEqual([item["id"] for item in result["items"]], ["beta-record", "stable-record"])
+        self.assertTrue(result["items"][0]["is_latest_batch"])
+        self.assertFalse(result["items"][1]["is_latest_batch"])
+
+    def test_download_keeps_frontend_batch_identifier(self):
+        request = main.DownloadRequest(
+            url="https://www.youtube.com/watch?v=batch",
+            batch_id="playlist_batch_1",
+        )
+        with patch.object(main.threading, "Thread") as worker:
+            result = main.start_download(request)
+
+        self.assertEqual(main.jobs[result["job_id"]]["batch_id"], "playlist_batch_1")
+        worker.return_value.start.assert_called_once()
 
 
 def tearDownModule():

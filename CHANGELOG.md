@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+- Drops Beta usa tema chiaro, testo più grande e finestra ridimensionabile a
+  due colonne: download/anteprima a sinistra; Spotify, cartella e storico a
+  destra. Drops stabile installata resta invariata.
+- Storico Beta aggrega in sola lettura anche `~/.drops/download-history.json`,
+  mantenendo proprie scritture in `~/.drops-beta`. Risolto storico vuoto quando
+  download erano stati eseguiti dal backend stabile sulla porta 8000.
+- Ogni invio di link/playlist riceve un `batch_id`. Brani completati spariscono
+  dalla coda e passano direttamente nello storico; ultimo gruppo mostra flag
+  `NEW`. Storici precedenti ai batch vengono raggruppati per sessione continua.
+- Preview singolo brano resta nella colonna download; preview playlist mostra
+  titolo e player sotto elenco tracce.
 - Aggiunto motore BPM locale `drops-local-rhythm-v1`: FFmpeg decodifica audio e
   NumPy calcola onset, autocorrelazione, BPM, confidenza euristica e candidati
   metà/doppio tempo. Analisi asincrona: eventuale errore non invalida download.

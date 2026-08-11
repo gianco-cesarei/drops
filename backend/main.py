@@ -57,6 +57,17 @@ logger.addHandler(handler)
 COOKIES_FILE = DROPS_DIR / "cookies.txt"
 HISTORY_FILE = DROPS_DIR / "download-history.json"
 history_store = DownloadHistory(HISTORY_FILE)
+_shared_history_value = os.environ.get("DROPS_SHARED_HISTORY_FILE")
+if not _shared_history_value and DROPS_DIR.name == ".drops-beta":
+    _shared_history_value = str(Path.home() / ".drops" / "download-history.json")
+SHARED_HISTORY_FILE = (
+    Path(_shared_history_value).expanduser() if _shared_history_value else None
+)
+shared_history_store = (
+    DownloadHistory(SHARED_HISTORY_FILE)
+    if SHARED_HISTORY_FILE and SHARED_HISTORY_FILE != HISTORY_FILE
+    else None
+)
 
 # ─── ffmpeg: discovery cross-platform ────────────────────────────────────────
 IS_WINDOWS = os.name == "nt"
@@ -154,6 +165,7 @@ class DownloadRequest(BaseModel):
     duration: int | None = None          # secondi (clip)
     destination_token: str | None = None
     spotify_track_id: str | None = None
+    batch_id: str | None = None
     rights_confirmed: bool = False
 
 
@@ -189,7 +201,35 @@ def cleanup_old_files():
 
 
 def read_download_history(limit: int = 100) -> list[dict]:
-    return history_store.read(limit)
+    requested = max(1, min(limit, 1000))
+    records = history_store.read(500)
+    if shared_history_store:
+        records.extend(shared_history_store.read(500))
+
+    merged: list[dict] = []
+    seen: set[str] = set()
+    for record in records:
+        identity = str(record.get("id") or record.get("saved_path") or "")
+        if not identity or identity in seen:
+            continue
+        seen.add(identity)
+        merged.append(dict(record))
+    merged.sort(key=lambda item: float(item.get("completed_at") or 0), reverse=True)
+    return merged[:requested]
+
+
+def find_history_record(record_id: str) -> dict | None:
+    record = history_store.get(record_id)
+    if record or not shared_history_store:
+        return record
+    return shared_history_store.get(record_id)
+
+
+def find_history_by_spotify_id(spotify_track_id: str) -> dict | None:
+    record = history_store.find_by_spotify_id(spotify_track_id)
+    if record or not shared_history_store:
+        return record
+    return shared_history_store.find_by_spotify_id(spotify_track_id)
 
 
 def append_download_history(record: dict) -> None:
@@ -772,6 +812,7 @@ def do_download(
                 "completed_at": time.time(),
                 "spotify_track_id": (library_context or {}).get("spotify_id"),
                 "isrc": (library_context or {}).get("isrc"),
+                "batch_id": jobs[job_id].get("batch_id"),
                 "bpm_status": "pending" if fmt == "audio" else "not_applicable",
             }
             append_download_history(history_record)
@@ -884,18 +925,32 @@ def stream_preview(token: str):
 
 @app.get("/history")
 def download_history(limit: int = 100):
-    records = read_download_history(limit)
+    all_records = read_download_history(1000)
+    records = all_records[: max(1, min(limit, 1000))]
+    latest_batch_id = records[0].get("batch_id") if records else None
+    latest_group_ids: set[str] = set()
+    if records and not latest_batch_id:
+        previous_time = float(records[0].get("completed_at") or 0)
+        for record in records:
+            completed_at = float(record.get("completed_at") or 0)
+            # Storico precedente ai batch_id: download consecutivi distanti meno
+            # di 90 secondi appartengono alla stessa sessione/playlist.
+            if previous_time - completed_at > 90:
+                break
+            latest_group_ids.add(str(record.get("id") or ""))
+            previous_time = completed_at
     for record in records:
         record["exists"] = Path(record.get("saved_path", "")).is_file()
-    return {"items": records, "total": len(records)}
+        if latest_batch_id:
+            record["is_latest_batch"] = record.get("batch_id") == latest_batch_id
+        else:
+            record["is_latest_batch"] = str(record.get("id") or "") in latest_group_ids
+    return {"items": records, "total": len(all_records)}
 
 
 @app.post("/history/{record_id}/reveal")
 def reveal_history_file(record_id: str):
-    record = next(
-        (item for item in read_download_history(500) if item.get("id") == record_id),
-        None,
-    )
+    record = find_history_record(record_id)
     if not record:
         raise HTTPException(status_code=404, detail="Download non trovato nello storico")
     try:
@@ -910,7 +965,7 @@ def reveal_history_file(record_id: str):
 
 @app.get("/bpm/download/{record_id}")
 def bpm_for_download(record_id: str):
-    record = history_store.get(record_id)
+    record = find_history_record(record_id)
     if not record:
         raise HTTPException(status_code=404, detail="Download non trovato nello storico")
     return bpm_response(record)
@@ -918,13 +973,15 @@ def bpm_for_download(record_id: str):
 
 @app.post("/bpm/analyze/{record_id}", status_code=202)
 def bpm_analyze(record_id: str):
-    record = history_store.get(record_id)
+    record = find_history_record(record_id)
     if not record:
         raise HTTPException(status_code=404, detail="Download non trovato nello storico")
     if record.get("format") != "audio":
         raise HTTPException(status_code=400, detail="Analisi BPM disponibile solo per audio")
     if not Path(record.get("saved_path", "")).is_file():
         raise HTTPException(status_code=404, detail="File audio non trovato")
+    if history_store.get(record_id) is None:
+        history_store.upsert(record)
     started = queue_bpm_analysis(record_id)
     current = history_store.get(record_id) or record
     return {**bpm_response(current), "started": started}
@@ -932,7 +989,7 @@ def bpm_analyze(record_id: str):
 
 @app.get("/bpm/spotify/{spotify_track_id}")
 def bpm_for_spotify(spotify_track_id: str):
-    record = history_store.find_by_spotify_id(spotify_track_id)
+    record = find_history_by_spotify_id(spotify_track_id)
     if not record:
         return {
             "spotify_track_id": spotify_track_id,
@@ -957,6 +1014,9 @@ def start_download(req: DownloadRequest):
 
     if req.format not in ("audio", "video"):
         raise HTTPException(status_code=400, detail="Formato non valido")
+
+    if req.batch_id and not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", req.batch_id):
+        raise HTTPException(status_code=400, detail="Identificatore gruppo non valido")
 
     if req.format == "audio" and (req.start_time is not None or req.duration is not None):
         raise HTTPException(status_code=400, detail="Il taglio è disponibile solo per i video")
@@ -1007,6 +1067,7 @@ def start_download(req: DownloadRequest):
         "library_path": None,
         "saved_path": None,
         "destination": str(target_dir),
+        "batch_id": req.batch_id or job_id,
     }
 
     t = threading.Thread(
@@ -1213,4 +1274,6 @@ def serve_frontend():
         logger.error("index.html non trovato (frozen=%s)", getattr(sys, "frozen", False))
         raise HTTPException(status_code=500, detail="Frontend non trovato nell'installazione.")
     content = html_path.read_text(encoding="utf-8")
+    if APP_NAME == "Drops Beta":
+        content = content.replace('<body>', '<body class="beta-theme">', 1)
     return HTMLResponse(content=content)

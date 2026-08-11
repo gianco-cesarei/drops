@@ -8,8 +8,13 @@ Drops stabile.
 | stabile | `Drops.app` | `com.giancocesarei.drops` | `127.0.0.1:8000` | `~/.drops` |
 | beta | `Drops Beta.app` | `com.giancocesarei.drops.beta` | `127.0.0.1:8001` | `~/.drops-beta` |
 
-Le due app possono essere installate e aperte insieme. Download, storico,
-token Spotify e log restano separati.
+Le due app possono essere installate e aperte insieme. Token Spotify, log e
+scritture dello storico restano separati. La Beta mostra anche lo storico
+stabile in sola lettura, così i file già scaricati non scompaiono passando da
+un canale all'altro.
+
+La Beta usa tema chiaro e finestra a due colonne: download/anteprima a sinistra;
+account, cartella e storico a destra.
 
 ## Spotify Beta
 

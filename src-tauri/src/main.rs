@@ -15,6 +15,9 @@ struct RuntimeProfile {
     app_name: String,
     port: u16,
     state_dir: PathBuf,
+    width: f64,
+    height: f64,
+    resizable: bool,
 }
 
 fn runtime_profile(app: &tauri::App) -> RuntimeProfile {
@@ -30,6 +33,9 @@ fn runtime_profile(app: &tauri::App) -> RuntimeProfile {
         app_name,
         port,
         state_dir,
+        width: if is_beta { 1180.0 } else { 560.0 },
+        height: if is_beta { 800.0 } else { 760.0 },
+        resizable: is_beta,
     }
 }
 
@@ -180,8 +186,8 @@ fn main() {
                 ),
             )
             .title(&profile.app_name)
-            .inner_size(560.0, 760.0)
-            .resizable(false)
+            .inner_size(profile.width, profile.height)
+            .resizable(profile.resizable)
             .center()
             .build()?;
             Ok(())

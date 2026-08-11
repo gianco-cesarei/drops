@@ -7,169 +7,157 @@
 <style>
   :root {
     --bg:#090909; --surface:#141414; --surface2:#0d0d0d; --border:#282828;
-    --text:#f2f2f2; --muted:#777; --accent:#22c55e; --accent-dim:rgba(34,197,94,.15);
-    --green:#22c55e; --red:#ef4444;
+    --text:#f2f2f2; --muted:#858585; --accent:#22c55e; --accent-dim:rgba(34,197,94,.13);
+    --green:#16a34a; --red:#dc2626; --shadow:none;
+  }
+  body.beta-theme {
+    color-scheme:light; --bg:#ffffff; --surface:#f6f6f3; --surface2:#ffffff;
+    --border:#ddddda; --text:#111312; --muted:#626662; --accent:#20c763;
+    --accent-dim:rgba(32,199,99,.11); --green:#118a43; --red:#c62828;
+    --shadow:0 12px 34px rgba(17,19,18,.07);
   }
   * { box-sizing:border-box; margin:0; padding:0; }
   body {
-    background:var(--bg); color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    min-height:100vh; padding:20px; overflow:auto;
+    min-height:100vh; padding:24px; overflow:auto; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:15px;
   }
-  .shell { width:100%; max-width:520px; margin:0 auto; }
-  .topbar { display:flex; align-items:center; justify-content:space-between; margin:4px 0 6px; }
-  .logo { font-size:28px; font-weight:900; letter-spacing:-1px; }
+  button,textarea,input { font:inherit; }
+  button { color:inherit; }
+  .shell { width:100%; max-width:1160px; margin:0 auto; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; margin:2px 0 4px; }
+  .logo { font-size:34px; font-weight:900; letter-spacing:-1.5px; }
   .logo span { color:var(--accent); }
   .channel-badge {
-    display:none; margin-left:7px; padding:3px 6px; vertical-align:middle;
+    display:none; margin-left:8px; padding:4px 7px; vertical-align:middle;
     border:1px solid var(--accent); border-radius:999px; color:var(--accent);
-    font-size:8px; font-weight:900; letter-spacing:.8px;
+    font-size:9px; font-weight:900; letter-spacing:.9px;
   }
   .channel-badge.visible { display:inline-block; }
-  .mode-btn {
-    border:1px solid var(--border); background:var(--surface); color:var(--muted);
-    border-radius:999px; padding:9px 13px; font-size:12px; font-weight:800; cursor:pointer;
+  .tagline { color:var(--muted); font-size:14px; margin-bottom:14px; }
+  .mode-btn,.spotify-btn,.q-btn,.folder-btn,.folder-reset {
+    border:1px solid var(--border); background:var(--surface2); color:var(--muted);
+    border-radius:9px; padding:10px 12px; font-size:13px; font-weight:800; cursor:pointer;
   }
-  .mode-btn.active { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
-  .tagline { color:var(--muted); font-size:12px; margin-bottom:18px; }
+  .mode-btn { border-radius:999px; padding:11px 16px; }
+  .mode-btn.active,.q-btn.active,.spotify-btn.primary-action {
+    border-color:var(--accent); color:var(--green); background:var(--accent-dim);
+  }
+  button:disabled { opacity:.45; cursor:not-allowed; }
   .update-banner {
     display:flex; align-items:center; justify-content:space-between; gap:10px;
-    margin-bottom:12px; padding:8px 11px; border:1px solid var(--border);
-    background:var(--surface); border-radius:9px; color:var(--muted); font-size:11px;
+    margin-bottom:14px; padding:10px 13px; border:1px solid var(--border);
+    background:var(--surface); border-radius:10px; color:var(--muted); font-size:13px;
   }
-  .update-banner.available {
-    border-color:rgba(34,197,94,.3); background:rgba(34,197,94,.08);
-    color:var(--text); font-size:12px;
-  }
+  .update-banner.available { border-color:rgba(34,197,94,.36); background:var(--accent-dim); color:var(--text); }
   .update-banner button {
-    display:none; color:var(--green); font-weight:850; text-decoration:none; white-space:nowrap;
-    border:0; padding:0; background:transparent; cursor:pointer; font:inherit;
+    display:none; color:var(--green); font-weight:850; border:0; padding:0;
+    background:transparent; cursor:pointer;
   }
   .update-banner.available button { display:inline; }
-  .spotify-card {
-    display:flex; align-items:center; justify-content:space-between; gap:12px;
-    margin-bottom:12px; padding:11px; border:1px solid var(--border);
-    background:var(--surface); border-radius:9px;
+  .workspace { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(370px,.75fr); gap:16px; align-items:start; }
+  .left-column,.right-column { display:flex; flex-direction:column; gap:14px; min-width:0; }
+  .card,.spotify-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:20px; box-shadow:var(--shadow);
   }
+  .card { display:flex; flex-direction:column; gap:18px; }
+  .spotify-card { display:flex; align-items:center; justify-content:space-between; gap:14px; }
   .spotify-main { min-width:0; }
-  .spotify-name { margin-top:4px; font-size:12px; font-weight:800; }
-  .spotify-detail {
-    margin-top:3px; color:var(--muted); font-size:10px;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  }
-  .spotify-actions { display:flex; gap:6px; flex-shrink:0; }
-  .spotify-btn {
-    border:1px solid var(--border); background:var(--surface2); color:var(--muted);
-    border-radius:7px; padding:8px 9px; font-size:10px; font-weight:800; cursor:pointer;
-  }
-  .spotify-btn.primary-action { border-color:var(--accent); color:var(--accent); }
-  .spotify-btn:disabled { opacity:.45; cursor:not-allowed; }
-  .card {
-    background:var(--surface); border:1px solid var(--border);
-    border-radius:12px; padding:22px; display:flex; flex-direction:column; gap:16px;
-  }
-  .field { display:flex; flex-direction:column; gap:7px; }
+  .spotify-name { margin-top:5px; font-size:15px; font-weight:850; }
+  .spotify-detail { margin-top:4px; color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; }
+  .spotify-actions { display:flex; gap:7px; flex-shrink:0; }
+  .field { display:flex; flex-direction:column; gap:8px; }
   label,.section-label {
-    font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.6px; color:var(--muted);
+    color:var(--muted); font-size:13px; font-weight:850; text-transform:uppercase; letter-spacing:.65px;
   }
   textarea,input[type=text] {
-    width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px;
-    padding:12px 13px; color:var(--text); font:14px inherit; outline:none; resize:vertical;
+    width:100%; padding:14px 15px; color:var(--text); background:var(--surface2);
+    border:1px solid var(--border); border-radius:10px; outline:none; resize:vertical;
+    font-size:16px; line-height:1.45;
   }
-  textarea { min-height:90px; max-height:180px; line-height:1.45; }
-  textarea:focus,input:focus { border-color:var(--accent); }
-  .hint { font-size:11px; color:var(--muted); }
+  textarea { min-height:126px; max-height:220px; }
+  textarea:focus,input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); }
+  .hint { color:var(--muted); font-size:13px; line-height:1.45; }
   .link-detection {
-    display:flex; align-items:center; justify-content:space-between; gap:9px;
-    padding:9px 10px; border:1px solid rgba(34,197,94,.28); border-radius:8px;
-    background:var(--accent-dim);
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:11px 12px; border:1px solid rgba(34,197,94,.32); border-radius:10px; background:var(--accent-dim);
   }
-  .link-detection[hidden] { display:none; }
+  .link-detection[hidden],.preview-zone[hidden],.preview-player[hidden] { display:none; }
   .link-detection-main { min-width:0; }
-  .link-detection-type { color:var(--accent); font-size:11px; font-weight:850; }
-  .link-detection-detail {
-    margin-top:2px; color:var(--muted); font-size:10px; white-space:nowrap;
-    overflow:hidden; text-overflow:ellipsis;
-  }
-  .preview-player { width:100%; height:42px; margin-top:2px; border-radius:8px; }
-  .preview-player[hidden] { display:none; }
-  .quality { display:flex; gap:6px; }
-  .q-btn,.folder-btn,.folder-reset {
-    background:var(--surface2); border:1px solid var(--border); border-radius:8px;
-    color:var(--muted); padding:9px 10px; font-size:12px; font-weight:750; cursor:pointer;
-  }
+  .link-detection-type { color:var(--green); font-size:14px; font-weight:850; }
+  .link-detection-detail { margin-top:3px; color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; }
+  .preview-zone { padding:13px; border:1px solid var(--border); border-radius:11px; background:var(--surface2); }
+  .preview-meta { margin:5px 0 9px; color:var(--text); font-size:14px; font-weight:750; }
+  .preview-player { width:100%; height:44px; border-radius:8px; }
+  .quality { display:flex; gap:8px; }
   .q-btn { flex:1; }
-  .q-btn.active { color:var(--accent); border-color:var(--accent); background:var(--accent-dim); }
-  .folder-row { display:flex; align-items:center; gap:8px; }
+  .folder-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .folder-path {
-    min-width:0; flex:1; padding:9px 11px; background:var(--surface2); border:1px solid var(--border);
-    border-radius:8px; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    min-width:0; flex:1 1 100%; padding:12px; color:var(--muted); background:var(--surface2);
+    border:1px solid var(--border); border-radius:9px; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
-  .folder-reset { display:none; padding:9px; }
+  .folder-btn { flex:1; }
+  .folder-reset { display:none; }
   #clipSection { display:none; flex-direction:column; gap:10px; }
-  .clip-toggle { display:flex; align-items:center; gap:7px; cursor:pointer; text-transform:none; letter-spacing:0; }
-  #clipPanel {
-    display:none; padding:12px; background:var(--surface2); border:1px solid var(--border);
-    border-radius:8px; flex-direction:column; gap:9px;
-  }
-  .clip-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  .clip-toggle { display:flex; align-items:center; gap:8px; cursor:pointer; text-transform:none; letter-spacing:0; }
+  #clipPanel { display:none; padding:13px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; flex-direction:column; gap:10px; }
+  .clip-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .primary {
-    border:0; border-radius:10px; padding:14px; background:var(--accent); color:white;
-    font-size:14px; font-weight:850; cursor:pointer;
+    border:0; border-radius:11px; padding:15px; background:var(--accent); color:#07140c;
+    font-size:16px; font-weight:900; cursor:pointer;
   }
-  .primary:disabled { opacity:.45; cursor:not-allowed; }
-  .error {
-    display:none; color:var(--red); background:rgba(239,68,68,.08);
-    border:1px solid rgba(239,68,68,.22); border-radius:8px; padding:11px; font-size:12px;
-  }
-  .queue { display:none; flex-direction:column; gap:7px; }
-  .queue-head { display:flex; justify-content:space-between; align-items:center; }
-  .queue-count { color:var(--muted); font-size:11px; }
+  .error { display:none; color:var(--red); background:rgba(220,38,38,.08); border:1px solid rgba(220,38,38,.22); border-radius:9px; padding:12px; font-size:13px; }
+  .queue,.history { display:flex; flex-direction:column; gap:9px; }
+  .queue { display:none; }
+  .queue-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .queue-count { color:var(--muted); font-size:12px; }
+  #queueList,.history-list { display:flex; flex-direction:column; gap:7px; }
+  .history-list { max-height:485px; overflow:auto; padding-right:2px; }
   .job {
-    padding:10px 11px; border:1px solid var(--border); background:var(--surface2);
-    border-radius:8px; display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:8px; align-items:center;
+    padding:11px 12px; border:1px solid var(--border); background:var(--surface2); border-radius:10px;
+    display:grid; grid-template-columns:24px minmax(0,1fr) auto; gap:9px; align-items:center;
   }
-  .job-icon { font-size:15px; }
+  .job.new-record { border-color:rgba(34,197,94,.5); background:var(--accent-dim); }
+  .job-icon { font-size:16px; }
   .job-main { min-width:0; }
-  .job-title { font-size:12px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .job-detail { color:var(--muted); font-size:10px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .job-status { color:var(--muted); font-size:10px; font-weight:800; border:0; background:transparent; }
+  .job-title-row { display:flex; align-items:center; gap:7px; min-width:0; }
+  .job-title { min-width:0; font-size:14px; font-weight:780; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .new-badge { flex:none; padding:2px 6px; border-radius:999px; color:var(--green); border:1px solid var(--accent); font-size:9px; font-weight:900; letter-spacing:.6px; }
+  .job-detail { color:var(--muted); font-size:11px; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .job-status { color:var(--muted); font-size:11px; font-weight:850; border:0; background:transparent; }
   button.job-status { cursor:pointer; }
   .job.ready .job-status { color:var(--green); }
   .job.error .job-status { color:var(--red); }
-  .bar { height:2px; background:var(--border); margin-top:6px; overflow:hidden; border-radius:2px; }
+  .bar { height:3px; background:var(--border); margin-top:7px; overflow:hidden; border-radius:3px; }
   .fill { height:100%; width:0; background:var(--accent); transition:width .3s; }
-  .footer { text-align:center; color:#444; font-size:10px; margin:14px 0; }
-  .playlist-overlay {
-    position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center;
-    padding:20px; background:rgba(0,0,0,.78); backdrop-filter:blur(4px);
-  }
+  .history-empty { color:var(--muted); font-size:13px; padding:6px 0; }
+  .footer { text-align:center; color:var(--muted); font-size:11px; margin:15px 0 4px; }
+  .playlist-overlay { position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center; padding:24px; background:rgba(0,0,0,.58); backdrop-filter:blur(5px); }
   .playlist-overlay[hidden] { display:none; }
-  .playlist-dialog {
-    width:min(620px,100%); max-height:82vh; display:flex; flex-direction:column; gap:12px;
-    padding:18px; background:var(--surface); border:1px solid var(--border); border-radius:12px;
-  }
+  .playlist-dialog { width:min(760px,100%); max-height:86vh; display:flex; flex-direction:column; gap:12px; padding:20px; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:0 24px 80px rgba(0,0,0,.25); }
   .playlist-dialog-head { display:flex; justify-content:space-between; gap:12px; }
-  .playlist-dialog-title { font-size:15px; font-weight:850; }
-  .playlist-dialog-summary { margin-top:4px; color:var(--muted); font-size:11px; }
-  .playlist-tools,.playlist-dialog-actions { display:flex; gap:7px; }
-  .playlist-list {
-    min-height:120px; overflow:auto; border:1px solid var(--border); border-radius:8px;
-    background:var(--surface2);
-  }
-  .playlist-entry {
-    display:grid; grid-template-columns:20px minmax(0,1fr) auto auto; gap:8px; align-items:center;
-    padding:9px 10px; border-bottom:1px solid var(--border); text-transform:none; letter-spacing:0;
-  }
+  .playlist-dialog-title { font-size:18px; font-weight:900; }
+  .playlist-dialog-summary { margin-top:5px; color:var(--muted); font-size:13px; }
+  .playlist-tools,.playlist-dialog-actions { display:flex; gap:8px; }
+  .playlist-list { min-height:140px; max-height:420px; overflow:auto; border:1px solid var(--border); border-radius:10px; background:var(--surface2); }
+  .playlist-entry { display:grid; grid-template-columns:22px minmax(0,1fr) auto auto; gap:9px; align-items:center; padding:11px 12px; border-bottom:1px solid var(--border); }
   .playlist-entry:last-child { border-bottom:0; }
   .playlist-entry.already { opacity:.5; }
-  .playlist-entry-title { font-size:11px; color:var(--text); }
-  .playlist-entry-state { color:var(--muted); font-size:9px; white-space:nowrap; }
-  .history { display:flex; flex-direction:column; gap:7px; }
-  .history-list { display:flex; flex-direction:column; gap:6px; }
-  .history-empty { color:var(--muted); font-size:11px; }
+  .playlist-entry-title { font-size:13px; color:var(--text); }
+  .playlist-entry-state { color:var(--muted); font-size:10px; white-space:nowrap; }
   .playlist-dialog-actions { justify-content:flex-end; }
-  @media(max-width:520px) { body{padding:12px}.card{padding:17px}.folder-row{flex-wrap:wrap}.folder-path{flex-basis:100%} }
+  @media(max-width:880px) {
+    body { padding:16px; }
+    .workspace { grid-template-columns:1fr; }
+    .right-column { order:2; }
+    .history-list { max-height:none; }
+  }
+  @media(max-width:560px) {
+    body { padding:12px; }
+    .card,.spotify-card { padding:16px; }
+    .quality { flex-wrap:wrap; }
+    .q-btn { flex:1 1 42%; }
+  }
 </style>
 </head>
 <body>
@@ -178,99 +166,117 @@
     <div class="logo">Drops<span>.</span><small class="channel-badge" id="channelBadge">BETA</small></div>
     <button id="modeButton" class="mode-btn" type="button" onclick="toggleMode()">🎬 Video</button>
   </div>
-  <div class="tagline" id="tagline">MP3 alta qualità · YouTube & SoundCloud</div>
+  <div class="tagline" id="tagline">Download, anteprima e organizzazione musicale</div>
   <div class="update-banner" id="updateBanner">
     <span id="updateText">Controllo aggiornamenti…</span>
     <button id="updateButton" type="button" onclick="openUpdate()">Aggiorna ↗</button>
   </div>
-  <div class="spotify-card" id="spotifyCard">
-    <div class="spotify-main">
-      <div class="section-label">Spotify</div>
-      <div class="spotify-name" id="spotifyName">Controllo collegamento…</div>
-      <div class="spotify-detail" id="spotifyDetail">Nessun token mostrato o condiviso.</div>
-    </div>
-    <div class="spotify-actions">
-      <button class="spotify-btn" id="spotifyExportButton" type="button" onclick="exportSpotify()" hidden>Esporta</button>
-      <button class="spotify-btn primary-action" id="spotifyConnectButton" type="button" onclick="connectSpotify()">Collega</button>
-    </div>
+
+  <div class="workspace">
+    <section class="left-column" aria-label="Download e anteprima">
+      <section class="card download-card">
+        <div class="field">
+          <label for="urlInput">Link brano, playlist o set</label>
+          <textarea id="urlInput" placeholder="Brano YouTube/SoundCloud, playlist YouTube o set SoundCloud" spellcheck="false" oninput="detectInputType()"></textarea>
+          <div class="hint">Un link per riga. Playlist riconosciute prima del download.</div>
+          <div class="link-detection" id="linkDetection" hidden>
+            <div class="link-detection-main">
+              <div class="link-detection-type" id="linkDetectionType"></div>
+              <div class="link-detection-detail" id="linkDetectionDetail"></div>
+            </div>
+            <button class="spotify-btn primary-action" id="linkDetectionButton" type="button"></button>
+          </div>
+        </div>
+
+        <div class="preview-zone" id="inputPreviewZone" hidden>
+          <div class="section-label">Anteprima</div>
+          <div class="preview-meta" id="inputPreviewMeta">Brano selezionato</div>
+          <audio class="preview-player" id="inputPreviewPlayer" controls preload="none" hidden></audio>
+        </div>
+
+        <div class="field" id="audioQualitySection">
+          <div class="section-label">Qualità MP3</div>
+          <div class="quality" id="audioQuality">
+            <button class="q-btn" data-value="128" onclick="setQuality(this)">128k</button>
+            <button class="q-btn" data-value="192" onclick="setQuality(this)">192k</button>
+            <button class="q-btn active" data-value="320" onclick="setQuality(this)">320k</button>
+            <button class="q-btn" data-value="flac" onclick="setQuality(this)">FLAC</button>
+          </div>
+        </div>
+
+        <div class="field" id="videoQualitySection" style="display:none">
+          <div class="section-label">Qualità video</div>
+          <div class="quality" id="videoQuality">
+            <button class="q-btn active" data-value="1080" onclick="setVideoQuality(this)">1080p</button>
+            <button class="q-btn" data-value="720" onclick="setVideoQuality(this)">720p</button>
+            <button class="q-btn" data-value="480" onclick="setVideoQuality(this)">480p</button>
+          </div>
+        </div>
+
+        <div id="clipSection">
+          <label class="clip-toggle">
+            <input type="checkbox" id="clipToggle" onchange="toggleClip()"> ✂️ Taglia clip video
+          </label>
+          <div id="clipPanel">
+            <div class="hint">Formato mm:ss oppure hh:mm:ss</div>
+            <div class="clip-grid">
+              <div class="field"><label for="clipStart">Inizio</label><input id="clipStart" type="text" placeholder="00:00"></div>
+              <div class="field"><label for="clipDuration">Durata</label><input id="clipDuration" type="text" placeholder="05:00"></div>
+            </div>
+          </div>
+        </div>
+
+        <button class="primary" id="addButton" type="button" onclick="enqueueLinks()">Aggiungi alla coda MP3</button>
+        <div class="error" id="errorBox"></div>
+
+        <div class="queue" id="queue">
+          <div class="queue-head">
+            <div class="section-label">Download in corso</div>
+            <div class="queue-count" id="queueCount"></div>
+          </div>
+          <div id="queueList"></div>
+        </div>
+      </section>
+    </section>
+
+    <aside class="right-column" aria-label="Account, cartella e storico">
+      <section class="spotify-card" id="spotifyCard">
+        <div class="spotify-main">
+          <div class="section-label">Account Spotify</div>
+          <div class="spotify-name" id="spotifyName">Controllo collegamento…</div>
+          <div class="spotify-detail" id="spotifyDetail">Nessun token mostrato o condiviso.</div>
+        </div>
+        <div class="spotify-actions">
+          <button class="spotify-btn" id="spotifyExportButton" type="button" onclick="exportSpotify()" hidden>Esporta</button>
+          <button class="spotify-btn primary-action" id="spotifyConnectButton" type="button" onclick="connectSpotify()">Collega</button>
+        </div>
+      </section>
+
+      <section class="card folder-card">
+        <div class="section-label">Cartella di salvataggio</div>
+        <div class="folder-row">
+          <div class="folder-path" id="folderPath">Download (automatica)</div>
+          <button class="folder-btn" type="button" onclick="chooseFolder()">Scegli cartella</button>
+          <button class="folder-reset" id="folderReset" type="button" onclick="resetFolder()">Ripristina</button>
+        </div>
+        <div class="hint">I file restano sul computer. “Mostra” apre posizione originale.</div>
+      </section>
+
+      <section class="card history-card">
+        <div class="history" id="history">
+          <div class="queue-head">
+            <div>
+              <div class="section-label">Storico download</div>
+              <div class="queue-count" id="historyCount">Caricamento…</div>
+            </div>
+            <button class="spotify-btn" type="button" onclick="loadHistory()">Aggiorna</button>
+          </div>
+          <div class="history-list" id="historyList"><div class="history-empty">Nessun download registrato.</div></div>
+        </div>
+      </section>
+    </aside>
   </div>
-
-  <section class="card">
-    <div class="field">
-      <label for="urlInput">Link brano, playlist o set</label>
-      <textarea id="urlInput" placeholder="Brano YouTube/SoundCloud, playlist YouTube o set SoundCloud" spellcheck="false" oninput="detectInputType()"></textarea>
-      <div class="hint">Un link per riga. Playlist riconosciute prima del download.</div>
-      <div class="link-detection" id="linkDetection" hidden>
-        <div class="link-detection-main">
-          <div class="link-detection-type" id="linkDetectionType"></div>
-          <div class="link-detection-detail" id="linkDetectionDetail"></div>
-        </div>
-        <button class="spotify-btn primary-action" id="linkDetectionButton" type="button"></button>
-      </div>
-      <audio class="preview-player" id="inputPreviewPlayer" controls preload="none" hidden></audio>
-    </div>
-
-    <div class="field">
-      <div class="section-label">Cartella di salvataggio</div>
-      <div class="folder-row">
-        <div class="folder-path" id="folderPath">Download (automatica)</div>
-        <button class="folder-btn" type="button" onclick="chooseFolder()">Scegli cartella</button>
-        <button class="folder-reset" id="folderReset" type="button" onclick="resetFolder()">↺</button>
-      </div>
-    </div>
-
-    <div class="field" id="audioQualitySection">
-      <div class="section-label">Qualità MP3</div>
-      <div class="quality" id="audioQuality">
-        <button class="q-btn" data-value="128" onclick="setQuality(this)">128k</button>
-        <button class="q-btn" data-value="192" onclick="setQuality(this)">192k</button>
-        <button class="q-btn active" data-value="320" onclick="setQuality(this)">320k</button>
-        <button class="q-btn" data-value="flac" onclick="setQuality(this)">FLAC</button>
-      </div>
-    </div>
-
-    <div class="field" id="videoQualitySection" style="display:none">
-      <div class="section-label">Qualità video</div>
-      <div class="quality" id="videoQuality">
-        <button class="q-btn active" data-value="1080" onclick="setVideoQuality(this)">1080p</button>
-        <button class="q-btn" data-value="720" onclick="setVideoQuality(this)">720p</button>
-        <button class="q-btn" data-value="480" onclick="setVideoQuality(this)">480p</button>
-      </div>
-    </div>
-
-    <div id="clipSection">
-      <label class="clip-toggle">
-        <input type="checkbox" id="clipToggle" onchange="toggleClip()"> ✂️ Taglia clip video
-      </label>
-      <div id="clipPanel">
-        <div class="hint">Formato mm:ss oppure hh:mm:ss</div>
-        <div class="clip-grid">
-          <div class="field"><label for="clipStart">Inizio</label><input id="clipStart" type="text" placeholder="00:00"></div>
-          <div class="field"><label for="clipDuration">Durata</label><input id="clipDuration" type="text" placeholder="05:00"></div>
-        </div>
-      </div>
-    </div>
-
-    <button class="primary" id="addButton" type="button" onclick="enqueueLinks()">Aggiungi alla coda MP3</button>
-    <div class="error" id="errorBox"></div>
-
-    <div class="queue" id="queue">
-      <div class="queue-head">
-        <div class="section-label">Coda</div>
-        <div class="queue-count" id="queueCount"></div>
-      </div>
-      <div id="queueList"></div>
-    </div>
-
-    <div class="history" id="history">
-      <div class="queue-head">
-        <div class="section-label">Storico download</div>
-        <button class="spotify-btn" type="button" onclick="loadHistory()">Aggiorna</button>
-      </div>
-      <div class="history-list" id="historyList"><div class="history-empty">Nessun download registrato.</div></div>
-    </div>
-  </section>
-  <div class="footer">File salvati sul computer. 3 download simultanei.</div>
+  <div class="footer">File locali · massimo 3 download simultanei</div>
 </main>
 
 <div class="playlist-overlay" id="playlistOverlay" hidden>
@@ -286,8 +292,9 @@
       <button class="spotify-btn" id="playlistSelectAll" type="button">Seleziona tutti</button>
       <button class="spotify-btn" id="playlistSelectNone" type="button">Nessuno</button>
     </div>
-    <audio class="preview-player" id="playlistPreviewPlayer" controls preload="none" hidden></audio>
     <div class="playlist-list" id="playlistList"></div>
+    <div class="preview-meta" id="playlistPreviewMeta" hidden></div>
+    <audio class="preview-player" id="playlistPreviewPlayer" controls preload="none" hidden></audio>
     <div class="playlist-dialog-actions">
       <button class="spotify-btn primary-action" id="playlistConfirmButton" type="button">Accoda selezionati</button>
     </div>
@@ -313,6 +320,7 @@ async function loadAppIdentity() {
     if (!response.ok) return;
     const data = await response.json();
     const isBeta = data.name === 'Drops Beta';
+    document.body.classList.toggle('beta-theme', isBeta);
     document.getElementById('channelBadge').classList.toggle('visible', isBeta);
     document.title = isBeta ? 'Drops Beta — Downloader' : 'Drops — Downloader';
   } catch (_) {
@@ -554,6 +562,14 @@ async function playPreview(url, playerId, button) {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || 'Anteprima non disponibile');
+    const meta = document.getElementById(playerId === 'inputPreviewPlayer' ? 'inputPreviewMeta' : 'playlistPreviewMeta');
+    if (meta) {
+      meta.textContent = [data.title, data.uploader].filter(Boolean).join(' · ');
+      meta.hidden = false;
+    }
+    if (playerId === 'inputPreviewPlayer') {
+      document.getElementById('inputPreviewZone').hidden = false;
+    }
     player.src = `${API_URL}${data.preview_url}`;
     player.hidden = false;
     player.load();
@@ -678,8 +694,12 @@ function showPlaylistPreview(data) {
     };
     const close = result => {
       const player = document.getElementById('playlistPreviewPlayer');
+      const previewMeta = document.getElementById('playlistPreviewMeta');
       player.pause();
       player.hidden = true;
+      player.removeAttribute('src');
+      previewMeta.hidden = true;
+      previewMeta.textContent = '';
       overlay.hidden = true;
       resolve(result);
     };
@@ -744,6 +764,7 @@ async function enqueueLinks() {
     }
   }
   const uniqueResolved = [...new Set(resolvedLinks)].slice(0, 100);
+  const batchId = globalThis.crypto?.randomUUID?.() || `batch_${Date.now()}`;
   for (const url of uniqueResolved) {
     try {
       const response = await fetch(`${API_URL}/download`, {
@@ -752,14 +773,15 @@ async function enqueueLinks() {
         body:JSON.stringify({
           url, format:mode, quality, video_quality:videoQuality,
           start_time:startTime, duration,
-          destination_token:destinationToken
+          destination_token:destinationToken,
+          batch_id:batchId
         })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Errore server');
       jobs.set(data.job_id, {
         id:data.job_id, url, format:mode, status:'pending', progress:0,
-        destination:destinationPath || 'Download'
+        destination:destinationPath || 'Download', batchId
       });
       accepted++;
     } catch (error) {
@@ -794,25 +816,30 @@ async function pollJobs() {
     pollTimer = null;
     return;
   }
+  const completed = [];
   await Promise.all(active.map(async job => {
     try {
       const response = await fetch(`${API_URL}/status/${job.id}`);
       if (!response.ok) throw new Error('Job non trovato');
       const previousStatus = job.status;
       Object.assign(job, await response.json());
-      if (previousStatus !== 'ready' && job.status === 'ready') loadHistory();
+      if (previousStatus !== 'ready' && job.status === 'ready') completed.push(job.id);
     } catch (error) {
       job.status = 'error';
       job.error = error.message;
     }
   }));
+  if (completed.length) {
+    completed.forEach(id => jobs.delete(id));
+    await loadHistory();
+  }
   renderQueue();
 }
 
 function renderQueue() {
   const queue = document.getElementById('queue');
   const list = document.getElementById('queueList');
-  const all = [...jobs.values()];
+  const all = [...jobs.values()].filter(job => job.status !== 'ready');
   queue.style.display = all.length ? 'flex' : 'none';
   const active = all.filter(job => !['ready','error'].includes(job.status)).length;
   document.getElementById('queueCount').textContent = `${active} attivi · ${all.length} totali`;
@@ -869,10 +896,12 @@ async function revealDownload(id) {
 
 async function loadHistory() {
   const list = document.getElementById('historyList');
+  const count = document.getElementById('historyCount');
   try {
     const response = await fetch(`${API_URL}/history?limit=100`);
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || 'Storico non disponibile');
+    count.textContent = `${data.total} file registrati`;
     list.replaceChildren();
     if (!data.items.length) {
       const empty = document.createElement('div');
@@ -884,7 +913,7 @@ async function loadHistory() {
     let bpmPending = false;
     data.items.forEach(record => {
       const item = document.createElement('div');
-      item.className = `job ${record.exists ? 'ready' : 'error'}`;
+      item.className = `job ${record.exists ? 'ready' : 'error'}${record.is_latest_batch ? ' new-record' : ''}`;
       const icon = document.createElement('div');
       icon.className = 'job-icon';
       icon.textContent = record.format === 'video' ? '🎬' : '🎵';
@@ -893,6 +922,15 @@ async function loadHistory() {
       const title = document.createElement('div');
       title.className = 'job-title';
       title.textContent = record.title || 'Senza titolo';
+      const titleRow = document.createElement('div');
+      titleRow.className = 'job-title-row';
+      titleRow.appendChild(title);
+      if (record.is_latest_batch) {
+        const badge = document.createElement('span');
+        badge.className = 'new-badge';
+        badge.textContent = 'NEW';
+        titleRow.appendChild(badge);
+      }
       const detail = document.createElement('div');
       detail.className = 'job-detail';
       const date = record.completed_at ? new Date(record.completed_at * 1000).toLocaleString('it-IT') : '';
@@ -902,7 +940,7 @@ async function loadHistory() {
       detail.textContent = record.exists
         ? `${bpmLabel}${date} · ${record.saved_path}`
         : `${bpmLabel}${date} · file spostato o eliminato`;
-      main.append(title, detail);
+      main.append(titleRow, detail);
       const reveal = document.createElement('button');
       reveal.className = 'job-status';
       reveal.type = 'button';
@@ -915,6 +953,7 @@ async function loadHistory() {
     if (bpmPending) setTimeout(loadHistory, 2000);
   } catch (error) {
     list.textContent = error.message;
+    count.textContent = 'Storico non disponibile';
   }
 }
 
