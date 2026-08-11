@@ -20,6 +20,12 @@
   .topbar { display:flex; align-items:center; justify-content:space-between; margin:4px 0 6px; }
   .logo { font-size:28px; font-weight:900; letter-spacing:-1px; }
   .logo span { color:var(--accent); }
+  .channel-badge {
+    display:none; margin-left:7px; padding:3px 6px; vertical-align:middle;
+    border:1px solid var(--accent); border-radius:999px; color:var(--accent);
+    font-size:8px; font-weight:900; letter-spacing:.8px;
+  }
+  .channel-badge.visible { display:inline-block; }
   .mode-btn {
     border:1px solid var(--border); background:var(--surface); color:var(--muted);
     border-radius:999px; padding:9px 13px; font-size:12px; font-weight:800; cursor:pointer;
@@ -169,7 +175,7 @@
 <body>
 <main class="shell">
   <div class="topbar">
-    <div class="logo">Drops<span>.</span></div>
+    <div class="logo">Drops<span>.</span><small class="channel-badge" id="channelBadge">BETA</small></div>
     <button id="modeButton" class="mode-btn" type="button" onclick="toggleMode()">🎬 Video</button>
   </div>
   <div class="tagline" id="tagline">MP3 alta qualità · YouTube & SoundCloud</div>
@@ -300,6 +306,21 @@ let pollTimer = null;
 let spotifyPollTimer = null;
 let inputDetectTimer = null;
 let detectedPlaylistData = null;
+
+async function loadAppIdentity() {
+  try {
+    const response = await fetch(`${API_URL}/app-info`);
+    if (!response.ok) return;
+    const data = await response.json();
+    const isBeta = data.name === 'Drops Beta';
+    document.getElementById('channelBadge').classList.toggle('visible', isBeta);
+    document.title = isBeta ? 'Drops Beta — Downloader' : 'Drops — Downloader';
+  } catch (_) {
+    // Identità visiva base resta valida anche se backend non risponde ancora.
+  }
+}
+
+loadAppIdentity();
 
 async function checkForUpdates() {
   const banner = document.getElementById('updateBanner');

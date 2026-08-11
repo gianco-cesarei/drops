@@ -62,6 +62,14 @@ Build privata non notarizzata:
 ./build-dmg.sh
 ```
 
+Build beta separata (`Drops Beta.app`, porta e dati indipendenti):
+
+```bash
+./build-beta-dmg.sh
+```
+
+Configurazione e login Spotify Beta: `docs/BETA.md`.
+
 Build pubblica:
 
 ```bash
@@ -82,6 +90,7 @@ Vedi:
 - `docs/WINDOWS_BUILD.md`;
 - `docs/RELEASE.md`;
 - `docs/DISTRIBUTION.md`;
+- `docs/BETA.md`;
 - `docs/INSTALLAZIONE_MACOS.md`.
 
 ## Dati locali

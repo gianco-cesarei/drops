@@ -5,6 +5,21 @@ cd "$(dirname "$0")"
 
 echo "🔨 Build Drops DMG..."
 
+BUILD_CHANNEL="${DROPS_BUILD_CHANNEL:-stable}"
+if [ "$BUILD_CHANNEL" = "beta" ]; then
+  APP_NAME="Drops Beta"
+  DMG_PREFIX="Drops_Beta"
+  VOLUME_NAME="Drops Beta"
+  VERSION_SOURCE="./src-tauri/tauri.beta.conf.json"
+  TAURI_CONFIG_ARGS=(--config src-tauri/tauri.beta.conf.json)
+else
+  APP_NAME="Drops"
+  DMG_PREFIX="Drops"
+  VOLUME_NAME="Drops"
+  VERSION_SOURCE="./package.json"
+  TAURI_CONFIG_ARGS=()
+fi
+
 SIGNING_IDENTITY="${APPLE_SIGNING_IDENTITY:-}"
 NOTARY_PROFILE="${DROPS_NOTARY_PROFILE:-}"
 
@@ -43,6 +58,7 @@ if ! command -v npm &>/dev/null; then
   echo "📦 Installando Node.js..."
   brew install node
 fi
+VERSION=$(node -p "require('$VERSION_SOURCE').version")
 if ! command -v ffmpeg &>/dev/null; then
   echo "📦 Installando ffmpeg..."
   brew install ffmpeg
@@ -58,13 +74,7 @@ if [ ! -d ".venv" ]; then
   python3.11 -m venv .venv
 fi
 source .venv/bin/activate
-pip install --quiet \
-  "fastapi==0.111.0" \
-  "uvicorn[standard]==0.29.0" \
-  "pydantic==2.7.1" \
-  "python-multipart==0.0.9" \
-  "yt-dlp>=2025.1.15" \
-  "pyinstaller>=6.0"
+pip install --quiet -r backend/requirements.txt "pyinstaller>=6.0"
 
 echo "📦 Compilando backend locale..."
 pyinstaller --clean --noconfirm backend/drops-backend.spec
@@ -89,13 +99,13 @@ echo "🏗  Compilando app (ci vuole qualche minuto la prima volta)..."
 # Tauri ricopia risorse sopra output precedenti; ffmpeg può conservare modo 555
 # sia nei profili debug sia release e bloccare build successive.
 find src-tauri/target -path "*/ffmpeg/ffmpeg" -exec chmod u+w {} \; 2>/dev/null || true
-npm run tauri build -- --bundles app
+npm run tauri build -- --bundles app "${TAURI_CONFIG_ARGS[@]}"
 
 # Trova app prodotta
-APP=$(find src-tauri/target/release/bundle/macos -name "*.app" -type d -print -quit 2>/dev/null)
+APP="src-tauri/target/release/bundle/macos/${APP_NAME}.app"
 
-if [ -z "$APP" ]; then
-  echo "❌ Drops.app non trovata dopo la build."
+if [ ! -d "$APP" ]; then
+  echo "❌ ${APP_NAME}.app non trovata dopo la build."
   exit 1
 fi
 
@@ -117,17 +127,16 @@ codesign --verify --deep --strict --verbose=2 "$APP"
 codesign -dv --verbose=2 "$APP" 2>&1 | grep -E "Identifier=|Signature=|Authority=|TeamIdentifier="
 
 # Crea DMG solo dopo firma bundle.
-VERSION=$(node -p "require('./package.json').version")
 DMG_DIR="src-tauri/target/release/bundle/dmg"
-DMG="$DMG_DIR/Drops_${VERSION}_aarch64.dmg"
+DMG="$DMG_DIR/${DMG_PREFIX}_${VERSION}_aarch64.dmg"
 STAGING=$(mktemp -d)
 trap 'rm -rf "$STAGING"' EXIT
-mkdir -p "$DMG_DIR" "$STAGING/Drops"
-cp -R "$APP" "$STAGING/Drops/"
-ln -s /Applications "$STAGING/Drops/Applications"
+mkdir -p "$DMG_DIR" "$STAGING/$APP_NAME"
+cp -R "$APP" "$STAGING/$APP_NAME/"
+ln -s /Applications "$STAGING/$APP_NAME/Applications"
 
 echo "💿 Creo DMG..."
-hdiutil create -volname "Drops" -srcfolder "$STAGING/Drops" -ov -format UDZO "$DMG"
+hdiutil create -volname "$VOLUME_NAME" -srcfolder "$STAGING/$APP_NAME" -ov -format UDZO "$DMG"
 hdiutil verify "$DMG"
 
 if [ -n "$SIGNING_IDENTITY" ]; then

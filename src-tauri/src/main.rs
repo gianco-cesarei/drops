@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::net::TcpStream;
+use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -9,10 +10,33 @@ use std::time::Duration;
 #[cfg(any(target_os = "windows", target_os = "macos"))]
 use tauri::Manager;
 
-/// Aspetta che il backend risponda sulla porta 8000.
-fn wait_for_backend(attempts: u32) {
+#[derive(Clone)]
+struct RuntimeProfile {
+    app_name: String,
+    port: u16,
+    state_dir: PathBuf,
+}
+
+fn runtime_profile(app: &tauri::App) -> RuntimeProfile {
+    let is_beta = app.config().identifier.ends_with(".beta");
+    let app_name = if is_beta { "Drops Beta" } else { "Drops" }.to_string();
+    let port = if is_beta { 8001 } else { 8000 };
+    let state_folder = if is_beta { ".drops-beta" } else { ".drops" };
+    let state_dir = std::env::var("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join(state_folder);
+    RuntimeProfile {
+        app_name,
+        port,
+        state_dir,
+    }
+}
+
+/// Aspetta che il backend risponda sulla porta assegnata al canale app.
+fn wait_for_backend(port: u16, attempts: u32) {
     for _ in 0..attempts {
-        if TcpStream::connect("127.0.0.1:8000").is_ok() {
+        if TcpStream::connect(("127.0.0.1", port)).is_ok() {
             return;
         }
         thread::sleep(Duration::from_millis(300));
@@ -25,7 +49,10 @@ fn wait_for_backend(attempts: u32) {
 /// - macOS: backend Mach-O impacchettato nell'.app se presente, altrimenti
 ///   fallback al venv Python del progetto (modalità sviluppo).
 #[allow(unused_variables)]
-fn spawn_backend(app: &tauri::App) -> Option<Child> {
+fn spawn_backend(app: &tauri::App, profile: &RuntimeProfile) -> Option<Child> {
+    let port = profile.port.to_string();
+    let redirect_uri = format!("http://127.0.0.1:{}/spotify/callback", profile.port);
+    let app_version = app.package_info().version.to_string();
     #[cfg(target_os = "windows")]
     {
         let res = match app.path().resource_dir() {
@@ -40,7 +67,11 @@ fn spawn_backend(app: &tauri::App) -> Option<Child> {
         match Command::new(&backend)
             .env("DROPS_FFMPEG_DIR", &ffmpeg_dir)
             .env("DROPS_PARENT_PID", std::process::id().to_string())
-            .env("DROPS_APP_VERSION", env!("CARGO_PKG_VERSION"))
+            .env("DROPS_APP_VERSION", &app_version)
+            .env("DROPS_APP_NAME", &profile.app_name)
+            .env("DROPS_PORT", &port)
+            .env("DROPS_STATE_DIR", &profile.state_dir)
+            .env("SPOTIFY_REDIRECT_URI", &redirect_uri)
             .current_dir(&res)
             .spawn()
         {
@@ -73,7 +104,11 @@ fn spawn_backend(app: &tauri::App) -> Option<Child> {
                 return Command::new(&backend)
                     .env("DROPS_FFMPEG_DIR", &ffmpeg_dir)
                     .env("DROPS_PARENT_PID", std::process::id().to_string())
-                    .env("DROPS_APP_VERSION", env!("CARGO_PKG_VERSION"))
+                    .env("DROPS_APP_VERSION", &app_version)
+                    .env("DROPS_APP_NAME", &profile.app_name)
+                    .env("DROPS_PORT", &port)
+                    .env("DROPS_STATE_DIR", &profile.state_dir)
+                    .env("SPOTIFY_REDIRECT_URI", &redirect_uri)
                     .current_dir(&res)
                     .spawn()
                     .ok();
@@ -88,7 +123,11 @@ fn spawn_backend(app: &tauri::App) -> Option<Child> {
         let backend_dir = project_dir.join("backend");
         Command::new(&python)
             .env("DROPS_PARENT_PID", std::process::id().to_string())
-            .env("DROPS_APP_VERSION", env!("CARGO_PKG_VERSION"))
+            .env("DROPS_APP_VERSION", &app_version)
+            .env("DROPS_APP_NAME", &profile.app_name)
+            .env("DROPS_PORT", &port)
+            .env("DROPS_STATE_DIR", &profile.state_dir)
+            .env("SPOTIFY_REDIRECT_URI", &redirect_uri)
             .args([
                 "-m",
                 "uvicorn",
@@ -96,7 +135,7 @@ fn spawn_backend(app: &tauri::App) -> Option<Child> {
                 "--host",
                 "127.0.0.1",
                 "--port",
-                "8000",
+                &port,
             ])
             .current_dir(&backend_dir)
             .spawn()
@@ -122,20 +161,25 @@ fn main() {
             }
         }))
         .setup(move |app| {
-            let child = spawn_backend(app);
+            let profile = runtime_profile(app);
+            let child = spawn_backend(app, &profile);
             if child.is_some() {
                 // Attende che uvicorn sia pronto prima di caricare la WebView
                 // PyInstaller onefile può impiegare 15-20 secondi al primo avvio.
-                wait_for_backend(120);
+                wait_for_backend(profile.port, 120);
             }
             *backend.lock().unwrap() = child;
 
             tauri::WebviewWindowBuilder::new(
                 app,
                 "main",
-                tauri::WebviewUrl::External("http://127.0.0.1:8000".parse().unwrap()),
+                tauri::WebviewUrl::External(
+                    format!("http://127.0.0.1:{}", profile.port)
+                        .parse()
+                        .unwrap(),
+                ),
             )
-            .title("Drops")
+            .title(&profile.app_name)
             .inner_size(560.0, 760.0)
             .resizable(false)
             .center()

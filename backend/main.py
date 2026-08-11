@@ -98,6 +98,7 @@ MAX_CONCURRENT = 3
 MAX_QUEUED = 100
 FILE_TTL = 600  # 10 minuti
 APP_VERSION = os.environ.get("DROPS_APP_VERSION", "1.0.5")
+APP_NAME = os.environ.get("DROPS_APP_NAME", "Drops")
 GITHUB_LATEST_RELEASE_API = "https://api.github.com/repos/gianco-cesarei/drops/releases/latest"
 UPDATE_CACHE_SECONDS = 3600
 # Version history restarted at 1.0.x. Releases published before this instant belong
@@ -105,7 +106,7 @@ UPDATE_CACHE_SECONDS = 3600
 RELEASE_LINEAGE_START = "2026-07-28T00:00:00Z"
 
 # ─── App ────────────────────────────────────────────────────────────────────
-app = FastAPI(title="Drops API")
+app = FastAPI(title=f"{APP_NAME} API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -402,12 +403,19 @@ def choose_destination_folder() -> Path | None:
     return path
 
 
-def version_tuple(value: str) -> tuple[int, int, int]:
+def version_tuple(value: str) -> tuple[int, int, int, int, int]:
     clean = value.strip().lstrip("v")
-    parts = clean.split(".")
-    if len(parts) != 3 or not all(part.isdigit() for part in parts):
+    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?", clean)
+    if not match:
         raise ValueError(f"Versione non valida: {value}")
-    return tuple(int(part) for part in parts)
+    major, minor, patch = (int(match.group(index)) for index in range(1, 4))
+    prerelease = match.group(4)
+    prerelease_number = 0
+    if prerelease:
+        numbers = re.findall(r"\d+", prerelease)
+        prerelease_number = int(numbers[-1]) if numbers else 0
+    # A parità di 1.1.0, release stabile viene dopo 1.1.0-beta.N.
+    return major, minor, patch, 0 if prerelease else 1, prerelease_number
 
 
 def check_latest_release() -> dict:
@@ -785,7 +793,7 @@ def health():
 
 @app.get("/app-info")
 def app_info():
-    return {"name": "Drops", "version": APP_VERSION}
+    return {"name": APP_NAME, "version": APP_VERSION}
 
 
 @app.get("/update/check")

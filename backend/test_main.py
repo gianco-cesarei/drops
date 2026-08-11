@@ -154,6 +154,11 @@ class MainHelpersTest(unittest.TestCase):
         self.assertEqual(result["bpm_status"], "not_available")
         self.assertEqual(result["reason"], "track_not_downloaded")
 
+    def test_version_comparison_supports_beta_channel(self):
+        self.assertLess(main.version_tuple("1.1.0-beta.1"), main.version_tuple("1.1.0"))
+        self.assertGreater(main.version_tuple("1.1.0-beta.2"), main.version_tuple("1.1.0-beta.1"))
+        self.assertGreater(main.version_tuple("1.1.0-beta.1"), main.version_tuple("1.0.5"))
+
 
 def tearDownModule():
     _STATE.cleanup()
