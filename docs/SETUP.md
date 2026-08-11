@@ -1,103 +1,78 @@
-# Drops — Setup Guide
+# Drops — ambiente di sviluppo
 
-## 🚀 Prima volta: Setup Iniziale
+Configurazione tecnica per lavorare sul repository. Installazione utente macOS:
+vedi `INSTALLAZIONE_MACOS.md`.
 
-### Per macOS (DMG Installer)
+## Prerequisiti macOS
 
-1. **Scarica il DMG** da [link qui]
-2. **Apri il DMG** e trascina `Drops.app` nella cartella `Applications`
-3. **Lancia l'app** dalla cartella Applications (la prima volta ti chiederà il permesso di Apple)
-4. **Fatto!** L'app creerà automaticamente:
-   - `~/.drops/config.json` — contiene il tuo token univoco
-   - `~/.drops/logs/` — cartella dove l'app salva i log di debug
+- Python 3.11 o successivo;
+- Node.js 20;
+- Rust;
+- FFmpeg.
 
-### Nessuna password da ricordare ✅
-Il token viene generato automaticamente la prima volta. Se lo vuoi vedere:
+## Preparazione
 
 ```bash
-cat ~/.drops/config.json
+python3.11 -m venv .venv
+.venv/bin/pip install -r backend/requirements.txt
+npm install
 ```
 
----
-
-## ⚙️ Configurazione Avanzata
-
-### Variabile d'ambiente `HOME`
-L'app richiede che la variabile `HOME` sia impostata correttamente. Normalmente è automatico, ma se non funziona:
+Avvio backend e interfaccia nel browser:
 
 ```bash
-# Verifica che HOME sia impostata
-echo $HOME
-# Dovrebbe mostrare qualcosa come /Users/tuonomeutente
+./start.sh
 ```
 
-Se il problema persiste, lancia l'app dal Terminale:
+Avvio app desktop Tauri:
 
 ```bash
-open /Applications/Drops.app
+./launch-desktop.sh
 ```
 
----
+## Stato locale
 
-## 🔍 Debug: Dove sono i log?
+Drops crea dati runtime fuori dal repository:
 
-Se qualcosa non funziona, i log sono in:
-
-```bash
-~/.drops/logs/backend.log
+```text
+~/.drops/
+├── cookies.txt
+├── download-history.json
+├── spotify-account.json
+├── spotify-artist-genres.json
+├── spotify-auth-state.json
+├── spotify-library.json
+├── spotify-token.json
+└── logs/
+    ├── backend.log
+    └── uvicorn.log
 ```
 
-Leggi gli ultimi 50 righe:
+Token Spotify e cookie sono privati. Non copiarli nel repository, nei log condivisi
+o nelle segnalazioni bug.
+
+## Test backend
 
 ```bash
+.venv/bin/python -m unittest discover -s backend -p 'test_*.py' -v
+```
+
+## Diagnosi
+
+Backend locale: `http://127.0.0.1:8000`.
+
+```bash
+curl http://127.0.0.1:8000/health
 tail -50 ~/.drops/logs/backend.log
 ```
 
----
+Se porta 8000 è occupata, chiudere precedente istanza Drops prima di riavviare.
 
-## 🛡️ Cartella di Configurazione
+Diagnosi Spotify isolata:
 
-Tutto è centralizzato in `~/.drops/`:
-
-```
-~/.drops/
-├── config.json        # Token di autenticazione (privato, creato al primo avvio)
-└── logs/
-    └── backend.log    # Log persistente dell'app
-```
-
-Non toccare `config.json` a meno che non sappia cosa stai facendo. Viene generato automaticamente.
-
----
-
-## 📍 Stato Attuale: Fase 1 (Stabilizzazione)
-
-Questa versione è in **Fase 1 di Stabilizzazione**. Significa:
-- ✅ Funziona per uso quotidiano
-- ✅ Supporta 2-5 utenti affidati
-- ⏳ Prossimo: Installer migliorato + Auto-update (Fase 2)
-
-Se trovi bug, segnalali con gli ultimi 20 righe di log.
-
----
-
-## Problemi Comuni
-
-### L'app non parte
-**Causa**: Potrebbe essere la porta 8000 occupata  
-**Fix**: Controlla i log:
 ```bash
-tail ~/.drops/logs/backend.log | grep "8000\|Errore"
+.venv/bin/python backend/diagnose_spotify.py
 ```
 
-### Il token non viene caricato
-**Causa**: Possibile permesso mancante su `config.json`  
-**Fix**: Riavvia l'app. Se persiste, elimina e ricrea:
-```bash
-rm ~/.drops/config.json
-# Riavvia l'app
-```
-
----
-
-**Domande?** Controlla i log prima di contattarmi. Il 90% dei problemi è nel log.
+Script operativi `analyze_genres.py` e `batch_download.py` restano strumenti di
+sviluppo: non vengono richiamati automaticamente dall'app.

@@ -32,7 +32,6 @@ backend/        API locale, download e integrazioni
 frontend/       interfaccia desktop
 src-tauri/      shell nativa e configurazione bundle
 docs/           installazione, build e distribuzione
-deploy/         configurazioni web legacy
 ```
 
 Materiali personali, PDF, roadmap e mockup non fanno parte del repository.

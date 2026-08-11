@@ -7,22 +7,28 @@ import threading
 import shutil
 import logging
 import json
+import html
+import re
 import subprocess
 import urllib.error
+import urllib.parse
 import urllib.request
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 import yt_dlp
 from spotify_agent import (
     SpotifyAgentError,
     approved_download_context,
+    connection_status,
     create_authorization,
+    explain_connection_error,
     exchange_code,
+    export_saved_tracks,
     get_catalog,
     import_saved_tracks,
     search_candidates,
@@ -47,6 +53,7 @@ logger.addHandler(handler)
 
 # ─── Cookies ────────────────────────────────────────────────────────────────
 COOKIES_FILE = DROPS_DIR / "cookies.txt"
+HISTORY_FILE = DROPS_DIR / "download-history.json"
 
 # ─── ffmpeg: discovery cross-platform ────────────────────────────────────────
 IS_WINDOWS = os.name == "nt"
@@ -110,6 +117,8 @@ jobs: dict = {}
 semaphore = threading.Semaphore(MAX_CONCURRENT)
 selected_destinations: dict[str, Path] = {}
 update_cache: dict = {"checked_at": 0.0, "result": None}
+preview_cache: dict[str, dict] = {}
+history_lock = threading.Lock()
 
 ALLOWED_DOMAINS = [
     "youtube.com", "youtu.be",
@@ -134,7 +143,6 @@ VIDEO_FORMAT_MAP = {
 class DownloadRequest(BaseModel):
     url: str
     quality: str = "320"
-    password: str | None = None          # opzionale (app locale)
     format: str = "audio"                # "audio" | "video"
     video_quality: str = "1080"          # "1080" | "720" | "480"
     start_time: int | None = None        # secondi (clip)
@@ -142,6 +150,15 @@ class DownloadRequest(BaseModel):
     destination_token: str | None = None
     spotify_track_id: str | None = None
     rights_confirmed: bool = False
+
+
+class PlaylistRequest(BaseModel):
+    url: str
+    destination_token: str | None = None
+
+
+class MediaInspectRequest(BaseModel):
+    url: str
 
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
@@ -166,10 +183,86 @@ def cleanup_old_files():
         jobs.pop(jid, None)
 
 
+def read_download_history(limit: int = 100) -> list[dict]:
+    try:
+        data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        records = data if isinstance(data, list) else []
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        records = []
+    return records[: max(1, min(limit, 500))]
+
+
+def append_download_history(record: dict) -> None:
+    with history_lock:
+        records = read_download_history(500)
+        records = [item for item in records if item.get("id") != record.get("id")]
+        records.insert(0, record)
+        temp = HISTORY_FILE.with_suffix(HISTORY_FILE.suffix + ".tmp")
+        temp.write_text(
+            json.dumps(records[:500], ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        temp.replace(HISTORY_FILE)
+
+
+def reveal_local_file(path: Path) -> None:
+    if not path.is_file():
+        raise FileNotFoundError(str(path))
+    if sys.platform == "darwin":
+        subprocess.Popen(["open", "-R", str(path)])
+    elif os.name == "nt":
+        subprocess.Popen(
+            ["explorer.exe", f"/select,{path}"],
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    else:
+        subprocess.Popen(["xdg-open", str(path.parent)])
+
+
 def safe_filename(name: str, ext: str) -> str:
     clean = "".join(c for c in name if c.isalnum() or c in " .-_()[]").strip()
     clean = clean[:80]
     return f"{clean}.{ext}" if clean else f"audio.{ext}"
+
+
+def is_supported_url(value: str) -> bool:
+    try:
+        parsed = urllib.parse.urlsplit(value.strip())
+    except ValueError:
+        return False
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return False
+    host = parsed.hostname.lower().rstrip(".")
+    return any(host == domain or host.endswith(f".{domain}") for domain in ALLOWED_DOMAINS)
+
+
+def playlist_entry_url(entry: dict, original_url: str) -> str | None:
+    for key in ("webpage_url", "original_url", "url"):
+        value = entry.get(key)
+        if isinstance(value, str) and is_supported_url(value):
+            return value
+    extractor = str(entry.get("extractor_key") or entry.get("ie_key") or "").lower()
+    video_id = entry.get("id")
+    if video_id and "youtube" in extractor:
+        return f"https://www.youtube.com/watch?v={video_id}"
+    return original_url if is_supported_url(original_url) else None
+
+
+def normalized_media_title(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
+
+
+def existing_media_titles(destination_token: str | None) -> set[str]:
+    if not destination_token:
+        return set()
+    target_dir = selected_destinations.get(destination_token)
+    if not target_dir or not target_dir.is_dir():
+        return set()
+    media_extensions = {".mp3", ".flac", ".m4a", ".wav", ".mp4", ".webm"}
+    return {
+        normalized_media_title(path.stem)
+        for path in target_dir.iterdir()
+        if path.is_file() and path.suffix.casefold() in media_extensions
+    }
 
 
 def unique_destination(target_dir: Path, title: str, ext: str) -> Path:
@@ -301,6 +394,20 @@ def open_release_page(url: str) -> None:
     expected_prefix = "https://github.com/gianco-cesarei/drops/releases/"
     if not url.startswith(expected_prefix):
         raise ValueError("URL aggiornamento non valido")
+
+    if sys.platform == "darwin":
+        subprocess.Popen(["open", url])
+    elif os.name == "nt":
+        os.startfile(url)  # type: ignore[attr-defined]
+    else:
+        subprocess.Popen(["xdg-open", url])
+
+
+def open_spotify_page(url: str) -> None:
+    """Apre solo pagina OAuth Spotify prodotta dal backend."""
+    expected_prefix = "https://accounts.spotify.com/authorize?"
+    if not url.startswith(expected_prefix):
+        raise ValueError("URL Spotify non valido")
 
     if sys.platform == "darwin":
         subprocess.Popen(["open", url])
@@ -576,6 +683,19 @@ def do_download(
                 "library_path": str(file_path) if library_context else None,
                 "saved_path": str(file_path),
             })
+            append_download_history(
+                {
+                    "id": job_id,
+                    "title": title,
+                    "source_url": url,
+                    "saved_path": str(file_path),
+                    "format": fmt,
+                    "quality": video_quality if is_video else quality,
+                    "size": size,
+                    "duration": final_duration,
+                    "completed_at": time.time(),
+                }
+            )
             logger.info(f"Pronto - Job:{job_id} '{title}' {size} bytes")
 
         except Exception as e:
@@ -612,12 +732,6 @@ def update_open():
     return {"opened": True, "release_url": release["release_url"]}
 
 
-@app.get("/auth-token")
-def auth_token():
-    """Endpoint di compatibilità – app locale, nessuna autenticazione reale."""
-    return {"token": "local-drops"}
-
-
 @app.post("/select-folder")
 def select_folder():
     try:
@@ -632,11 +746,92 @@ def select_folder():
     return {"selected": True, "token": token, "path": str(path)}
 
 
+@app.post("/media/inspect")
+def inspect_media(req: MediaInspectRequest):
+    if not is_supported_url(req.url):
+        raise HTTPException(status_code=400, detail="URL non supportato")
+    options = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "noplaylist": True,
+        "format": "bestaudio/best",
+    }
+    if COOKIES_FILE.exists():
+        options["cookiefile"] = str(COOKIES_FILE)
+    try:
+        with yt_dlp.YoutubeDL(options) as ydl:
+            info = ydl.extract_info(req.url, download=False)
+    except Exception as exc:
+        logger.warning(f"Anteprima media fallita: {exc}")
+        raise HTTPException(
+            status_code=400,
+            detail="Anteprima non disponibile per questo elemento",
+        ) from exc
+
+    requested = (info or {}).get("requested_downloads") or []
+    stream_url = (requested[0].get("url") if requested else None) or (info or {}).get("url")
+    try:
+        stream_scheme = urllib.parse.urlsplit(stream_url or "").scheme
+    except ValueError:
+        stream_scheme = ""
+    if stream_scheme not in {"http", "https"}:
+        raise HTTPException(status_code=400, detail="Flusso anteprima non disponibile")
+
+    now = time.time()
+    for key, value in list(preview_cache.items()):
+        if now - value.get("created_at", 0) > 900:
+            preview_cache.pop(key, None)
+    token = str(uuid.uuid4())
+    preview_cache[token] = {"url": stream_url, "created_at": now}
+    return {
+        "title": (info or {}).get("title") or "Senza titolo",
+        "uploader": (info or {}).get("uploader") or (info or {}).get("channel") or "",
+        "duration": (info or {}).get("duration"),
+        "preview_url": f"/preview/{token}",
+    }
+
+
+@app.get("/preview/{token}")
+def stream_preview(token: str):
+    cached = preview_cache.get(token)
+    if not cached or time.time() - cached.get("created_at", 0) > 900:
+        preview_cache.pop(token, None)
+        raise HTTPException(status_code=404, detail="Anteprima scaduta: riaprila")
+    return RedirectResponse(cached["url"])
+
+
+@app.get("/history")
+def download_history(limit: int = 100):
+    records = read_download_history(limit)
+    for record in records:
+        record["exists"] = Path(record.get("saved_path", "")).is_file()
+    return {"items": records, "total": len(records)}
+
+
+@app.post("/history/{record_id}/reveal")
+def reveal_history_file(record_id: str):
+    record = next(
+        (item for item in read_download_history(500) if item.get("id") == record_id),
+        None,
+    )
+    if not record:
+        raise HTTPException(status_code=404, detail="Download non trovato nello storico")
+    try:
+        reveal_local_file(Path(record.get("saved_path", "")))
+    except (FileNotFoundError, OSError) as exc:
+        raise HTTPException(
+            status_code=404,
+            detail="File non esiste più nella cartella originale",
+        ) from exc
+    return {"opened": True}
+
+
 @app.post("/download")
 def start_download(req: DownloadRequest):
     cleanup_old_files()
 
-    if not any(d in req.url for d in ALLOWED_DOMAINS):
+    if not is_supported_url(req.url):
         raise HTTPException(status_code=400, detail="URL non supportato. Usa YouTube o SoundCloud.")
 
     if req.format == "audio" and req.quality not in AUDIO_QUALITY_MAP:
@@ -719,6 +914,61 @@ def start_download(req: DownloadRequest):
     return {"job_id": job_id}
 
 
+@app.post("/playlist/resolve")
+def resolve_playlist(req: PlaylistRequest):
+    if not is_supported_url(req.url):
+        raise HTTPException(status_code=400, detail="URL non supportato")
+    options = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "extract_flat": "in_playlist",
+        "playlistend": MAX_QUEUED + 1,
+    }
+    if COOKIES_FILE.exists():
+        options["cookiefile"] = str(COOKIES_FILE)
+    try:
+        with yt_dlp.YoutubeDL(options) as ydl:
+            info = ydl.extract_info(req.url, download=False)
+    except Exception as exc:
+        logger.warning(f"Risoluzione playlist fallita: {exc}")
+        raise HTTPException(
+            status_code=400,
+            detail="Playlist non leggibile. Controlla link, privacy e disponibilità.",
+        ) from exc
+
+    raw_entries = list((info or {}).get("entries") or [])
+    if not raw_entries:
+        raw_entries = [info or {}]
+    entries = []
+    existing_titles = existing_media_titles(req.destination_token)
+    for entry in raw_entries[:MAX_QUEUED]:
+        if not entry:
+            continue
+        url = playlist_entry_url(entry, req.url)
+        if not url:
+            continue
+        title = entry.get("title") or "Senza titolo"
+        entries.append(
+            {
+                "url": url,
+                "title": title,
+                "uploader": entry.get("uploader") or entry.get("channel") or "",
+                "duration": entry.get("duration"),
+                "already_downloaded": normalized_media_title(title) in existing_titles,
+            }
+        )
+    if not entries:
+        raise HTTPException(status_code=400, detail="Nessun elemento scaricabile trovato")
+    return {
+        "title": (info or {}).get("title") or entries[0]["title"],
+        "entries": entries,
+        "count": len(entries),
+        "existing_count": sum(entry["already_downloaded"] for entry in entries),
+        "truncated": len(raw_entries) > MAX_QUEUED,
+    }
+
+
 @app.get("/status/{job_id}")
 def get_status(job_id: str):
     if job_id not in jobs:
@@ -752,15 +1002,34 @@ def spotify_connect():
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.post("/spotify/connect/open")
+def spotify_connect_open():
+    try:
+        authorization = create_authorization()
+        open_spotify_page(authorization["authorization_url"])
+        return {"opened": True}
+    except (SpotifyAgentError, OSError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/spotify/status")
+def spotify_status():
+    return connection_status()
+
+
 @app.get("/spotify/callback")
 def spotify_callback(code: str, state: str):
     try:
-        exchange_code(code, state)
+        result = exchange_code(code, state)
     except SpotifyAgentError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    account = result.get("account") or {}
+    identity = account.get("display_name") or account.get("email") or account.get("id")
+    identity_html = f"<strong>{html.escape(str(identity))}</strong>" if identity else "account Spotify"
     return HTMLResponse(
         "<h1>Spotify collegato a Drops</h1>"
-        "<p>Chiudi questa finestra e importa tutti i preferiti.</p>"
+        f"<p>Account collegato: {identity_html}</p>"
+        "<p>Puoi chiudere questa finestra e tornare a Drops.</p>"
     )
 
 
@@ -769,7 +1038,17 @@ def spotify_import():
     try:
         return import_saved_tracks()
     except SpotifyAgentError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        message, _ = explain_connection_error(exc)
+        raise HTTPException(status_code=400, detail=message) from exc
+
+
+@app.post("/spotify/export")
+def spotify_export():
+    try:
+        return export_saved_tracks(DEFAULT_SAVE_DIR / "Drops Spotify")
+    except SpotifyAgentError as exc:
+        message, _ = explain_connection_error(exc)
+        raise HTTPException(status_code=400, detail=message) from exc
 
 
 @app.get("/spotify/library")
@@ -783,55 +1062,6 @@ def spotify_candidates(track_id: str, limit: int = 5):
         return search_candidates(track_id, limit)
     except SpotifyAgentError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@app.get("/file/{job_id}")
-def get_file(job_id: str, background_tasks: BackgroundTasks):
-    if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Job non trovato")
-
-    j = jobs[job_id]
-    if j["status"] != "ready":
-        raise HTTPException(status_code=400, detail="File non ancora pronto")
-
-    fp = j.get("file_path")
-    if not fp or not os.path.exists(fp):
-        raise HTTPException(status_code=404, detail="File non trovato sul server")
-
-    if j.get("library_path") or j.get("saved_path"):
-        ext = j.get("ext", "mp3")
-        if ext == "mp4":
-            media_type = "video/mp4"
-        elif ext == "flac":
-            media_type = "audio/flac"
-        else:
-            media_type = "audio/mpeg"
-        return FileResponse(
-            fp,
-            media_type=media_type,
-            filename=Path(fp).name,
-        )
-
-    ext = j.get("ext", "mp3")
-    filename = safe_filename(j["title"] or "audio", ext)
-
-    if ext == "mp4":
-        media_type = "video/mp4"
-    elif ext == "flac":
-        media_type = "audio/flac"
-    else:
-        media_type = "audio/mpeg"
-
-    def delete_after():
-        time.sleep(5)
-        try:
-            os.remove(fp)
-        except Exception:
-            pass
-        jobs.pop(job_id, None)
-
-    background_tasks.add_task(delete_after)
-    return FileResponse(fp, media_type=media_type, filename=filename)
 
 
 def _frontend_index_path() -> Path | None:

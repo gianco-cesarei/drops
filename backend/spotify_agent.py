@@ -12,6 +12,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -20,12 +21,14 @@ import yt_dlp
 SPOTIFY_AUTHORIZE = "https://accounts.spotify.com/authorize"
 SPOTIFY_TOKEN = "https://accounts.spotify.com/api/token"
 SPOTIFY_API = "https://api.spotify.com/v1"
-SCOPE = "user-library-read"
+DEFAULT_SPOTIFY_CLIENT_ID = "7b99b9653fba45ae974edcd553312387"
+SCOPE = "user-library-read user-read-email user-read-private"
 
 DROPS_HOME = Path(
     os.environ.get("DROPS_STATE_DIR", str(Path.home() / ".drops"))
 ).expanduser()
 TOKEN_FILE = DROPS_HOME / "spotify-token.json"
+ACCOUNT_FILE = DROPS_HOME / "spotify-account.json"
 CATALOG_FILE = DROPS_HOME / "spotify-library.json"
 ARTIST_CACHE_FILE = DROPS_HOME / "spotify-artist-genres.json"
 MUSIC_ROOT = Path(
@@ -123,7 +126,8 @@ def _request_json(
 
 
 def _client_id() -> str:
-    value = os.environ.get("SPOTIFY_CLIENT_ID", "").strip()
+    # Client ID OAuth pubblico: può stare nel bundle. Non è un client secret.
+    value = os.environ.get("SPOTIFY_CLIENT_ID", DEFAULT_SPOTIFY_CLIENT_ID).strip()
     if not value:
         raise SpotifyAgentError("Configura SPOTIFY_CLIENT_ID")
     return value
@@ -158,7 +162,18 @@ def create_authorization() -> dict[str, str]:
     return {"authorization_url": f"{SPOTIFY_AUTHORIZE}?{urllib.parse.urlencode(params)}"}
 
 
-def exchange_code(code: str, state: str) -> dict[str, bool]:
+def _account_payload(profile: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": profile.get("id"),
+        "display_name": profile.get("display_name"),
+        "email": profile.get("email"),
+        "product": profile.get("product"),
+        "country": profile.get("country"),
+        "connected_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def exchange_code(code: str, state: str) -> dict[str, Any]:
     saved = _read_json(DROPS_HOME / "spotify-auth-state.json", {})
     if not saved or not secrets.compare_digest(state, saved.get("state", "")):
         raise SpotifyAgentError("Stato OAuth Spotify non valido")
@@ -177,7 +192,10 @@ def exchange_code(code: str, state: str) -> dict[str, bool]:
     )
     token["expires_at"] = time.time() + int(token.get("expires_in", 3600)) - 60
     _atomic_json(TOKEN_FILE, token)
-    return {"connected": True}
+    profile = _spotify_get("/me")
+    account = _account_payload(profile)
+    _atomic_json(ACCOUNT_FILE, account)
+    return {"connected": True, "account": account}
 
 
 def _access_token() -> str:
@@ -207,6 +225,96 @@ def _access_token() -> str:
 def _spotify_get(path_or_url: str) -> dict[str, Any]:
     url = path_or_url if path_or_url.startswith("https://") else SPOTIFY_API + path_or_url
     return _request_json(url, headers={"Authorization": f"Bearer {_access_token()}"})
+
+
+def explain_connection_error(exc: SpotifyAgentError) -> tuple[str, bool]:
+    raw = str(exc)
+    lowered = raw.lower()
+    if "user is not registered" in lowered:
+        return (
+            "Account non autorizzato per questa app Spotify. Premi Ricollega e usa "
+            "l'account inserito in User Management.",
+            True,
+        )
+    if "invalid_grant" in lowered or "refresh token revoked" in lowered:
+        return ("Sessione Spotify scaduta o revocata. Premi Ricollega.", True)
+    if "spotify non collegato" in lowered or "sessione spotify scaduta" in lowered:
+        return (raw, True)
+    return (raw, False)
+
+
+def connection_status() -> dict[str, Any]:
+    """Stato OAuth sicuro per UI; non restituisce mai access/refresh token."""
+    token = _read_json(TOKEN_FILE, {})
+    account = _read_json(ACCOUNT_FILE, {})
+    if not token:
+        return {
+            "connected": False,
+            "needs_reconnect": True,
+            "account": account or None,
+            "error": "Spotify non collegato",
+        }
+
+    try:
+        profile = _spotify_get("/me")
+        account = _account_payload(profile)
+        _atomic_json(ACCOUNT_FILE, account)
+        return {
+            "connected": True,
+            "needs_reconnect": False,
+            "account": account,
+            "scope": token.get("scope", ""),
+            "error": None,
+        }
+    except SpotifyAgentError as exc:
+        message, needs_reconnect = explain_connection_error(exc)
+        return {
+            "connected": not needs_reconnect,
+            "needs_reconnect": needs_reconnect,
+            "account": account or None,
+            "scope": token.get("scope", ""),
+            "error": message,
+        }
+
+
+def export_saved_tracks(destination_dir: Path) -> dict[str, Any]:
+    """Esporta metadata Liked Songs in JSON locale leggibile, mai audio Spotify."""
+    tracks: list[dict[str, Any]] = []
+    next_url: str | None = f"{SPOTIFY_API}/me/tracks?limit=50"
+    while next_url:
+        page = _spotify_get(next_url)
+        for item in page.get("items", []):
+            track = item.get("track") or {}
+            if not track.get("id"):
+                continue
+            tracks.append(
+                {
+                    "name": track.get("name", ""),
+                    "artists": [
+                        artist.get("name", "") for artist in track.get("artists", [])
+                    ],
+                    "album": (track.get("album") or {}).get("name", ""),
+                    "release_date": (track.get("album") or {}).get("release_date", ""),
+                    "duration_ms": track.get("duration_ms"),
+                    "popularity": track.get("popularity"),
+                    "added_at": item.get("added_at"),
+                    "spotify_url": (track.get("external_urls") or {}).get("spotify"),
+                }
+            )
+        next_url = page.get("next")
+
+    now = datetime.now(timezone.utc)
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    output = destination_dir / f"spotify-favorites-{now.strftime('%Y-%m-%d-%H%M%S')}.json"
+    _atomic_json(
+        output,
+        {
+            "exported_at": now.isoformat(),
+            "total": len(tracks),
+            "tracks": tracks,
+        },
+    )
+    return {"total": len(tracks), "path": str(output)}
 
 
 def genre_folder(genres: list[str]) -> str:

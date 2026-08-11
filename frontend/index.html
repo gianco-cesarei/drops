@@ -40,6 +40,24 @@
     border:0; padding:0; background:transparent; cursor:pointer; font:inherit;
   }
   .update-banner.available button { display:inline; }
+  .spotify-card {
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    margin-bottom:12px; padding:11px; border:1px solid var(--border);
+    background:var(--surface); border-radius:9px;
+  }
+  .spotify-main { min-width:0; }
+  .spotify-name { margin-top:4px; font-size:12px; font-weight:800; }
+  .spotify-detail {
+    margin-top:3px; color:var(--muted); font-size:10px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .spotify-actions { display:flex; gap:6px; flex-shrink:0; }
+  .spotify-btn {
+    border:1px solid var(--border); background:var(--surface2); color:var(--muted);
+    border-radius:7px; padding:8px 9px; font-size:10px; font-weight:800; cursor:pointer;
+  }
+  .spotify-btn.primary-action { border-color:var(--accent); color:var(--accent); }
+  .spotify-btn:disabled { opacity:.45; cursor:not-allowed; }
   .card {
     background:var(--surface); border:1px solid var(--border);
     border-radius:12px; padding:22px; display:flex; flex-direction:column; gap:16px;
@@ -55,6 +73,20 @@
   textarea { min-height:90px; max-height:180px; line-height:1.45; }
   textarea:focus,input:focus { border-color:var(--accent); }
   .hint { font-size:11px; color:var(--muted); }
+  .link-detection {
+    display:flex; align-items:center; justify-content:space-between; gap:9px;
+    padding:9px 10px; border:1px solid rgba(34,197,94,.28); border-radius:8px;
+    background:var(--accent-dim);
+  }
+  .link-detection[hidden] { display:none; }
+  .link-detection-main { min-width:0; }
+  .link-detection-type { color:var(--accent); font-size:11px; font-weight:850; }
+  .link-detection-detail {
+    margin-top:2px; color:var(--muted); font-size:10px; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis;
+  }
+  .preview-player { width:100%; height:42px; margin-top:2px; border-radius:8px; }
+  .preview-player[hidden] { display:none; }
   .quality { display:flex; gap:6px; }
   .q-btn,.folder-btn,.folder-reset {
     background:var(--surface2); border:1px solid var(--border); border-radius:8px;
@@ -95,12 +127,42 @@
   .job-main { min-width:0; }
   .job-title { font-size:12px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .job-detail { color:var(--muted); font-size:10px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .job-status { color:var(--muted); font-size:10px; font-weight:800; }
+  .job-status { color:var(--muted); font-size:10px; font-weight:800; border:0; background:transparent; }
+  button.job-status { cursor:pointer; }
   .job.ready .job-status { color:var(--green); }
   .job.error .job-status { color:var(--red); }
   .bar { height:2px; background:var(--border); margin-top:6px; overflow:hidden; border-radius:2px; }
   .fill { height:100%; width:0; background:var(--accent); transition:width .3s; }
   .footer { text-align:center; color:#444; font-size:10px; margin:14px 0; }
+  .playlist-overlay {
+    position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center;
+    padding:20px; background:rgba(0,0,0,.78); backdrop-filter:blur(4px);
+  }
+  .playlist-overlay[hidden] { display:none; }
+  .playlist-dialog {
+    width:min(620px,100%); max-height:82vh; display:flex; flex-direction:column; gap:12px;
+    padding:18px; background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  }
+  .playlist-dialog-head { display:flex; justify-content:space-between; gap:12px; }
+  .playlist-dialog-title { font-size:15px; font-weight:850; }
+  .playlist-dialog-summary { margin-top:4px; color:var(--muted); font-size:11px; }
+  .playlist-tools,.playlist-dialog-actions { display:flex; gap:7px; }
+  .playlist-list {
+    min-height:120px; overflow:auto; border:1px solid var(--border); border-radius:8px;
+    background:var(--surface2);
+  }
+  .playlist-entry {
+    display:grid; grid-template-columns:20px minmax(0,1fr) auto auto; gap:8px; align-items:center;
+    padding:9px 10px; border-bottom:1px solid var(--border); text-transform:none; letter-spacing:0;
+  }
+  .playlist-entry:last-child { border-bottom:0; }
+  .playlist-entry.already { opacity:.5; }
+  .playlist-entry-title { font-size:11px; color:var(--text); }
+  .playlist-entry-state { color:var(--muted); font-size:9px; white-space:nowrap; }
+  .history { display:flex; flex-direction:column; gap:7px; }
+  .history-list { display:flex; flex-direction:column; gap:6px; }
+  .history-empty { color:var(--muted); font-size:11px; }
+  .playlist-dialog-actions { justify-content:flex-end; }
   @media(max-width:520px) { body{padding:12px}.card{padding:17px}.folder-row{flex-wrap:wrap}.folder-path{flex-basis:100%} }
 </style>
 </head>
@@ -115,12 +177,31 @@
     <span id="updateText">Controllo aggiornamenti…</span>
     <button id="updateButton" type="button" onclick="openUpdate()">Aggiorna ↗</button>
   </div>
+  <div class="spotify-card" id="spotifyCard">
+    <div class="spotify-main">
+      <div class="section-label">Spotify</div>
+      <div class="spotify-name" id="spotifyName">Controllo collegamento…</div>
+      <div class="spotify-detail" id="spotifyDetail">Nessun token mostrato o condiviso.</div>
+    </div>
+    <div class="spotify-actions">
+      <button class="spotify-btn" id="spotifyExportButton" type="button" onclick="exportSpotify()" hidden>Esporta</button>
+      <button class="spotify-btn primary-action" id="spotifyConnectButton" type="button" onclick="connectSpotify()">Collega</button>
+    </div>
+  </div>
 
   <section class="card">
     <div class="field">
-      <label for="urlInput">Link da mettere in coda</label>
-      <textarea id="urlInput" placeholder="Un link YouTube o SoundCloud per riga" spellcheck="false"></textarea>
-      <div class="hint">Incolla uno o più link. Drops li scarica in coda.</div>
+      <label for="urlInput">Link brano, playlist o set</label>
+      <textarea id="urlInput" placeholder="Brano YouTube/SoundCloud, playlist YouTube o set SoundCloud" spellcheck="false" oninput="detectInputType()"></textarea>
+      <div class="hint">Un link per riga. Playlist riconosciute prima del download.</div>
+      <div class="link-detection" id="linkDetection" hidden>
+        <div class="link-detection-main">
+          <div class="link-detection-type" id="linkDetectionType"></div>
+          <div class="link-detection-detail" id="linkDetectionDetail"></div>
+        </div>
+        <button class="spotify-btn primary-action" id="linkDetectionButton" type="button"></button>
+      </div>
+      <audio class="preview-player" id="inputPreviewPlayer" controls preload="none" hidden></audio>
     </div>
 
     <div class="field">
@@ -174,9 +255,38 @@
       </div>
       <div id="queueList"></div>
     </div>
+
+    <div class="history" id="history">
+      <div class="queue-head">
+        <div class="section-label">Storico download</div>
+        <button class="spotify-btn" type="button" onclick="loadHistory()">Aggiorna</button>
+      </div>
+      <div class="history-list" id="historyList"><div class="history-empty">Nessun download registrato.</div></div>
+    </div>
   </section>
   <div class="footer">File salvati sul computer. 3 download simultanei.</div>
 </main>
+
+<div class="playlist-overlay" id="playlistOverlay" hidden>
+  <section class="playlist-dialog" role="dialog" aria-modal="true" aria-labelledby="playlistDialogTitle">
+    <div class="playlist-dialog-head">
+      <div>
+        <div class="playlist-dialog-title" id="playlistDialogTitle">Anteprima playlist</div>
+        <div class="playlist-dialog-summary" id="playlistDialogSummary"></div>
+      </div>
+      <button class="spotify-btn" id="playlistCloseButton" type="button">Chiudi</button>
+    </div>
+    <div class="playlist-tools">
+      <button class="spotify-btn" id="playlistSelectAll" type="button">Seleziona tutti</button>
+      <button class="spotify-btn" id="playlistSelectNone" type="button">Nessuno</button>
+    </div>
+    <audio class="preview-player" id="playlistPreviewPlayer" controls preload="none" hidden></audio>
+    <div class="playlist-list" id="playlistList"></div>
+    <div class="playlist-dialog-actions">
+      <button class="spotify-btn primary-action" id="playlistConfirmButton" type="button">Accoda selezionati</button>
+    </div>
+  </section>
+</div>
 
 <script>
 const API_URL = window.__API_URL__ || localStorage.getItem('__api_url__') || '';
@@ -187,6 +297,9 @@ let destinationToken = null;
 let destinationPath = null;
 const jobs = new Map();
 let pollTimer = null;
+let spotifyPollTimer = null;
+let inputDetectTimer = null;
+let detectedPlaylistData = null;
 
 async function checkForUpdates() {
   const banner = document.getElementById('updateBanner');
@@ -223,6 +336,89 @@ async function openUpdate() {
 }
 
 checkForUpdates();
+
+function spotifyIdentity(account) {
+  if (!account) return '';
+  const name = account.display_name || account.email || account.id || '';
+  const detail = [account.email, account.id].filter(value => value && value !== name).join(' · ');
+  return {name, detail};
+}
+
+async function checkSpotifyStatus() {
+  const name = document.getElementById('spotifyName');
+  const detail = document.getElementById('spotifyDetail');
+  const connect = document.getElementById('spotifyConnectButton');
+  const exportButton = document.getElementById('spotifyExportButton');
+  try {
+    const response = await fetch(`${API_URL}/spotify/status`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Controllo Spotify fallito');
+    const identity = spotifyIdentity(data.account);
+    if (data.connected) {
+      name.textContent = identity.name ? `Collegato · ${identity.name}` : 'Spotify collegato';
+      detail.textContent = data.error || identity.detail || 'Account verificato';
+      connect.textContent = 'Ricollega';
+      exportButton.hidden = false;
+      if (spotifyPollTimer) {
+        clearInterval(spotifyPollTimer);
+        spotifyPollTimer = null;
+      }
+      return true;
+    }
+    name.textContent = identity.name ? `Da ricollegare · ${identity.name}` : 'Spotify non collegato';
+    detail.textContent = data.error || 'Collega account per leggere preferiti.';
+    connect.textContent = data.needs_reconnect ? 'Ricollega' : 'Collega';
+    exportButton.hidden = true;
+  } catch (error) {
+    name.textContent = 'Spotify non verificabile';
+    detail.textContent = error.message;
+    exportButton.hidden = true;
+  }
+  return false;
+}
+
+async function connectSpotify() {
+  const button = document.getElementById('spotifyConnectButton');
+  const detail = document.getElementById('spotifyDetail');
+  button.disabled = true;
+  try {
+    const response = await fetch(`${API_URL}/spotify/connect/open`, {method:'POST'});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Apertura Spotify fallita');
+    detail.textContent = 'Completa accesso nel browser. Drops controllerà account.';
+    if (spotifyPollTimer) clearInterval(spotifyPollTimer);
+    spotifyPollTimer = setInterval(checkSpotifyStatus, 2000);
+    setTimeout(() => {
+      if (spotifyPollTimer) {
+        clearInterval(spotifyPollTimer);
+        spotifyPollTimer = null;
+      }
+    }, 120000);
+  } catch (error) {
+    detail.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function exportSpotify() {
+  const button = document.getElementById('spotifyExportButton');
+  const detail = document.getElementById('spotifyDetail');
+  button.disabled = true;
+  detail.textContent = 'Esportazione preferiti in corso…';
+  try {
+    const response = await fetch(`${API_URL}/spotify/export`, {method:'POST'});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Esportazione fallita');
+    detail.textContent = `${data.total} preferiti salvati in ${data.path}`;
+  } catch (error) {
+    detail.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+checkSpotifyStatus();
 
 function toggleMode() {
   mode = mode === 'audio' ? 'video' : 'audio';
@@ -267,9 +463,12 @@ function toggleClip() {
 
 function updateButton() {
   const clipped = mode === 'video' && document.getElementById('clipToggle').checked;
-  document.getElementById('addButton').textContent = mode === 'audio'
-    ? 'Aggiungi alla coda MP3'
-    : clipped ? 'Aggiungi clip video alla coda' : 'Aggiungi video alla coda';
+  const links = document.getElementById('urlInput').value.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  const playlist = links.length === 1 && looksLikePlaylist(links[0]);
+  document.getElementById('addButton').textContent = playlist
+    ? 'Analizza playlist'
+    : mode === 'audio' ? 'Aggiungi alla coda MP3'
+      : clipped ? 'Aggiungi clip video alla coda' : 'Aggiungi video alla coda';
 }
 
 async function chooseFolder() {
@@ -283,6 +482,7 @@ async function chooseFolder() {
     destinationPath = data.path;
     document.getElementById('folderPath').textContent = destinationPath;
     document.getElementById('folderReset').style.display = 'block';
+    detectInputType();
   } catch (error) {
     showError(error.message);
   }
@@ -293,6 +493,7 @@ function resetFolder() {
   destinationPath = null;
   document.getElementById('folderPath').textContent = 'Download (automatica)';
   document.getElementById('folderReset').style.display = 'none';
+  detectInputType();
 }
 
 function parseTime(value) {
@@ -300,6 +501,175 @@ function parseTime(value) {
   const parts = value.split(':').map(Number);
   if (parts.some(Number.isNaN) || parts.at(-1) > 59 || (parts.length === 3 && parts[1] > 59)) return null;
   return parts.length === 3 ? parts[0]*3600 + parts[1]*60 + parts[2] : parts[0]*60 + parts[1];
+}
+
+function looksLikePlaylist(value) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    if (host.includes('youtube.com') || host === 'youtu.be') return url.searchParams.has('list');
+    if (host.includes('soundcloud.com')) return url.pathname.includes('/sets/');
+  } catch (_) {
+    return false;
+  }
+  return false;
+}
+
+function formatDuration(seconds) {
+  if (!seconds) return '';
+  const minutes = Math.floor(seconds / 60);
+  const rest = Math.floor(seconds % 60).toString().padStart(2, '0');
+  return `${minutes}:${rest}`;
+}
+
+async function playPreview(url, playerId, button) {
+  const player = document.getElementById(playerId);
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Carico…';
+  try {
+    const response = await fetch(`${API_URL}/media/inspect`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({url})
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Anteprima non disponibile');
+    player.src = `${API_URL}${data.preview_url}`;
+    player.hidden = false;
+    player.load();
+    await player.play().catch(() => {});
+    button.textContent = '▶ Riascolta';
+  } catch (error) {
+    showError(error.message);
+    button.textContent = original;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function detectInputType() {
+  clearTimeout(inputDetectTimer);
+  detectedPlaylistData = null;
+  const detection = document.getElementById('linkDetection');
+  const type = document.getElementById('linkDetectionType');
+  const detail = document.getElementById('linkDetectionDetail');
+  const action = document.getElementById('linkDetectionButton');
+  const links = document.getElementById('urlInput').value.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  updateButton();
+  if (!links.length) {
+    detection.hidden = true;
+    return;
+  }
+  detection.hidden = false;
+  if (links.length > 1) {
+    type.textContent = `${links.length} link rilevati`;
+    detail.textContent = 'Verranno aggiunti alla stessa coda.';
+    action.hidden = true;
+    return;
+  }
+  const url = links[0];
+  action.hidden = false;
+  if (!looksLikePlaylist(url)) {
+    type.textContent = 'Brano rilevato';
+    detail.textContent = 'Puoi ascoltare anteprima prima di scaricare.';
+    action.textContent = '▶ Anteprima';
+    action.onclick = () => playPreview(url, 'inputPreviewPlayer', action);
+    return;
+  }
+
+  type.textContent = 'Playlist rilevata';
+  detail.textContent = 'Conteggio tracce…';
+  action.textContent = 'Attendi';
+  action.disabled = true;
+  action.onclick = null;
+  inputDetectTimer = setTimeout(async () => {
+    try {
+      const response = await fetch(`${API_URL}/playlist/resolve`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({url, destination_token:destinationToken})
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Playlist non leggibile');
+      const current = document.getElementById('urlInput').value.trim();
+      if (current !== url) return;
+      detectedPlaylistData = {url, destinationToken, data};
+      const downloadable = data.count - (data.existing_count || 0);
+      detail.textContent = `${data.count} tracce · ${data.existing_count || 0} già presenti · ${downloadable} da scaricare`;
+      action.textContent = `Anteprima ${data.count}`;
+      action.disabled = false;
+      action.onclick = () => enqueueLinks();
+    } catch (error) {
+      detail.textContent = error.message;
+      action.textContent = 'Riprova';
+      action.disabled = false;
+      action.onclick = () => detectInputType();
+    }
+  }, 500);
+}
+
+function showPlaylistPreview(data) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('playlistOverlay');
+    const list = document.getElementById('playlistList');
+    const summary = document.getElementById('playlistDialogSummary');
+    const confirmButton = document.getElementById('playlistConfirmButton');
+    document.getElementById('playlistDialogTitle').textContent = data.title;
+    list.replaceChildren();
+
+    const selectable = data.entries.filter(entry => !entry.already_downloaded);
+    data.entries.forEach((entry, index) => {
+      const row = document.createElement('div');
+      row.className = `playlist-entry${entry.already_downloaded ? ' already' : ''}`;
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = !entry.already_downloaded;
+      checkbox.disabled = entry.already_downloaded;
+      checkbox.dataset.url = entry.url;
+      const title = document.createElement('div');
+      title.className = 'playlist-entry-title';
+      title.textContent = `${index + 1}. ${entry.title}${entry.duration ? ` · ${formatDuration(entry.duration)}` : ''}`;
+      const preview = document.createElement('button');
+      preview.className = 'spotify-btn';
+      preview.type = 'button';
+      preview.textContent = '▶';
+      preview.title = `Anteprima ${entry.title}`;
+      preview.onclick = () => playPreview(entry.url, 'playlistPreviewPlayer', preview);
+      const state = document.createElement('div');
+      state.className = 'playlist-entry-state';
+      state.textContent = entry.already_downloaded ? 'GIÀ PRESENTE' : '';
+      row.append(checkbox, title, preview, state);
+      list.appendChild(row);
+    });
+
+    const updateSummary = () => {
+      const selected = list.querySelectorAll('input:checked:not(:disabled)').length;
+      summary.textContent = `${data.count} brani · ${data.existing_count || 0} già presenti · ${selected} da accodare`;
+      confirmButton.textContent = `Accoda ${selected}`;
+      confirmButton.disabled = selected === 0;
+    };
+    list.onchange = updateSummary;
+    document.getElementById('playlistSelectAll').onclick = () => {
+      list.querySelectorAll('input:not(:disabled)').forEach(input => { input.checked = true; });
+      updateSummary();
+    };
+    document.getElementById('playlistSelectNone').onclick = () => {
+      list.querySelectorAll('input:not(:disabled)').forEach(input => { input.checked = false; });
+      updateSummary();
+    };
+    const close = result => {
+      const player = document.getElementById('playlistPreviewPlayer');
+      player.pause();
+      player.hidden = true;
+      overlay.hidden = true;
+      resolve(result);
+    };
+    document.getElementById('playlistCloseButton').onclick = () => close(null);
+    confirmButton.onclick = () => close(
+      [...list.querySelectorAll('input:checked:not(:disabled)')].map(input => input.dataset.url)
+    );
+    updateSummary();
+    overlay.hidden = false;
+    if (!selectable.length) confirmButton.disabled = true;
+  });
 }
 
 async function enqueueLinks() {
@@ -319,9 +689,41 @@ async function enqueueLinks() {
 
   const button = document.getElementById('addButton');
   button.disabled = true;
+  button.textContent = 'Analisi link…';
   let accepted = 0;
   const errors = [];
+  const resolvedLinks = [];
   for (const url of links) {
+    if (!looksLikePlaylist(url)) {
+      resolvedLinks.push(url);
+      continue;
+    }
+    try {
+      let data;
+      if (detectedPlaylistData && detectedPlaylistData.url === url && detectedPlaylistData.destinationToken === destinationToken) {
+        data = detectedPlaylistData.data;
+      } else {
+        const response = await fetch(`${API_URL}/playlist/resolve`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({url, destination_token:destinationToken})
+        });
+        data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Link non leggibile');
+      }
+      if (data.count > 1) {
+        const selectedUrls = await showPlaylistPreview(data);
+        if (!selectedUrls) continue;
+        resolvedLinks.push(...selectedUrls);
+        continue;
+      }
+      resolvedLinks.push(...data.entries.filter(entry => !entry.already_downloaded).map(entry => entry.url));
+    } catch (error) {
+      errors.push(`${url}: ${error.message}`);
+    }
+  }
+  const uniqueResolved = [...new Set(resolvedLinks)].slice(0, 100);
+  for (const url of uniqueResolved) {
     try {
       const response = await fetch(`${API_URL}/download`, {
         method:'POST',
@@ -344,7 +746,12 @@ async function enqueueLinks() {
     }
   }
   button.disabled = false;
-  if (accepted) document.getElementById('urlInput').value = '';
+  updateButton();
+  if (accepted) {
+    document.getElementById('urlInput').value = '';
+    document.getElementById('linkDetection').hidden = true;
+    detectedPlaylistData = null;
+  }
   if (errors.length) showError(errors.join(' · '));
   renderQueue();
   startPolling();
@@ -367,7 +774,9 @@ async function pollJobs() {
     try {
       const response = await fetch(`${API_URL}/status/${job.id}`);
       if (!response.ok) throw new Error('Job non trovato');
+      const previousStatus = job.status;
       Object.assign(job, await response.json());
+      if (previousStatus !== 'ready' && job.status === 'ready') loadHistory();
     } catch (error) {
       job.status = 'error';
       job.error = error.message;
@@ -408,12 +817,72 @@ function renderQueue() {
     fill.style.width = `${job.progress || 0}%`;
     bar.appendChild(fill);
     main.append(title, detail, bar);
-    const status = document.createElement('div');
+    const status = document.createElement(job.status === 'ready' ? 'button' : 'div');
     status.className = 'job-status';
     status.textContent = {pending:'IN CODA',downloading:'SCARICO',ready:'SALVATO',error:'ERRORE'}[job.status] || job.status;
+    if (job.status === 'ready') {
+      status.type = 'button';
+      status.title = 'Mostra file nella cartella';
+      status.onclick = () => revealDownload(job.id);
+    }
     item.append(icon, main, status);
     list.appendChild(item);
   });
+}
+
+async function revealDownload(id) {
+  try {
+    const response = await fetch(`${API_URL}/history/${id}/reveal`, {method:'POST'});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'File non disponibile');
+  } catch (error) {
+    showError(error.message);
+    loadHistory();
+  }
+}
+
+async function loadHistory() {
+  const list = document.getElementById('historyList');
+  try {
+    const response = await fetch(`${API_URL}/history?limit=100`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Storico non disponibile');
+    list.replaceChildren();
+    if (!data.items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'history-empty';
+      empty.textContent = 'Nessun download registrato.';
+      list.appendChild(empty);
+      return;
+    }
+    data.items.forEach(record => {
+      const item = document.createElement('div');
+      item.className = `job ${record.exists ? 'ready' : 'error'}`;
+      const icon = document.createElement('div');
+      icon.className = 'job-icon';
+      icon.textContent = record.format === 'video' ? '🎬' : '🎵';
+      const main = document.createElement('div');
+      main.className = 'job-main';
+      const title = document.createElement('div');
+      title.className = 'job-title';
+      title.textContent = record.title || 'Senza titolo';
+      const detail = document.createElement('div');
+      detail.className = 'job-detail';
+      const date = record.completed_at ? new Date(record.completed_at * 1000).toLocaleString('it-IT') : '';
+      detail.textContent = record.exists ? `${date} · ${record.saved_path}` : `${date} · file spostato o eliminato`;
+      main.append(title, detail);
+      const reveal = document.createElement('button');
+      reveal.className = 'job-status';
+      reveal.type = 'button';
+      reveal.textContent = record.exists ? 'MOSTRA' : 'MANCANTE';
+      reveal.disabled = !record.exists;
+      if (record.exists) reveal.onclick = () => revealDownload(record.id);
+      item.append(icon, main, reveal);
+      list.appendChild(item);
+    });
+  } catch (error) {
+    list.textContent = error.message;
+  }
 }
 
 function showError(message) {
@@ -422,6 +891,7 @@ function showError(message) {
   box.style.display = 'block';
 }
 function hideError() { document.getElementById('errorBox').style.display = 'none'; }
+loadHistory();
 </script>
 </body>
 </html>
