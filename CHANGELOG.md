@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+- Aggiunto motore BPM locale `drops-local-rhythm-v1`: FFmpeg decodifica audio e
+  NumPy calcola onset, autocorrelazione, BPM, confidenza euristica e candidati
+  metà/doppio tempo. Analisi asincrona: eventuale errore non invalida download.
+- Storico estratto in `backend/history_store.py`; conserva `spotify_track_id`,
+  ISRC e risultato BPM. Nuovi endpoint `/bpm/download/{id}`,
+  `/bpm/analyze/{id}` e `/bpm/spotify/{spotify_track_id}`.
+- Coda e storico mostrano BPM o stato `BPM in analisi`. Backend PyInstaller
+  verificato: 33 MB; test su sei file reali e sintetici completati.
 - Windows: selettore cartella avvia PowerShell con `CREATE_NO_WINDOW`; resta
   visibile solo dialog nativo, senza finestra console nera temporanea.
 - Versione corrente impostata a `1.0.5` come build privata di verifica. Se

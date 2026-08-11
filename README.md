@@ -21,6 +21,8 @@ Desktop downloader per macOS basato su Tauri, FastAPI, yt-dlp e FFmpeg.
 - massimo 3 download simultanei;
 - salvataggio automatico in Download;
 - cartella alternativa o volume rimovibile;
+- analisi BPM locale dopo download audio, senza servizi esterni;
+- BPM persistente nello storico e disponibile tramite ID Spotify;
 - controllo nuova Release GitHub.
 
 Usa Drops solo per contenuti che puoi legalmente scaricare.

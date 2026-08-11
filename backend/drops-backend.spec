@@ -29,7 +29,14 @@ if not os.path.isfile(_frontend):
 datas += [(_frontend, "frontend")]
 
 # Raccogli tutto (moduli, dati, binari) dai pacchetti che caricano risorse a runtime
-for pkg in ("uvicorn", "yt_dlp", "fastapi", "pydantic", "anyio", "starlette"):
+for pkg in (
+    "uvicorn",
+    "yt_dlp",
+    "fastapi",
+    "pydantic",
+    "anyio",
+    "starlette",
+):
     _d, _b, _h = collect_all(pkg)
     datas += _d
     binaries += _b

@@ -514,6 +514,7 @@ def approved_download_context(track_id: str, url: str) -> dict[str, Any]:
         raise SpotifyAgentError("URL non presente tra candidati verificati")
     return {
         "spotify_id": track_id,
+        "isrc": track.get("isrc"),
         "artists": track["artists"],
         "name": track["name"],
         "genre_folder": safe_component(track["genre_folder"]),

@@ -764,7 +764,10 @@ function startPolling() {
 }
 
 async function pollJobs() {
-  const active = [...jobs.values()].filter(job => !['ready','error'].includes(job.status));
+  const active = [...jobs.values()].filter(job =>
+    !['ready','error'].includes(job.status) ||
+    (job.status === 'ready' && ['pending','analyzing'].includes(job.bpm_status))
+  );
   if (!active.length) {
     clearInterval(pollTimer);
     pollTimer = null;
@@ -807,8 +810,10 @@ function renderQueue() {
     title.textContent = job.title || job.url;
     const detail = document.createElement('div');
     detail.className = 'job-detail';
+    const bpmLabel = job.bpm_rounded ? `${job.bpm_rounded} BPM · `
+      : ['pending','analyzing'].includes(job.bpm_status) ? 'BPM in analisi · ' : '';
     detail.textContent = job.status === 'ready'
-      ? (job.saved_path || `Salvato in ${job.destination}`)
+      ? `${bpmLabel}${job.saved_path || `Salvato in ${job.destination}`}`
       : job.status === 'error' ? (job.error || 'Errore') : `${job.progress || 0}% · ${job.destination}`;
     const bar = document.createElement('div');
     bar.className = 'bar';
@@ -855,6 +860,7 @@ async function loadHistory() {
       list.appendChild(empty);
       return;
     }
+    let bpmPending = false;
     data.items.forEach(record => {
       const item = document.createElement('div');
       item.className = `job ${record.exists ? 'ready' : 'error'}`;
@@ -869,7 +875,12 @@ async function loadHistory() {
       const detail = document.createElement('div');
       detail.className = 'job-detail';
       const date = record.completed_at ? new Date(record.completed_at * 1000).toLocaleString('it-IT') : '';
-      detail.textContent = record.exists ? `${date} · ${record.saved_path}` : `${date} · file spostato o eliminato`;
+      const bpmLabel = record.bpm_rounded ? `${record.bpm_rounded} BPM · `
+        : ['pending','analyzing'].includes(record.bpm_status) ? 'BPM in analisi · ' : '';
+      if (['pending','analyzing'].includes(record.bpm_status)) bpmPending = true;
+      detail.textContent = record.exists
+        ? `${bpmLabel}${date} · ${record.saved_path}`
+        : `${bpmLabel}${date} · file spostato o eliminato`;
       main.append(title, detail);
       const reveal = document.createElement('button');
       reveal.className = 'job-status';
@@ -880,6 +891,7 @@ async function loadHistory() {
       item.append(icon, main, reveal);
       list.appendChild(item);
     });
+    if (bpmPending) setTimeout(loadHistory, 2000);
   } catch (error) {
     list.textContent = error.message;
   }

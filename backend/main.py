@@ -21,6 +21,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 import yt_dlp
+from bpm_analyzer import BpmAnalysisError, analyze_bpm
+from history_store import DownloadHistory
 from spotify_agent import (
     SpotifyAgentError,
     approved_download_context,
@@ -54,6 +56,7 @@ logger.addHandler(handler)
 # ─── Cookies ────────────────────────────────────────────────────────────────
 COOKIES_FILE = DROPS_DIR / "cookies.txt"
 HISTORY_FILE = DROPS_DIR / "download-history.json"
+history_store = DownloadHistory(HISTORY_FILE)
 
 # ─── ffmpeg: discovery cross-platform ────────────────────────────────────────
 IS_WINDOWS = os.name == "nt"
@@ -118,7 +121,8 @@ semaphore = threading.Semaphore(MAX_CONCURRENT)
 selected_destinations: dict[str, Path] = {}
 update_cache: dict = {"checked_at": 0.0, "result": None}
 preview_cache: dict[str, dict] = {}
-history_lock = threading.Lock()
+bpm_analysis_lock = threading.Lock()
+bpm_analyses_active: set[str] = set()
 
 ALLOWED_DOMAINS = [
     "youtube.com", "youtu.be",
@@ -184,24 +188,89 @@ def cleanup_old_files():
 
 
 def read_download_history(limit: int = 100) -> list[dict]:
-    try:
-        data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
-        records = data if isinstance(data, list) else []
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        records = []
-    return records[: max(1, min(limit, 500))]
+    return history_store.read(limit)
 
 
 def append_download_history(record: dict) -> None:
-    with history_lock:
-        records = read_download_history(500)
-        records = [item for item in records if item.get("id") != record.get("id")]
-        records.insert(0, record)
-        temp = HISTORY_FILE.with_suffix(HISTORY_FILE.suffix + ".tmp")
-        temp.write_text(
-            json.dumps(records[:500], ensure_ascii=False, indent=2), encoding="utf-8"
+    history_store.upsert(record)
+
+
+def bpm_response(record: dict) -> dict:
+    keys = (
+        "bpm_status",
+        "bpm",
+        "bpm_rounded",
+        "bpm_confidence",
+        "bpm_candidates",
+        "bpm_source",
+        "bpm_manual",
+        "bpm_analyzed_at",
+        "bpm_error",
+    )
+    return {
+        "download_id": record.get("id"),
+        "spotify_track_id": record.get("spotify_track_id"),
+        "bpm_status": record.get("bpm_status") or "not_available",
+        **{key: record.get(key) for key in keys if record.get(key) is not None},
+    }
+
+
+def analyze_download_bpm(record_id: str) -> None:
+    try:
+        record = history_store.get(record_id)
+        if not record:
+            return
+        history_store.update(record_id, {"bpm_status": "analyzing", "bpm_error": None})
+        if record_id in jobs:
+            jobs[record_id].update({"bpm_status": "analyzing", "bpm_error": None})
+        result = analyze_bpm(
+            Path(record.get("saved_path", "")), ffmpeg_path=ffmpeg_bin()
         )
-        temp.replace(HISTORY_FILE)
+        result.update({"bpm_status": "ready", "bpm_analyzed_at": time.time(), "bpm_error": None})
+        history_store.update(record_id, result)
+        if record_id in jobs:
+            jobs[record_id].update(result)
+        logger.info("BPM pronto - Job:%s bpm:%s", record_id, result["bpm"])
+    except BpmAnalysisError as exc:
+        error = str(exc)
+        history_store.update(
+            record_id,
+            {"bpm_status": "error", "bpm_error": error, "bpm_analyzed_at": time.time()},
+        )
+        if record_id in jobs:
+            jobs[record_id].update({"bpm_status": "error", "bpm_error": error})
+        logger.warning("BPM non disponibile - Job:%s: %s", record_id, error)
+    finally:
+        with bpm_analysis_lock:
+            bpm_analyses_active.discard(record_id)
+
+
+def queue_bpm_analysis(record_id: str) -> bool:
+    record = history_store.get(record_id)
+    if not record or record.get("format") != "audio":
+        return False
+    if not Path(record.get("saved_path", "")).is_file():
+        return False
+    with bpm_analysis_lock:
+        if record_id in bpm_analyses_active:
+            return False
+        bpm_analyses_active.add(record_id)
+    pending = {
+        "bpm_status": "pending",
+        "bpm": None,
+        "bpm_rounded": None,
+        "bpm_confidence": None,
+        "bpm_candidates": None,
+        "bpm_source": None,
+        "bpm_manual": None,
+        "bpm_analyzed_at": None,
+        "bpm_error": None,
+    }
+    history_store.update(record_id, pending)
+    if record_id in jobs:
+        jobs[record_id].update(pending)
+    threading.Thread(target=analyze_download_bpm, args=(record_id,), daemon=True).start()
+    return True
 
 
 def reveal_local_file(path: Path) -> None:
@@ -683,19 +752,23 @@ def do_download(
                 "library_path": str(file_path) if library_context else None,
                 "saved_path": str(file_path),
             })
-            append_download_history(
-                {
-                    "id": job_id,
-                    "title": title,
-                    "source_url": url,
-                    "saved_path": str(file_path),
-                    "format": fmt,
-                    "quality": video_quality if is_video else quality,
-                    "size": size,
-                    "duration": final_duration,
-                    "completed_at": time.time(),
-                }
-            )
+            history_record = {
+                "id": job_id,
+                "title": title,
+                "source_url": url,
+                "saved_path": str(file_path),
+                "format": fmt,
+                "quality": video_quality if is_video else quality,
+                "size": size,
+                "duration": final_duration,
+                "completed_at": time.time(),
+                "spotify_track_id": (library_context or {}).get("spotify_id"),
+                "isrc": (library_context or {}).get("isrc"),
+                "bpm_status": "pending" if fmt == "audio" else "not_applicable",
+            }
+            append_download_history(history_record)
+            if fmt == "audio":
+                queue_bpm_analysis(job_id)
             logger.info(f"Pronto - Job:{job_id} '{title}' {size} bytes")
 
         except Exception as e:
@@ -825,6 +898,40 @@ def reveal_history_file(record_id: str):
             detail="File non esiste più nella cartella originale",
         ) from exc
     return {"opened": True}
+
+
+@app.get("/bpm/download/{record_id}")
+def bpm_for_download(record_id: str):
+    record = history_store.get(record_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Download non trovato nello storico")
+    return bpm_response(record)
+
+
+@app.post("/bpm/analyze/{record_id}", status_code=202)
+def bpm_analyze(record_id: str):
+    record = history_store.get(record_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Download non trovato nello storico")
+    if record.get("format") != "audio":
+        raise HTTPException(status_code=400, detail="Analisi BPM disponibile solo per audio")
+    if not Path(record.get("saved_path", "")).is_file():
+        raise HTTPException(status_code=404, detail="File audio non trovato")
+    started = queue_bpm_analysis(record_id)
+    current = history_store.get(record_id) or record
+    return {**bpm_response(current), "started": started}
+
+
+@app.get("/bpm/spotify/{spotify_track_id}")
+def bpm_for_spotify(spotify_track_id: str):
+    record = history_store.find_by_spotify_id(spotify_track_id)
+    if not record:
+        return {
+            "spotify_track_id": spotify_track_id,
+            "bpm_status": "not_available",
+            "reason": "track_not_downloaded",
+        }
+    return bpm_response(record)
 
 
 @app.post("/download")
@@ -990,6 +1097,11 @@ def get_status(job_id: str):
         "library_path": j.get("library_path"),
         "saved_path": j.get("saved_path"),
         "destination": j.get("destination"),
+        "bpm_status": j.get("bpm_status"),
+        "bpm": j.get("bpm"),
+        "bpm_rounded": j.get("bpm_rounded"),
+        "bpm_confidence": j.get("bpm_confidence"),
+        "bpm_error": j.get("bpm_error"),
     }
 
 

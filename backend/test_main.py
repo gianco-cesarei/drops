@@ -117,6 +117,43 @@ class MainHelpersTest(unittest.TestCase):
         self.assertTrue(result["opened"])
         reveal.assert_called_once_with(path)
 
+    def test_bpm_result_is_available_by_spotify_id(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = main.Path(folder) / "Brano.mp3"
+            path.write_bytes(b"audio")
+            main.append_download_history(
+                {
+                    "id": "job-bpm",
+                    "title": "Brano",
+                    "saved_path": str(path),
+                    "format": "audio",
+                    "spotify_track_id": "spotify-123",
+                }
+            )
+            with patch.object(
+                main,
+                "analyze_bpm",
+                return_value={
+                    "bpm": 124.1,
+                    "bpm_rounded": 124,
+                    "bpm_confidence": 0.88,
+                    "bpm_candidates": [124.1, 62.05],
+                    "bpm_source": "test",
+                    "bpm_manual": False,
+                },
+            ):
+                main.analyze_download_bpm("job-bpm")
+
+        result = main.bpm_for_spotify("spotify-123")
+        self.assertEqual(result["bpm_status"], "ready")
+        self.assertEqual(result["bpm_rounded"], 124)
+        self.assertEqual(result["spotify_track_id"], "spotify-123")
+
+    def test_bpm_spotify_reports_not_downloaded(self):
+        result = main.bpm_for_spotify("missing-track")
+        self.assertEqual(result["bpm_status"], "not_available")
+        self.assertEqual(result["reason"], "track_not_downloaded")
+
 
 def tearDownModule():
     _STATE.cleanup()
