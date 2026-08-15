@@ -24,9 +24,19 @@ export class ApiError extends Error {
   }
 }
 
-const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+type RequestContext = 'login' | 'session' | 'default'
 
-const errorMessage = (status: number, payload: unknown) => {
+export function resolveApiUrl(configuredValue: string | undefined, localMode: boolean): string {
+  const configured = configuredValue?.trim()
+  if (configured) return configured.replace(/\/$/, '')
+  if (localMode) return 'http://localhost:8000'
+  throw new ApiError(0, 'Configurazione API mancante. Contatta il supporto.')
+}
+
+const apiUrl = () => resolveApiUrl(import.meta.env.PUBLIC_API_URL, import.meta.env.DEV || import.meta.env.MODE === 'test')
+
+const errorMessage = (status: number, payload: unknown, context: RequestContext) => {
+  if (status === 401 && context === 'login') return 'Credenziali non valide.'
   if (status === 401) return 'Sessione scaduta. Accedi di nuovo.'
   if (status === 403) return 'Non hai i permessi per questa operazione.'
   if (status === 429) return 'Troppe richieste. Attendi qualche minuto e riprova.'
@@ -37,19 +47,25 @@ const errorMessage = (status: number, payload: unknown) => {
   return 'Operazione non riuscita. Riprova.'
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...options.headers,
-    },
-  })
+async function request<T>(path: string, options: RequestInit = {}, context: RequestContext = 'default'): Promise<T> {
+  let response: Response
+  try {
+    response = await fetch(`${apiUrl()}${path}`, {
+      ...options,
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...options.headers,
+      },
+    })
+  } catch (cause) {
+    if (cause instanceof ApiError) throw cause
+    throw new ApiError(0, 'Non riusciamo a contattare il servizio. Controlla la connessione e riprova.')
+  }
   const contentType = response.headers.get('content-type') ?? ''
   const payload = contentType.includes('application/json') ? await response.json() : null
-  if (!response.ok) throw new ApiError(response.status, errorMessage(response.status, payload))
+  if (!response.ok) throw new ApiError(response.status, errorMessage(response.status, payload, context))
   return payload as T
 }
 
@@ -73,11 +89,11 @@ export const api = {
     request<User | { user: User }>('/api/v1/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
-    }).then(unwrapUser),
-  me: () => request<User | { user: User }>('/api/v1/auth/me').then(unwrapUser),
+    }, 'login').then(unwrapUser),
+  me: () => request<User | { user: User }>('/api/v1/auth/me', {}, 'session').then(unwrapUser),
   logout: () => request<void>('/api/v1/auth/logout', { method: 'POST' }),
   createDownload: (url: string) =>
     request<unknown>('/api/v1/downloads', { method: 'POST', body: JSON.stringify({ url }) }).then(normalizeJob),
   getDownload: (id: string) => request<unknown>(`/api/v1/downloads/${encodeURIComponent(id)}`).then(normalizeJob),
-  fileUrl: (id: string) => `${API_URL}/api/v1/downloads/${encodeURIComponent(id)}/file`,
+  fileUrl: (id: string) => `${apiUrl()}/api/v1/downloads/${encodeURIComponent(id)}/file`,
 }
