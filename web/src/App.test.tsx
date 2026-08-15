@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
@@ -60,6 +60,15 @@ describe('autenticazione App', () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/download'))
   })
 
+  it('login diretto apre download', async () => {
+    const navigate = vi.fn()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({}, 401)).mockResolvedValueOnce(jsonResponse({ user: { username: 'dj' } })))
+    render(<App section="login" navigate={navigate} />)
+    const user = await fillLogin()
+    await user.click(screen.getByRole('button', { name: 'Accedi' }))
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/download'))
+  })
+
   it('reindirizza sessione esistente aperta su login', async () => {
     window.history.replaceState({}, '', '/app/login?next=%2Fapp%2Fcontent')
     const navigate = vi.fn()
@@ -68,11 +77,18 @@ describe('autenticazione App', () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/content'))
   })
 
+  it('reindirizza sessione esistente senza next verso download', async () => {
+    const navigate = vi.fn()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ user: { username: 'dj' } })))
+    render(<App section="login" navigate={navigate} />)
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/download'))
+  })
+
   it('protegge route privata e preserva destinazione', async () => {
     const navigate = vi.fn()
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({}, 401)))
-    render(<App section="graph" navigate={navigate} />)
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/login?next=%2Fapp%2Fgraph'))
+    render(<App section="radar" navigate={navigate} />)
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/login?next=%2Fapp%2Fradar'))
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
@@ -80,7 +96,7 @@ describe('autenticazione App', () => {
     const navigate = vi.fn()
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ user: { username: 'dj' } })).mockResolvedValueOnce(new Response(null, { status: 204 }))
     vi.stubGlobal('fetch', fetchMock)
-    render(<App section="home" navigate={navigate} />)
+    render(<App section="content" navigate={navigate} />)
     await userEvent.click(await screen.findByRole('button', { name: 'Esci' }))
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/login'))
     expect(await screen.findByLabelText('Username')).toBeInTheDocument()
@@ -101,5 +117,56 @@ describe('autenticazione App', () => {
     await user.type(await screen.findByLabelText('URL contenuto'), 'https://example.com/track')
     await user.click(screen.getByRole('button', { name: 'Scarica' }))
     await waitFor(() => expect(screen.getByRole('link', { name: 'Scarica artefatto' })).toHaveAttribute('href', expect.stringContaining('/api/v1/downloads/abc/file')))
+  })
+
+  it('espone navigazione privata approvata senza History o Graph', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ username: 'dj' })))
+    render(<App section="brain" navigate={vi.fn()} />)
+    const nav = await screen.findByRole('navigation', { name: 'Area privata' })
+    const links = within(nav).getAllByRole('link')
+    expect(links.map((link) => link.textContent)).toEqual(['Discovery', 'Download', 'Radar', 'Brain', 'Content'])
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/', '/app/download', '/app/radar', '/app/brain', '/app/content'])
+    expect(within(nav).queryByText('History')).not.toBeInTheDocument()
+    expect(within(nav).queryByText('Graph')).not.toBeInTheDocument()
+  })
+
+  it('mantiene sessione tornando da Discovery nell’area privata', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ username: 'dj' }))
+      .mockResolvedValueOnce(jsonResponse({ username: 'dj' }))
+    vi.stubGlobal('fetch', fetchMock)
+    const first = render(<App section="radar" navigate={vi.fn()} />)
+    expect(await screen.findByRole('link', { name: 'Discovery' })).toHaveAttribute('href', '/')
+    first.unmount()
+    render(<App section="brain" navigate={vi.fn()} />)
+    expect(await screen.findByRole('heading', { name: 'Brain', level: 1 })).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls.every(([url, options]) => String(url).endsWith('/api/v1/auth/me') && options.credentials === 'include')).toBe(true)
+  })
+
+  it('mostra Radar solo con fixture development e azioni previste', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ username: 'dj' })))
+    render(<App section="radar" navigate={vi.fn()} />)
+    expect(await screen.findByRole('heading', { name: 'Radar', level: 1 })).toBeInTheDocument()
+    expect(screen.getAllByText('Development fixture')).toHaveLength(2)
+    expect(screen.getByText(/possono emergere anche fuori/)).toBeInTheDocument()
+    for (const action of ['Salva', 'Scarta', 'Collega al Brain', 'Trasforma in contenuto']) expect(screen.getAllByRole('button', { name: action })[0]).toBeDisabled()
+  })
+
+  it('mostra shell Brain con tipi e CTA previste', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ username: 'dj' })))
+    render(<App section="brain" navigate={vi.fn()} />)
+    expect(await screen.findByRole('heading', { name: 'Brain', level: 1 })).toBeInTheDocument()
+    for (const type of ['Artist', 'Label', 'Place', 'Release', 'Set', 'Playlist', 'Party', 'Story']) expect(screen.getByText(type)).toBeInTheDocument()
+    for (const action of ['Aggiungi nodo', 'Aggiungi relazione', 'Importa da Radar']) expect(screen.getByRole('button', { name: action })).toBeDisabled()
+  })
+
+  it('mostra pipeline e campi Content senza CMS', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ username: 'dj' })))
+    render(<App section="content" navigate={vi.fn()} />)
+    expect(await screen.findByRole('heading', { name: 'Content', level: 1 })).toBeInTheDocument()
+    for (const stage of ['Draft', 'Ready', 'Published', 'Archived']) expect(screen.getByText(stage)).toBeInTheDocument()
+    for (const field of ['Titolo', 'Tipo', 'Data', 'Luogo', 'Tag', 'Fonti', 'Relazioni Brain']) expect(screen.getByText(field)).toBeInTheDocument()
+    expect(screen.getByText(/Nessun CMS implementato\./)).toBeInTheDocument()
   })
 })
