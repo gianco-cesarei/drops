@@ -2,11 +2,13 @@
 set -eu
 
 image_name="${DROPS_SMOKE_IMAGE:-drops-web-api:smoke}"
+web_image_name="${DROPS_SMOKE_WEB_IMAGE:-drops-web-static:smoke}"
 container_name="drops-web-smoke-$$"
 volume_name="drops-web-smoke-$$"
 host_port="${DROPS_SMOKE_PORT:-18000}"
 container_port=18080
 frontend_origin="http://localhost:4321"
+bundle_api_url="https://api.smoke.invalid"
 temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/drops-web-smoke.XXXXXX")"
 cookie_file="$temp_dir/cookies.txt"
 
@@ -17,7 +19,14 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-docker build -t "$image_name" .
+docker build \
+  --target web-build \
+  --build-arg "PUBLIC_API_URL=$bundle_api_url" \
+  -t "$web_image_name" .
+docker run --rm "$web_image_name" \
+  grep -R --fixed-strings --quiet "$bundle_api_url" /web/dist
+
+docker build --target api -t "$image_name" .
 password_hash="$(docker run --rm "$image_name" python -c 'from argon2 import PasswordHasher; print(PasswordHasher().hash("smoke-password"))')"
 docker volume create "$volume_name" >/dev/null
 

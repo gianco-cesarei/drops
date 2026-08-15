@@ -1,4 +1,21 @@
-FROM python:3.12-slim
+FROM node:22-slim AS web-build
+
+WORKDIR /web
+
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+
+COPY web/ ./
+
+ARG PUBLIC_API_URL
+ENV ASTRO_TELEMETRY_DISABLED=1 \
+    PUBLIC_API_URL=${PUBLIC_API_URL}
+
+RUN test -n "$PUBLIC_API_URL" \
+    && npm run build \
+    && grep -R --fixed-strings --quiet "$PUBLIC_API_URL" dist
+
+FROM python:3.12-slim AS api
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

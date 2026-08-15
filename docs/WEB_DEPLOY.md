@@ -56,18 +56,29 @@ endpoint.
 
 ## Static Astro build
 
-`VITE_API_URL` is public build-time configuration, not a secret. Set it to exact
+`PUBLIC_API_URL` is public build-time configuration, not a secret. Set it to exact
 HTTPS API origin without trailing slash:
 
 ```bash
 cd web
 npm ci
-VITE_API_URL=https://api.example.com npm run build
+PUBLIC_API_URL=https://api.example.com npm run build
+grep -R --fixed-strings 'https://api.example.com' dist
 ```
 
 Publish generated `web/dist/` directory. Rebuild frontend when API origin changes.
 API `DROPS_WEB_ALLOWED_ORIGINS` must equal frontend browser origin exactly. Because
 requests include credentials, wildcard CORS is invalid.
+
+Equivalent reproducible Docker target:
+
+```bash
+docker build --target web-build \
+  --build-arg PUBLIC_API_URL=https://api.example.com \
+  -t drops-web-static:local .
+docker run --rm drops-web-static:local \
+  grep -R --fixed-strings 'https://api.example.com' /web/dist
+```
 
 ## Reproducible local checks
 
@@ -85,18 +96,21 @@ Run frontend verification:
 cd web
 npm ci
 npm test
-VITE_API_URL=http://localhost:8000 npm run build
+PUBLIC_API_URL=http://localhost:8000 npm run build
+grep -R --fixed-strings 'http://localhost:8000' dist
 ```
 
 Run container smoke test from repository root. It builds image, starts temporary
 single-replica API, checks health/login/session and verifies SQLite plus jobs
-directory on mounted storage:
+directory on mounted storage. It also builds static target with unique API URL and
+requires that exact URL inside generated bundle:
 
 ```bash
 ./scripts/smoke-web-deploy.sh
 ```
 
-Optional overrides: `DROPS_SMOKE_IMAGE` and `DROPS_SMOKE_PORT`.
+Optional overrides: `DROPS_SMOKE_IMAGE`, `DROPS_SMOKE_WEB_IMAGE` and
+`DROPS_SMOKE_PORT`.
 
 ## Before real staging deploy
 
