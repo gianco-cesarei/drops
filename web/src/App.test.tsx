@@ -13,7 +13,10 @@ async function fillLogin(username = 'dj', password = 'secret') {
 }
 
 describe('autenticazione App', () => {
-  beforeEach(() => window.history.replaceState({}, '', '/app/login'))
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/app/login')
+    vi.stubEnv('PUBLIC_API_URL', 'https://api.drops.test')
+  })
 
   it('mostra credenziali non valide senza confonderle con sessione scaduta', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({}, 401)).mockResolvedValueOnce(jsonResponse({}, 401)))

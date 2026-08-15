@@ -1,7 +1,9 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { api, ApiError, normalizeJob, resolveApiUrl } from './api'
 
 describe('API client', () => {
+  beforeEach(() => vi.stubEnv('PUBLIC_API_URL', 'https://api.drops.test'))
+
   it.each([[401, 'Sessione scaduta'], [403, 'permessi'], [429, 'Troppe richieste']])('mappa errore HTTP %i', async (status, message) => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status, headers: { 'content-type': 'application/json' } })))
     await expect(api.me()).rejects.toMatchObject({ status, message: expect.stringContaining(message) } satisfies Partial<ApiError>)
@@ -21,6 +23,25 @@ describe('API client', () => {
     expect(resolveApiUrl(undefined, true)).toBe('http://localhost:8000')
     expect(() => resolveApiUrl(undefined, false)).toThrow('Configurazione API mancante')
     expect(resolveApiUrl('https://api.example.com/', false)).toBe('https://api.example.com')
+  })
+
+  it('usa API configurata per login, sessione e logout', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ user: { username: 'dj' } }), { status: 200, headers: { 'content-type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ user: { username: 'dj' } }), { status: 200, headers: { 'content-type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.login('dj', 'secret')
+    await api.me()
+    await api.logout()
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      'https://api.drops.test/api/v1/auth/login',
+      'https://api.drops.test/api/v1/auth/me',
+      'https://api.drops.test/api/v1/auth/logout',
+    ])
+    expect(fetchMock.mock.calls.every(([, options]) => options.credentials === 'include')).toBe(true)
   })
 
   it('normalizza job wrapped e snake_case', () => {
