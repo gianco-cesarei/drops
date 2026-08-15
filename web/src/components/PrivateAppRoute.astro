@@ -1,5 +1,6 @@
 ---
 import App, { type PrivateSection } from '../App'
+import PublicHeader from './PublicHeader.astro'
 import '../styles.css'
 
 interface Props { section: PrivateSection }
@@ -9,5 +10,5 @@ const { section } = Astro.props
 <!doctype html>
 <html lang="it">
   <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width" /><meta name="theme-color" content="#f7f8f6" /><meta name="robots" content="noindex,nofollow" /><title>Area privata — Drops</title></head>
-  <body><App section={section} client:load /></body>
+  <body>{section === 'login' && <PublicHeader pathname="/app/login" />}<App section={section} client:load /></body>
 </html>

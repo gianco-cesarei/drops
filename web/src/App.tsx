@@ -1,19 +1,22 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode, SyntheticEvent } from 'react'
 import { api, ApiError } from './api'
 import type { Job, User } from './api'
 import { postLoginRoute } from './lib/routes'
+import { brainNodeTypes, contentFields, contentStages, radarDevelopmentFixtures } from './data/private.fixture'
 
-export type PrivateSection = 'home' | 'login' | 'download' | 'graph' | 'content' | 'editorial-suggestions' | 'history' | 'settings'
+export type PrivateSection = 'login' | 'download' | 'radar' | 'brain' | 'content' | 'editorial-suggestions' | 'settings'
 
 const terminalStatuses = new Set(['completed', 'complete', 'ready', 'failed', 'error', 'cancelled'])
 const readyStatuses = new Set(['completed', 'complete', 'ready'])
 const failedStatuses = new Set(['failed', 'error', 'cancelled'])
+const browserNavigate = (to: string) => window.location.assign(to)
 
-export default function App({ section = 'login', navigate = (to) => window.location.assign(to) }: { section?: PrivateSection; navigate?: (to: string) => void }) {
+export default function App({ section = 'login', navigate = browserNavigate }: { section?: PrivateSection; navigate?: (to: string) => void }) {
   const [user, setUser] = useState<User | null>(null)
   const [checking, setChecking] = useState(true)
   const [error, setError] = useState('')
+  const [logoutRedirecting, setLogoutRedirecting] = useState(false)
 
   const handleError = useCallback((cause: unknown) => {
     if (cause instanceof ApiError && cause.status === 401) setUser(null)
@@ -25,21 +28,35 @@ export default function App({ section = 'login', navigate = (to) => window.locat
   }, [])
 
   useEffect(() => {
-    if (!checking && !user && section !== 'login') {
-      const next = encodeURIComponent(`/app${section === 'home' ? '' : `/${section}`}`)
+    if (!checking && !user && section !== 'login' && !logoutRedirecting) {
+      const next = encodeURIComponent(`/app/${section}`)
       navigate(`/app/login?next=${next}`)
     }
+  }, [checking, logoutRedirecting, navigate, section, user])
+
+  useEffect(() => {
+    if (!checking && user && section === 'login') navigate(postLoginRoute(window.location.search))
   }, [checking, navigate, section, user])
 
   function completeLogin(loggedUser: User) {
     setUser(loggedUser)
-    if (section === 'login') navigate(postLoginRoute(window.location.search))
   }
 
+  function beginLogout() {
+    setLogoutRedirecting(true)
+    setUser(null)
+  }
+
+  function finishLogout() { navigate('/') }
+
   if (checking) return <Loading />
+  if (logoutRedirecting) return <Loading />
   if (!user) return <Login onLogin={completeLogin} error={error} setError={setError} />
-  if (section === 'download') return <PrivateFrame user={user} onLogout={() => setUser(null)}><Download user={user} onError={handleError} error={error} setError={setError} /></PrivateFrame>
-  return <PrivateFrame user={user} onLogout={() => setUser(null)}><PrivatePlaceholder section={section} /></PrivateFrame>
+  if (section === 'download') return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Download user={user} onError={handleError} error={error} setError={setError} /></PrivateFrame>
+  if (section === 'radar') return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Radar /></PrivateFrame>
+  if (section === 'brain') return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Brain /></PrivateFrame>
+  if (section === 'content') return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Content /></PrivateFrame>
+  return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><PrivatePlaceholder section={section} /></PrivateFrame>
 }
 
 function Brand() {
@@ -54,12 +71,16 @@ function Login({ onLogin, error, setError }: { onLogin: (user: User) => void; er
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
+  const submitting = useRef(false)
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError('')
+    event.preventDefault()
+    if (submitting.current) return
+    submitting.current = true
+    setBusy(true); setError('')
     try { onLogin(await api.login(username, password)) }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Accesso non riuscito.') }
-    finally { setBusy(false) }
+    finally { submitting.current = false; setBusy(false) }
   }
 
   return <main className="center"><section className="login-card">
@@ -74,22 +95,36 @@ function Login({ onLogin, error, setError }: { onLogin: (user: User) => void; er
   </section></main>
 }
 
-function PrivateFrame({ user, onLogout, children }: { user: User; onLogout: () => void; children: ReactNode }) {
+function PrivateFrame({ user, onLogoutStart, onLogoutEnd, children }: { user: User; onLogoutStart: () => void; onLogoutEnd: () => void; children: ReactNode }) {
   async function logout() {
-    try { await api.logout() } finally { onLogout(); window.location.assign('/app/login') }
+    onLogoutStart()
+    try { await api.logout() } catch { /* Local session remains invalidated. */ } finally { onLogoutEnd() }
   }
   return <div className="private-layout">
-    <header className="private-header"><a href="/app" className="logo">Drops<span>.</span></a><nav><a href="/app/download">Download</a><a href="/app/content">Content</a><a href="/app/graph">Graph</a><a href="/app/history">History</a></nav><div className="account"><span>{user.name ?? user.username ?? user.email ?? 'Account'}</span><button className="secondary" onClick={logout}>Esci</button></div></header>
+    <header className="private-header"><a href="/" className="logo">Drops<span>.</span></a><nav aria-label="Area privata"><a href="/">Discovery</a><a href="/app/download">Download</a><a href="/app/radar">Radar</a><a href="/app/brain">Brain</a><a href="/app/content">Content</a></nav><div className="account"><span>{user.name ?? user.username ?? user.email ?? 'Account'}</span><button className="secondary" onClick={logout}>Esci</button></div></header>
     {children}
   </div>
 }
 
 function PrivatePlaceholder({ section }: { section: PrivateSection }) {
   const labels: Record<PrivateSection, string> = {
-    home: 'Area privata', login: 'Login', download: 'Download', graph: 'Graph', content: 'Content',
-    'editorial-suggestions': 'Editorial suggestions', history: 'History', settings: 'Settings',
+    login: 'Login', download: 'Download', radar: 'Radar', brain: 'Brain', content: 'Content',
+    'editorial-suggestions': 'Editorial suggestions', settings: 'Settings',
   }
-  return <main className="private-placeholder"><span className="development-badge">Private development shell</span><h1>{labels[section]}</h1><p>Strumento non implementato in questa milestone.</p>{section === 'graph' && <p>Nessun grafo caricato o visualizzato.</p>}</main>
+  return <main className="private-placeholder"><span className="development-badge">Private development shell</span><h1>{labels[section]}</h1><p>Strumento non implementato in questa milestone.</p></main>
+}
+
+function Radar() {
+  const actions = ['Salva', 'Scarta', 'Collega al Brain', 'Trasforma in contenuto']
+  return <main className="private-workspace"><header className="workspace-heading"><span className="development-badge">Radar · development shell</span><h1>Radar</h1><p>Segnali guidati dal Brain, con fonti che possono emergere anche fuori dalle relazioni già presenti.</p></header><div className="radar-grid">{radarDevelopmentFixtures.map((item) => <article className="radar-card" key={item.id}><span className="fixture-label">Development fixture</span><h2>{item.title}</h2><dl><div><dt>Fonte</dt><dd>{item.source}</dd></div><div><dt>Data</dt><dd>{item.date}</dd></div><div><dt>Luogo</dt><dd>{item.location}</dd></div><div><dt>Categoria</dt><dd>{item.category}</dd></div></dl><section><h3>Perché è rilevante</h3><p>{item.relevance}</p></section><div className="planned-actions" aria-label="Azioni previste">{actions.map((action) => <button type="button" disabled key={action}>{action}</button>)}</div></article>)}</div></main>
+}
+
+function Brain() {
+  return <main className="private-workspace"><header className="workspace-heading"><span className="development-badge">Brain · development shell</span><h1>Brain</h1><p>Shell privata per nodi e relazioni. Nessuna visualizzazione grafica definitiva.</p></header><section className="tool-shell"><h2>Tipi di nodo previsti</h2><div className="type-list">{brainNodeTypes.map((type) => <span key={type}>{type}</span>)}</div><div className="planned-actions" aria-label="Azioni Brain previste"><button disabled>Aggiungi nodo</button><button disabled>Aggiungi relazione</button><button disabled>Importa da Radar</button></div></section></main>
+}
+
+function Content() {
+  return <main className="private-workspace"><header className="workspace-heading"><span className="development-badge">Content · development shell</span><h1>Content</h1><p>Pipeline editoriale strutturale. Nessun CMS implementato.</p></header><section className="content-pipeline" aria-label="Pipeline contenuti">{contentStages.map((stage) => <article key={stage}><h2>{stage}</h2><p>0 development items</p></article>)}</section><section className="tool-shell"><h2>Campi previsti</h2><div className="type-list">{contentFields.map((field) => <span key={field}>{field}</span>)}</div></section></main>
 }
 
 function Download({ user, onError, error, setError }: { user: User; onError: (error: unknown) => void; error: string; setError: (value: string) => void }) {

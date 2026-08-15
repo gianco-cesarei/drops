@@ -8,7 +8,7 @@ npm install
 npm run dev
 ```
 
-`PUBLIC_API_URL` definisce origine API. Se vuota, richieste usano stessa origine. Autenticazione usa cookie HTTP-only tramite `credentials: include`.
+`PUBLIC_API_URL` definisce origine API ed è esposta al client secondo convenzione Astro. Per sviluppo locale, copia `.env.example` in `.env` (`http://localhost:8000`). In produzione variabile è obbligatoria: build si interrompe se manca, senza fallback same-origin. Autenticazione usa cookie HTTP-only `drops_session` tramite `credentials: include`.
 
 Build e deploy statico completo: `../docs/WEB_DEPLOY.md`.
 

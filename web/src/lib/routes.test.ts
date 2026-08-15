@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { downloadRoute, loginRoute, postLoginRoute, privateRoute, publicNavigation } from './routes'
+import { downloadRoute, legacyPrivateRedirect, loginRoute, postLoginRoute, privateEntryRoute, privateRoute, publicNavigation } from './routes'
 
 describe('routing', () => {
   it('mantiene route pubbliche approvate', () => {
@@ -12,11 +12,24 @@ describe('routing', () => {
   })
 
   it('costruisce route private', () => {
-    expect(privateRoute('graph')).toBe('/app/graph')
+    expect(privateRoute('radar')).toBe('/app/radar')
+    expect(privateRoute('brain')).toBe('/app/brain')
   })
 
   it('mantiene destinazione privata dopo login', () => {
     expect(postLoginRoute('?next=%2Fapp%2Fdownload')).toBe('/app/download')
-    expect(postLoginRoute('?next=https%3A%2F%2Fevil.example')).toBe('/app')
+    expect(postLoginRoute('?next=%2Fapp%2Fcontent%3Ftab%3Ddrafts')).toBe('/app/content?tab=drafts')
+    expect(postLoginRoute('?next=https%3A%2F%2Fevil.example')).toBe('/app/download')
+    expect(postLoginRoute('?next=%2Fapplication')).toBe('/app/download')
+  })
+
+  it('/app reindirizza a download e non usa placeholder', () => {
+    expect(postLoginRoute('')).toBe('/app/download')
+    expect(privateEntryRoute()).toBe('/app/download')
+  })
+
+  it('mantiene redirect legacy sicuri', () => {
+    expect(legacyPrivateRedirect('/app/graph')).toBe('/app/brain')
+    expect(legacyPrivateRedirect('/app/history')).toBe('/app/download')
   })
 })
