@@ -1,0 +1,267 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-08-15T00:00:00+01:00",
+  "editorial_status": "research_only_not_published",
+  "candidates": [
+    {
+      "id": "radar-20260815-xexa-kissom",
+      "title": "XEXA — Kissom",
+      "type": "release",
+      "summary": "Secondo album di XEXA: pop radiante, kizomba rallentata, voce ariosa e ambiente metallico dentro il catalogo lisbonese di Príncipe.",
+      "primary_source": { "name": "Príncipe / Bandcamp", "url": "https://principediscos.bandcamp.com/album/kissom", "date": "2025-09-26", "date_basis": "released" },
+      "subject_date": { "start": "2025-09-26", "end": null, "precision": "day" },
+      "location": { "kind": "place", "name": "Lisbona, Portogallo", "country_code": "PT" },
+      "tags": ["lisbon", "principe", "kizomba", "leftfield-pop", "ambient", "diasporic-club"],
+      "assessment": {
+        "facts": ["Príncipe ha pubblicato Kissom il 26 settembre 2025.", "La pagina ufficiale accredita a XEXA strumentazione acustica ed elettronica, scrittura e produzione."],
+        "inferences": ["L'album amplia la lettura della scena Príncipe oltre la sola batida funzionale al club."],
+        "opinions": ["Segnale locale più forte del batch per collegare intimità pop e infrastruttura club lisbonese."]
+      },
+      "relevance": "Offre a Drops un ingresso locale, non ovvio e narrativamente ricco nella contemporaneità musicale di Lisbona.",
+      "brain_connection": {
+        "possible_entities": [{ "name": "XEXA", "entity_type": "artist" }, { "name": "Kissom", "entity_type": "release" }, { "name": "Príncipe", "entity_type": "label" }, { "name": "Lisbona", "entity_type": "place" }],
+        "possible_edges": [{ "from": "XEXA", "relation": "created", "to": "Kissom" }, { "from": "Kissom", "relation": "released_by", "to": "Príncipe" }, { "from": "Príncipe", "relation": "based_in", "to": "Lisbona" }],
+        "graph_relation": "adjacent",
+        "rationale": "Ponte esplicito tramite Príncipe e Lisbona; stato effettivo del Brain non disponibile in questa ricerca."
+      },
+      "confidence": { "level": "high", "score": 0.94, "notes": "Metadati e crediti dalla pagina ufficiale della label." },
+      "destinations": ["Radar", "Brain", "Discovery", "Suggests"],
+      "editorial_status": "candidate",
+      "reviewed_at": "2026-08-15"
+    },
+    {
+      "id": "radar-20260815-timedance-td10",
+      "title": "TD10: dieci anni di futurismo club di Timedance",
+      "type": "release",
+      "summary": "Compilation di 23 tracce che connette techno, pressione soundsystem e sound design tramite artisti affermati ed emergenti.",
+      "primary_source": { "name": "Timedance / Bandcamp", "url": "https://timedance.bandcamp.com/album/td10", "date": "2025-10-10", "date_basis": "released" },
+      "subject_date": { "start": "2025-10-10", "end": null, "precision": "day" },
+      "location": { "kind": "place", "name": "Bristol, Regno Unito", "country_code": "GB" },
+      "tags": ["bristol", "timedance", "bass", "techno", "soundsystem", "compilation", "club-futurism"],
+      "assessment": {
+        "facts": ["Timedance ha pubblicato TD10 il 10 ottobre 2025 con 23 tracce.", "La label descrive il catalogo come intersezione tra techno, pressione soundsystem e sound design."],
+        "inferences": ["Compilation funziona come mappa relazionale di una scena translocale nata attorno a Bristol."],
+        "opinions": ["Più utile come nodo-scena che come semplice recensione di compilation."]
+      },
+      "relevance": "Permette di scoprire più artisti attraverso un artefatto curatoriale coerente e una genealogia di label.",
+      "brain_connection": {
+        "possible_entities": [{ "name": "Timedance", "entity_type": "label" }, { "name": "TD10", "entity_type": "release" }, { "name": "Batu", "entity_type": "artist" }, { "name": "Bristol", "entity_type": "place" }],
+        "possible_edges": [{ "from": "TD10", "relation": "released_by", "to": "Timedance" }, { "from": "Timedance", "relation": "based_in", "to": "Bristol" }],
+        "graph_relation": "adjacent",
+        "rationale": "Ponte potenziale attraverso bass music, Batu e Bristol; richiede confronto col Brain reale."
+      },
+      "confidence": { "level": "high", "score": 0.92, "notes": "Fonte ufficiale; interpretazione di scena dichiarata come inferenza." },
+      "destinations": ["Radar", "Brain", "Discovery", "Content"],
+      "editorial_status": "candidate",
+      "reviewed_at": "2026-08-15"
+    },
+    {
+      "id": "radar-20260815-oroko-hiatus",
+      "title": "Oroko Radio in pausa: fragilità delle radio comunitarie",
+      "type": "cultural_phenomenon",
+      "summary": "Radio indipendente non-profit di Accra sospende le trasmissioni per risorse insufficienti e burnout, mantenendo archivio ed eventi a basso rischio.",
+      "primary_source": { "name": "Oroko Radio", "url": "https://oroko.live/news/hiatus", "date": "2026-04-08", "date_basis": "published" },
+      "subject_date": { "start": "2026-04-08", "end": null, "precision": "day" },
+      "location": { "kind": "hybrid", "name": "Accra, Ghana / online", "country_code": "GH" },
+      "tags": ["accra", "community-radio", "archive", "burnout", "cultural-infrastructure", "sustainability"],
+      "assessment": {
+        "facts": ["Oroko ha annunciato pausa indefinita l'8 aprile 2026.", "Ha indicato finanziamento tramite grant, collaborazioni e lavoro gratuito, citando insostenibilità e burnout.", "Archivio online resterà disponibile; eventi e workshop continueranno selettivamente."],
+        "inferences": ["Visibilità globale non garantisce sostenibilità per infrastrutture culturali locali."],
+        "opinions": ["Storia prioritaria per Content perché interroga anche responsabilità e modello di Drops."]
+      },
+      "relevance": "Trasforma discovery musicale in tema culturale: chi sostiene archivi, curatori e comunità che alimentano raccomandazioni globali.",
+      "brain_connection": {
+        "possible_entities": [{ "name": "Oroko Radio", "entity_type": "source" }, { "name": "Accra", "entity_type": "place" }, { "name": "community radio sustainability", "entity_type": "concept" }],
+        "possible_edges": [{ "from": "Oroko Radio", "relation": "based_in", "to": "Accra" }, { "from": "Oroko Radio", "relation": "documents", "to": "community radio sustainability" }],
+        "graph_relation": "outside",
+        "rationale": "Ingresso deliberato fuori-grafo; valore deriva da infrastruttura culturale e prospettiva locale."
+      },
+      "confidence": { "level": "high", "score": 0.97, "notes": "Dichiarazione diretta dell'organizzazione; cause auto-riferite." },
+      "destinations": ["Radar", "Brain", "Content"],
+      "editorial_status": "candidate",
+      "reviewed_at": "2026-08-15"
+    },
+    {
+      "id": "radar-20260815-ctm-spatial-translocal",
+      "title": "CTM 2026: audio spaziale e alleanze translocali",
+      "type": "party",
+      "summary": "Programma berlinese unisce performance spaziale di Blawan, nuove opere, ricerca e collaborazione con Oroko Radio.",
+      "primary_source": { "name": "CTM Festival", "url": "https://www.ctm-festival.de/news/ctm-2026-third-programme-announcement", "date": "2026-01-23", "date_basis": "event" },
+      "subject_date": { "start": "2026-01-23", "end": "2026-02-01", "precision": "day" },
+      "location": { "kind": "place", "name": "Berlino, Germania", "country_code": "DE" },
+      "tags": ["berlin", "ctm", "spatial-audio", "research", "experimental-electronics", "translocal-network"],
+      "assessment": {
+        "facts": ["CTM 2026 si è svolto dal 23 gennaio al 1 febbraio.", "Terzo annuncio includeva performance spaziale di Blawan, nuove opere e collaborazione con Oroko Radio."],
+        "inferences": ["Festival tratta ricerca, tecnologia sonora e reti comunitarie come unico programma culturale."],
+        "opinions": ["Buon modello per Content che colleghi opera, contesto e infrastruttura invece di isolare lineup."]
+      },
+      "relevance": "Mostra come raccontare eventi attraverso relazioni tra suono, ricerca e geografie, coerente con Brain e Map.",
+      "brain_connection": {
+        "possible_entities": [{ "name": "CTM Festival", "entity_type": "event" }, { "name": "Blawan", "entity_type": "artist" }, { "name": "Oroko Radio", "entity_type": "source" }, { "name": "spatial audio", "entity_type": "concept" }],
+        "possible_edges": [{ "from": "Blawan", "relation": "performed_at", "to": "CTM Festival" }, { "from": "CTM Festival", "relation": "collaborates_with", "to": "Oroko Radio" }],
+        "graph_relation": "adjacent",
+        "rationale": "Connette segnale Oroko a festival europeo e pratica di audio spaziale."
+      },
+      "confidence": { "level": "high", "score": 0.91, "notes": "Programma ufficiale; data fonte usa inizio evento perché pagina non espone data editoriale leggibile." },
+      "destinations": ["Radar", "Brain", "Content", "Discovery"],
+      "editorial_status": "candidate",
+      "reviewed_at": "2026-08-15"
+    },
+    {
+      "id": "radar-20260815-lev-club-av-device",
+      "title": "L.E.V. 2026: club come dispositivo audiovisivo",
+      "type": "party",
+      "summary": "Programma di Gijón mette club/post-club, live AV, AI performativa e ascolto territoriale nello stesso ecosistema.",
+      "primary_source": { "name": "L.E.V. Festival", "url": "https://levfestival.com/wp-content/uploads/2026/03/NP_EN_LEVFESTIVAL_2026_ANUNCIO-1.pdf", "date": "2026-03-01", "date_basis": "published" },
+      "subject_date": { "start": "2026-04-30", "end": "2026-05-03", "precision": "day" },
+      "location": { "kind": "place", "name": "Gijón, Spagna", "country_code": "ES" },
+      "tags": ["gijon", "lev", "audiovisual", "post-club", "turntablism", "machine-learning", "deep-listening"],
+      "assessment": {
+        "facts": ["L.E.V. si è svolto dal 30 aprile al 3 maggio 2026.", "La Nave era dedicata a pratiche audiovisive club e post-club.", "Programma includeva Tacit Group con due performer AI e NikNak con live AV basato sul turntablism."],
+        "inferences": ["Il formato festival rende contigue pista, laboratorio audiovisivo e ascolto situato."],
+        "opinions": ["Forte candidato per storia su club culture come medium, non genere."]
+      },
+      "relevance": "Apre collegamenti fra musica, arti digitali e design dell'esperienza; utile a Content e Discovery.",
+      "brain_connection": {
+        "possible_entities": [{ "name": "L.E.V. Festival", "entity_type": "event" }, { "name": "NikNak", "entity_type": "artist" }, { "name": "Tacit Group", "entity_type": "artist" }, { "name": "Gijón", "entity_type": "place" }],
+        "possible_edges": [{ "from": "NikNak", "relation": "performed_at", "to": "L.E.V. Festival" }, { "from": "Tacit Group", "relation": "performed_at", "to": "L.E.V. Festival" }],
+        "graph_relation": "outside",
+        "rationale": "Esplorazione indipendente motivata da forma audiovisiva e territorio."
+      },
+      "confidence": { "level": "high", "score": 0.9, "notes": "Comunicato ufficiale; giorno esatto di pubblicazione non visibile, precisione fonte limitata al mese." },
+      "destinations": ["Radar", "Brain", "Content"],
+      "editorial_status": "candidate",
+      "reviewed_at": "2026-08-15"
+    },
+    {
+      "id": "radar-20260815-ava-local-majority",
+      "title": "AVA Belfast: maggioranza locale dentro festival internazionale",
+      "type": "scene",
+      "summary": "AVA dichiara 75% della prima lineup 2026 proveniente da Irlanda e Regno Unito, con 12 debutti a Belfast.",
+      "primary_source": { "name": "AVA Festival", "url": "https://avafestival.com/ava-belfast-2026-lineup-announcement/", "date": "2026-05-29", "date_basis": "event" },
+      "subject_date": { "start": "2026-05-29", "end": "2026-05-30", "precision": "day" },
+      "location": { "kind": "place", "name": "Belfast, Irlanda del Nord", "country_code": "GB" },
+      "tags": ["belfast", "ireland", "local-scene", "festival", "artist-development", "electronic-music"],
+      "assessment": {
+        "facts": ["AVA Belfast si è svolto il 29–30 maggio 2026.", "Curatela ufficiale dichiara 75% della lineup da Irlanda e Regno Unito e 12 debutti a Belfast."],
+        "inferences": ["Quota locale esplicita rende misurabile il rapporto tra festival e scena ospitante."],
+        "opinions": ["Pattern editoriale utile: mostrare provenienza e debutti, non solo gerarchia del poster."]
+      },
+      "relevance": "Offre metrica concreta per valutare radicamento locale di party e festival dentro Map e Content.",
+      "brain_connection": {
+        "possible_entities": [{ "name": "AVA Festival", "entity_type": "event" }, { "name": "Belfast", "entity_type": "place" }, { "name": "Huartan", "entity_type": "artist" }, { "name": "Holly Lester", "entity_type": "artist" }],
+        "possible_edges": [{ "from": "AVA Festival", "relation": "part_of", "to": "Belfast electronic scene" }, { "from": "Huartan", "relation": "performed_at", "to": "AVA Festival" }],
+        "graph_relation": "outside",
+        "rationale": "Ingresso geografico nuovo; conservare quota locale come evidenza, non assumere rappresentatività totale."
+      },
+      "confidence": { "level": "high", "score": 0.89, "notes": "Numeri dichiarati dal curatore del festival, non audit indipendente." },
+      "destinations": ["Radar", "Brain", "Content", "Discovery"],
+      "editorial_status": "candidate",
+      "reviewed_at": "2026-08-15"
+    },
+    {
+      "id": "radar-20260815-mostra-small-format",
+      "title": "MOSTRA: piccolo formato contro macro-festival",
+      "type": "cultural_phenomenon",
+      "summary": "Festival indipendente di Barcellona definisce piccolo formato e legame col tessuto cittadino come risposta alla scala commerciale dei macro-eventi.",
+      "primary_source": { "name": "MOSTRA Barcelona", "url": "https://www.mostra.barcelona/en", "date": "2026-08-15", "date_basis": "accessed" },
+      "subject_date": { "start": "2026-03-12", "end": "2026-03-15", "precision": "day" },
+      "location": { "kind": "place", "name": "Barcellona, Spagna", "country_code": "ES" },
+      "tags": ["barcelona", "small-format", "independent-festival", "experimental-electronics", "anti-macro", "local-fabric"],
+      "assessment": {
+        "facts": ["MOSTRA si presenta come festival indipendente di piccolo formato dedicato a elettronica d'avanguardia e sperimentale.", "L'edizione 2026 si è svolta dal 12 al 15 marzo."],
+        "inferences": ["Scala ridotta è proposta come scelta culturale e di esperienza, non semplice vincolo operativo."],
+        "opinions": ["Segnale utile per raccontare contromodelli alla festivalizzazione urbana."]
+      },
+      "relevance": "Aiuta Drops a distinguere qualità curatoriale, scala e rapporto urbano nelle raccomandazioni di eventi.",
+      "brain_connection": {
+        "possible_entities": [{ "name": "MOSTRA", "entity_type": "event" }, { "name": "Barcellona", "entity_type": "place" }, { "name": "small-format festival", "entity_type": "concept" }],
+        "possible_edges": [{ "from": "MOSTRA", "relation": "based_in", "to": "Barcellona" }, { "from": "MOSTRA", "relation": "documents", "to": "small-format festival" }],
+        "graph_relation": "outside",
+        "rationale": "Candidato serendipity fuori-grafo basato su modello culturale esplicito."
+      },
+      "confidence": { "level": "medium", "score": 0.78, "notes": "Missione auto-descritta; pagina non mostra data di pubblicazione, quindi data d'accesso." },
+      "destinations": ["Radar", "Brain", "Content", "Discovery"],
+      "editorial_status": "candidate",
+      "reviewed_at": "2026-08-15"
+    },
+    {
+      "id": "radar-20260815-nyege-wakaliwood",
+      "title": "Nyege Nyege 2026 incontra Wakaliwood",
+      "type": "party",
+      "summary": "Undicesima edizione a Jinja adotta immaginario Wakaliwood e integra musica afrocentrica, cinema, moda, performance e arti.",
+      "primary_source": { "name": "Nyege Nyege Festival", "url": "https://festival.nyegenyege.com/", "date": "2026-08-15", "date_basis": "accessed" },
+      "subject_date": { "start": "2026-11-19", "end": "2026-11-22", "precision": "day" },
+      "location": { "kind": "place", "name": "Jinja, Uganda", "country_code": "UG" },
+      "tags": ["uganda", "jinja", "nyege-nyege", "wakaliwood", "afrocentric", "film", "festival-ecosystem"],
+      "assessment": {
+        "facts": ["Festival è previsto dal 19 al 22 novembre 2026 ad Adrift Overland Camp, Jinja.", "Tema ufficiale è Wakaliwood Edition.", "Programma dichiarato include sette palchi, musica, film, moda, workshop e installazioni."],
+        "inferences": ["Collaborazione simbolica con Wakaliwood sposta festival da lineup musicale a narrazione culturale ugandese multidisciplinare."],
+        "opinions": ["Forte pista Content, ma lineup e collaborazioni specifiche vanno ricontrollate quando pubblicate."]
+      },
+      "relevance": "Porta prospettiva africana non mediata da festival europei e crea ponti tra musica, cinema popolare e territorio.",
+      "brain_connection": {
+        "possible_entities": [{ "name": "Nyege Nyege Festival", "entity_type": "event" }, { "name": "Wakaliwood", "entity_type": "scene" }, { "name": "Jinja", "entity_type": "place" }, { "name": "Nyege Nyege Tapes", "entity_type": "label" }],
+        "possible_edges": [{ "from": "Nyege Nyege Festival", "relation": "based_in", "to": "Jinja" }, { "from": "Nyege Nyege Festival", "relation": "collaborates_with", "to": "Wakaliwood" }],
+        "graph_relation": "outside",
+        "rationale": "Ingresso fuori-grafo intenzionale; verificare natura esatta della collaborazione Wakaliwood prima di creare edge definitivo."
+      },
+      "confidence": { "level": "medium", "score": 0.79, "notes": "Sito ufficiale conferma tema e date; programma ancora in evoluzione." },
+      "destinations": ["Radar", "Brain", "Content", "Discovery"],
+      "editorial_status": "candidate",
+      "reviewed_at": "2026-08-15"
+    },
+    {
+      "id": "radar-20260815-early-reflex-neon-reflections",
+      "title": "Neon Reflections: cinque anni di club music globale",
+      "type": "release",
+      "summary": "Trentesima uscita di Early Reflex raccoglie cinque anni di club music ritmica e transnazionale in formato compilation.",
+      "primary_source": { "name": "Early Reflex / Bandcamp", "url": "https://earlyreflex.bandcamp.com/merch/neon-reflections-listening-party", "date": "2025-06-13", "date_basis": "released" },
+      "subject_date": { "start": "2025-06-13", "end": null, "precision": "day" },
+      "location": { "kind": "online", "name": "Online / rete transnazionale", "country_code": null },
+      "tags": ["early-reflex", "global-club", "rhythm", "compilation", "label-anniversary", "translocal"],
+      "assessment": {
+        "facts": ["Early Reflex ha indicato Neon Reflections come trentesima uscita e celebrazione del quinto anniversario.", "Data d'uscita dichiarata: 13 giugno 2025."],
+        "inferences": ["Compilation-anniversario può essere letta come snapshot di rete, non come genere unico."],
+        "opinions": ["Candidato da ascoltare integralmente prima di promozione pubblica."]
+      },
+      "relevance": "Utile per costruire percorsi di discovery attraverso label giovani e costellazioni di collaboratori.",
+      "brain_connection": {
+        "possible_entities": [{ "name": "Early Reflex", "entity_type": "label" }, { "name": "Neon Reflections", "entity_type": "release" }, { "name": "global club", "entity_type": "scene" }],
+        "possible_edges": [{ "from": "Neon Reflections", "relation": "released_by", "to": "Early Reflex" }, { "from": "Early Reflex", "relation": "part_of", "to": "global club" }],
+        "graph_relation": "outside",
+        "rationale": "Label scelta fuori-grafo come sonda verso rete ritmica transnazionale."
+      },
+      "confidence": { "level": "medium", "score": 0.72, "notes": "Pagina primaria verificata tramite indice; accesso diretto instabile e roster richiede ulteriore controllo." },
+      "destinations": ["Radar", "Brain", "Discovery"],
+      "editorial_status": "candidate",
+      "reviewed_at": "2026-08-15"
+    },
+    {
+      "id": "radar-20260815-changeover-unpolished",
+      "title": "Changeover 2026: programma oltre-genere e non levigato",
+      "type": "party",
+      "summary": "Festival di Belgrado rivendica artisti locali e globali fuori da cornici di genere, tra band e elettronica sperimentale.",
+      "primary_source": { "name": "Changeover Festival", "url": "https://changeoverfestival.com/", "date": "2026-08-15", "date_basis": "accessed" },
+      "subject_date": { "start": "2026-10-07", "end": "2026-10-10", "precision": "day" },
+      "location": { "kind": "place", "name": "Belgrado, Serbia", "country_code": "RS" },
+      "tags": ["belgrade", "changeover", "experimental", "beyond-genre", "local-global", "emerging-artists"],
+      "assessment": {
+        "facts": ["Changeover 2026 è previsto dal 7 al 10 ottobre.", "Festival dichiara approccio esplorativo fra scene locali e globali e assenza di confini di genere."],
+        "inferences": ["Identità oltre-genere può far emergere ponti tra circuiti live e club spesso separati nei database."],
+        "opinions": ["Da monitorare lineup e open call prima di scegliere singoli artisti."]
+      },
+      "relevance": "Buon test per tassonomia Drops: connettere pratiche e scene senza comprimere tutto in genere musicale.",
+      "brain_connection": {
+        "possible_entities": [{ "name": "Changeover Festival", "entity_type": "event" }, { "name": "Belgrado", "entity_type": "place" }, { "name": "beyond-genre programming", "entity_type": "concept" }],
+        "possible_edges": [{ "from": "Changeover Festival", "relation": "based_in", "to": "Belgrado" }, { "from": "Changeover Festival", "relation": "documents", "to": "beyond-genre programming" }],
+        "graph_relation": "outside",
+        "rationale": "Sonda geografica e curatoriale fuori-grafo; nessun artista incorporato finché lineup non viene verificata."
+      },
+      "confidence": { "level": "medium", "score": 0.76, "notes": "Date e missione dal sito ufficiale; segnale ancora pre-evento." },
+      "destinations": ["Radar", "Brain", "Discovery"],
+      "editorial_status": "candidate",
+      "reviewed_at": "2026-08-15"
+    }
+  ]
+}
