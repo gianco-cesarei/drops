@@ -4,7 +4,7 @@ import { api, ApiError } from './api'
 import type { Job, User } from './api'
 import { postLoginRoute } from './lib/routes'
 
-export type PrivateSection = 'home' | 'login' | 'download' | 'graph' | 'content' | 'editorial-suggestions' | 'history' | 'settings'
+export type PrivateSection = 'login' | 'download' | 'graph' | 'content' | 'editorial-suggestions' | 'history' | 'settings'
 
 const terminalStatuses = new Set(['completed', 'complete', 'ready', 'failed', 'error', 'cancelled'])
 const readyStatuses = new Set(['completed', 'complete', 'ready'])
@@ -28,7 +28,7 @@ export default function App({ section = 'login', navigate = browserNavigate }: {
 
   useEffect(() => {
     if (!checking && !user && section !== 'login' && !logoutRedirecting) {
-      const next = encodeURIComponent(`/app${section === 'home' ? '' : `/${section}`}`)
+      const next = encodeURIComponent(`/app/${section}`)
       navigate(`/app/login?next=${next}`)
     }
   }, [checking, logoutRedirecting, navigate, section, user])
@@ -101,7 +101,7 @@ function PrivateFrame({ user, onLogout, children }: { user: User; onLogout: () =
 
 function PrivatePlaceholder({ section }: { section: PrivateSection }) {
   const labels: Record<PrivateSection, string> = {
-    home: 'Area privata', login: 'Login', download: 'Download', graph: 'Graph', content: 'Content',
+    login: 'Login', download: 'Download', graph: 'Graph', content: 'Content',
     'editorial-suggestions': 'Editorial suggestions', history: 'History', settings: 'Settings',
   }
   return <main className="private-placeholder"><span className="development-badge">Private development shell</span><h1>{labels[section]}</h1><p>Strumento non implementato in questa milestone.</p>{section === 'graph' && <p>Nessun grafo caricato o visualizzato.</p>}</main>

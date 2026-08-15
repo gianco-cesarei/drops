@@ -22,5 +22,11 @@ export function downloadRoute(authenticated: boolean): string {
 
 export function postLoginRoute(search: string): string {
   const next = new URLSearchParams(search).get('next')
-  return next?.startsWith('/app') && !next.startsWith('//') ? next : '/app'
+  if (!next?.startsWith('/')) return publicNavigation.download
+  const parsed = new URL(next, 'https://drops.local')
+  if (parsed.origin !== 'https://drops.local') return publicNavigation.download
+  if (parsed.pathname !== '/app' && !parsed.pathname.startsWith('/app/')) return publicNavigation.download
+  return `${parsed.pathname}${parsed.search}${parsed.hash}`
 }
+
+export const privateEntryRoute = () => publicNavigation.download

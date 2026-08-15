@@ -60,12 +60,28 @@ describe('autenticazione App', () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/download'))
   })
 
+  it('login diretto apre download', async () => {
+    const navigate = vi.fn()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({}, 401)).mockResolvedValueOnce(jsonResponse({ user: { username: 'dj' } })))
+    render(<App section="login" navigate={navigate} />)
+    const user = await fillLogin()
+    await user.click(screen.getByRole('button', { name: 'Accedi' }))
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/download'))
+  })
+
   it('reindirizza sessione esistente aperta su login', async () => {
     window.history.replaceState({}, '', '/app/login?next=%2Fapp%2Fcontent')
     const navigate = vi.fn()
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ user: { username: 'dj' } })))
     render(<App section="login" navigate={navigate} />)
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/content'))
+  })
+
+  it('reindirizza sessione esistente senza next verso download', async () => {
+    const navigate = vi.fn()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ user: { username: 'dj' } })))
+    render(<App section="login" navigate={navigate} />)
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/download'))
   })
 
   it('protegge route privata e preserva destinazione', async () => {
@@ -80,7 +96,7 @@ describe('autenticazione App', () => {
     const navigate = vi.fn()
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ user: { username: 'dj' } })).mockResolvedValueOnce(new Response(null, { status: 204 }))
     vi.stubGlobal('fetch', fetchMock)
-    render(<App section="home" navigate={navigate} />)
+    render(<App section="content" navigate={navigate} />)
     await userEvent.click(await screen.findByRole('button', { name: 'Esci' }))
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/login'))
     expect(await screen.findByLabelText('Username')).toBeInTheDocument()
