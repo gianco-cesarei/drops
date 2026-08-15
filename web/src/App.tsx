@@ -42,19 +42,21 @@ export default function App({ section = 'login', navigate = browserNavigate }: {
     setUser(loggedUser)
   }
 
-  function completeLogout() {
+  function beginLogout() {
     setLogoutRedirecting(true)
     setUser(null)
-    navigate('/app/login')
   }
 
+  function finishLogout() { navigate('/') }
+
   if (checking) return <Loading />
+  if (logoutRedirecting) return <Loading />
   if (!user) return <Login onLogin={completeLogin} error={error} setError={setError} />
-  if (section === 'download') return <PrivateFrame user={user} onLogout={completeLogout}><Download user={user} onError={handleError} error={error} setError={setError} /></PrivateFrame>
-  if (section === 'radar') return <PrivateFrame user={user} onLogout={completeLogout}><Radar /></PrivateFrame>
-  if (section === 'brain') return <PrivateFrame user={user} onLogout={completeLogout}><Brain /></PrivateFrame>
-  if (section === 'content') return <PrivateFrame user={user} onLogout={completeLogout}><Content /></PrivateFrame>
-  return <PrivateFrame user={user} onLogout={completeLogout}><PrivatePlaceholder section={section} /></PrivateFrame>
+  if (section === 'download') return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Download user={user} onError={handleError} error={error} setError={setError} /></PrivateFrame>
+  if (section === 'radar') return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Radar /></PrivateFrame>
+  if (section === 'brain') return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Brain /></PrivateFrame>
+  if (section === 'content') return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Content /></PrivateFrame>
+  return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><PrivatePlaceholder section={section} /></PrivateFrame>
 }
 
 function Brand() {
@@ -93,9 +95,10 @@ function Login({ onLogin, error, setError }: { onLogin: (user: User) => void; er
   </section></main>
 }
 
-function PrivateFrame({ user, onLogout, children }: { user: User; onLogout: () => void; children: ReactNode }) {
+function PrivateFrame({ user, onLogoutStart, onLogoutEnd, children }: { user: User; onLogoutStart: () => void; onLogoutEnd: () => void; children: ReactNode }) {
   async function logout() {
-    try { await api.logout() } catch { /* Local session must still be invalidated. */ } finally { onLogout() }
+    onLogoutStart()
+    try { await api.logout() } catch { /* Local session remains invalidated. */ } finally { onLogoutEnd() }
   }
   return <div className="private-layout">
     <header className="private-header"><a href="/" className="logo">Drops<span>.</span></a><nav aria-label="Area privata"><a href="/">Discovery</a><a href="/app/download">Download</a><a href="/app/radar">Radar</a><a href="/app/brain">Brain</a><a href="/app/content">Content</a></nav><div className="account"><span>{user.name ?? user.username ?? user.email ?? 'Account'}</span><button className="secondary" onClick={logout}>Esci</button></div></header>
