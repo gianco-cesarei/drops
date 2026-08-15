@@ -1,0 +1,12 @@
+---
+import PrivateAppRoute from '../../components/PrivateAppRoute.astro'
+import type { PrivateSection } from '../../App'
+import { privateSections } from '../../lib/routes'
+
+export function getStaticPaths() {
+  return privateSections.map((section) => ({ params: { section }, props: { section: section as PrivateSection } }))
+}
+
+const { section } = Astro.props
+---
+<PrivateAppRoute section={section} />

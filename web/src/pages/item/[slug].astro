@@ -1,0 +1,22 @@
+---
+import { developmentDiscoveryItems } from '../../data/discovery.fixture'
+import { categoryLabels } from '../../domain/discovery'
+import PublicLayout from '../../layouts/PublicLayout.astro'
+
+export function getStaticPaths() {
+  return developmentDiscoveryItems.map((item) => ({ params: { slug: item.slug }, props: { item } }))
+}
+
+const { item } = Astro.props
+const original = item.sources.find((source) => source.kind === 'original') ?? item.sources[0]
+---
+
+<PublicLayout title={`${item.title} — Drops`}>
+  <main class="public-main narrow-page">
+    <span class="development-badge">Development fixture · {categoryLabels[item.type]}</span>
+    <h1>{item.title}</h1>
+    <p>{item.summary}</p>
+    <dl class="item-meta"><div><dt>Pubblicato su Drops</dt><dd>{item.publishedAt}</dd></div><div><dt>Luogo</dt><dd>{item.primaryLocation.name}</dd></div></dl>
+    <a class="source-cta" href={original.url} target="_blank" rel="noreferrer">Apri fonte originale ↗</a>
+  </main>
+</PublicLayout>

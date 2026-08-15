@@ -1,0 +1,26 @@
+---
+import PublicHeader from '../components/PublicHeader.astro'
+import '../styles.css'
+
+interface Props {
+  title: string
+  description?: string
+}
+
+const { title, description = 'Drops — discovery musicale editoriale.' } = Astro.props
+---
+
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f8f6" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <PublicHeader pathname={Astro.url.pathname} />
+    <slot />
+  </body>
+</html>

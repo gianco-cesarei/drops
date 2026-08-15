@@ -1,0 +1,19 @@
+---
+import { publicNavigation } from '../lib/routes'
+const { pathname = '/' } = Astro.props
+const discoveryActive = pathname === '/'
+---
+
+<header class="public-header">
+  <nav aria-label="Navigazione principale">
+    <div class="nav-side nav-left">
+      <a class:list={{ active: discoveryActive }} href={publicNavigation.discovery}>Discovery</a>
+      <a class:list={{ active: pathname === '/suggests' }} href={publicNavigation.suggests}>Suggests</a>
+    </div>
+    <a class="public-logo" href="/" aria-label="Drops home">Drops<span>.</span></a>
+    <div class="nav-side nav-right">
+      <a href={publicNavigation.login}>Login</a>
+      <a href={publicNavigation.download}>Download</a>
+    </div>
+  </nav>
+</header>
