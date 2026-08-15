@@ -1,0 +1,16 @@
+---
+import DiscoveryExplorer from '../components/DiscoveryExplorer'
+import { developmentDiscoveryItems } from '../data/discovery.fixture'
+import PublicLayout from '../layouts/PublicLayout.astro'
+---
+
+<PublicLayout title="Discovery — Drops">
+  <main class="public-main">
+    <section class="catalog-intro">
+      <span class="development-badge">Development fixture</span>
+      <h1>Discovery</h1>
+      <p>Un catalogo editoriale per esplorare musica, scene e relazioni.</p>
+    </section>
+    <DiscoveryExplorer items={developmentDiscoveryItems} client:load />
+  </main>
+</PublicLayout>
