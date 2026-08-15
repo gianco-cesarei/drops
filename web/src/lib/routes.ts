@@ -5,7 +5,7 @@ export const publicNavigation = {
   download: '/app/download',
 } as const
 
-export const privateSections = ['download', 'graph', 'content', 'editorial-suggestions', 'history', 'settings'] as const
+export const privateSections = ['download', 'radar', 'brain', 'content', 'editorial-suggestions', 'settings'] as const
 export type RoutedPrivateSection = typeof privateSections[number]
 
 export function privateRoute(section: RoutedPrivateSection): `/app/${RoutedPrivateSection}` {
@@ -30,3 +30,7 @@ export function postLoginRoute(search: string): string {
 }
 
 export const privateEntryRoute = () => publicNavigation.download
+
+export function legacyPrivateRedirect(pathname: '/app/graph' | '/app/history'): '/app/brain' | '/app/download' {
+  return pathname === '/app/graph' ? '/app/brain' : '/app/download'
+}
