@@ -30,6 +30,6 @@ export const radarDevelopmentFixtures: RadarFixture[] = [
   },
 ]
 
-export const brainNodeTypes = ['Artist', 'Label', 'Place', 'Release', 'Set', 'Playlist', 'Party', 'Story'] as const
+export const brainNodeTypes = ['Artist', 'Label', 'City', 'Release', 'Set', 'Playlist', 'Party', 'Story'] as const
 export const contentStages = ['Draft', 'Ready', 'Published', 'Archived'] as const
 export const contentFields = ['Titolo', 'Tipo', 'Data', 'Luogo', 'Tag', 'Fonti', 'Relazioni Brain'] as const

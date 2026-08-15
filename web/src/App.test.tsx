@@ -173,7 +173,7 @@ describe('autenticazione App', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ username: 'dj' })))
     render(<App section="brain" navigate={vi.fn()} />)
     expect(await screen.findByRole('heading', { name: 'Brain', level: 1 })).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /Grafo Brain con 49 nodi e 95 relazioni/ })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Grafo Brain con 48 nodi e 82 relazioni/ })).toBeInTheDocument()
     for (const type of ['Artist', 'Label', 'City', 'Release', 'Set', 'Playlist', 'Party', 'Story']) expect(screen.getByText(type)).toBeInTheDocument()
     for (const cluster of ['Rominimal / hypnotic', 'House / tech', 'Soulful / deep', 'Mania / WOS']) expect(screen.getByText(cluster)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Aggiungi nodo' })).not.toBeInTheDocument()
@@ -187,6 +187,11 @@ describe('autenticazione App', () => {
     expect(screen.getByRole('button', { name: 'GNMR, Artist' })).not.toHaveClass('dim')
     fireEvent.click(screen.getByRole('button', { name: 'Mostra tutto' }))
     expect(screen.getByRole('button', { name: 'Andrea Saba, Artist' })).not.toHaveClass('dim')
+    const beforeDrag = jane.getAttribute('transform')
+    fireEvent.pointerDown(jane, { clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(window, { clientX: 240, clientY: 180 })
+    fireEvent.pointerUp(window)
+    expect(jane.getAttribute('transform')).not.toBe(beforeDrag)
   })
 
   it('mostra pipeline e campi Content senza CMS', async () => {

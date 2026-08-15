@@ -3,7 +3,8 @@ import type { ReactNode, SyntheticEvent } from 'react'
 import { api, ApiError } from './api'
 import type { Job, User } from './api'
 import { postLoginRoute } from './lib/routes'
-import { brainNodeTypes, contentFields, contentStages, radarDevelopmentFixtures } from './data/private.fixture'
+import { contentFields, contentStages, radarDevelopmentFixtures } from './data/private.fixture'
+import BrainGraph from './components/BrainGraph'
 
 export type PrivateSection = 'login' | 'download' | 'radar' | 'brain' | 'content' | 'editorial-suggestions' | 'settings'
 
@@ -120,7 +121,7 @@ function Radar() {
 }
 
 function Brain() {
-  return <main className="private-workspace"><header className="workspace-heading"><span className="development-badge">Brain · development shell</span><h1>Brain</h1><p>Shell privata per nodi e relazioni. Nessuna visualizzazione grafica definitiva.</p></header><section className="tool-shell"><h2>Tipi di nodo previsti</h2><div className="type-list">{brainNodeTypes.map((type) => <span key={type}>{type}</span>)}</div><div className="planned-actions" aria-label="Azioni Brain previste"><button disabled>Aggiungi nodo</button><button disabled>Aggiungi relazione</button><button disabled>Importa da Radar</button></div></section></main>
+  return <main className="private-workspace brain-workspace"><header className="workspace-heading"><span className="development-badge">Brain · fixture locale</span><h1>Brain</h1><p>Mappa relazionale privata di scene, persone, luoghi e segnali editoriali.</p></header><BrainGraph /></main>
 }
 
 function Content() {
