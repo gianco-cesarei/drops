@@ -2,6 +2,7 @@ import os
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 def _positive_int(name: str, default: int) -> int:
@@ -28,6 +29,35 @@ class WebSettings:
     max_concurrent: int
     max_duration_seconds: int
     max_file_bytes: int
+    login_rate_limit: int
+    login_rate_window_seconds: int
+    environment: str = "production"
+    allow_missing_origin: bool = False
+
+    def __post_init__(self) -> None:
+        if self.environment not in {"production", "development", "test"}:
+            raise ValueError("DROPS_WEB_ENV must be production, development, or test")
+        if self.environment == "production" and not self.allowed_origins:
+            raise ValueError("DROPS_WEB_ALLOWED_ORIGINS is required in production")
+        for origin in self.allowed_origins:
+            parsed = urlsplit(origin)
+            try:
+                port_is_valid = parsed.port is None or 1 <= parsed.port <= 65535
+            except ValueError:
+                port_is_valid = False
+            if (
+                parsed.scheme not in {"http", "https"}
+                or not parsed.netloc
+                or not parsed.hostname
+                or not port_is_valid
+                or parsed.username is not None
+                or parsed.password is not None
+                or parsed.path
+                or parsed.query
+                or parsed.fragment
+                or "*" in origin
+            ):
+                raise ValueError(f"Invalid exact origin: {origin}")
 
     @classmethod
     def from_env(cls) -> "WebSettings":
@@ -51,4 +81,8 @@ class WebSettings:
             max_concurrent=_positive_int("DROPS_WEB_MAX_CONCURRENT", 2),
             max_duration_seconds=_positive_int("DROPS_WEB_MAX_DURATION_SECONDS", 900),
             max_file_bytes=_positive_int("DROPS_WEB_MAX_FILE_BYTES", 100_000_000),
+            login_rate_limit=_positive_int("DROPS_WEB_LOGIN_RATE_LIMIT", 5),
+            login_rate_window_seconds=_positive_int("DROPS_WEB_LOGIN_RATE_WINDOW_SECONDS", 60),
+            environment=os.environ.get("DROPS_WEB_ENV", "production").strip().lower(),
+            allow_missing_origin=_bool("DROPS_WEB_ALLOW_MISSING_ORIGIN", False),
         )

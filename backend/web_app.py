@@ -1,14 +1,16 @@
+import logging
 import secrets
 import shutil
 import time
 import uuid
+from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import yt_dlp
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
-from fastapi import Cookie, Depends, FastAPI, HTTPException, Response
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -19,6 +21,7 @@ from web_store import WebStore
 
 COOKIE_NAME = "drops_session"
 AUDIO_QUALITY = {"128": "128", "192": "192", "320": "0"}
+logger = logging.getLogger("drops.web")
 
 
 class LoginRequest(BaseModel):
@@ -37,12 +40,33 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
     jobs_dir = settings.state_dir / "jobs"
     jobs_dir.mkdir(parents=True, exist_ok=True)
     store = WebStore(settings.state_dir / "web.sqlite3")
-    executor = ThreadPoolExecutor(max_workers=settings.max_concurrent, thread_name_prefix="drops-web")
     password_hasher = PasswordHasher()
-    app = FastAPI(title="Drops Web API")
+
+    def cleanup() -> None:
+        for row in store.expired_artifacts():
+            job_dir = (jobs_dir / str(row["id"])).resolve()
+            if job_dir.parent == jobs_dir.resolve():
+                shutil.rmtree(job_dir, ignore_errors=True)
+            else:
+                logger.error("refused unsafe cleanup record")
+        store.delete_expired()
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        store.interrupt_active_jobs(settings.artifact_ttl_seconds)
+        cleanup()
+        executor = ThreadPoolExecutor(max_workers=settings.max_concurrent, thread_name_prefix="drops-web")
+        app.state.executor = executor
+        try:
+            yield
+        finally:
+            executor.shutdown(wait=True, cancel_futures=True)
+            cleanup()
+
+    app = FastAPI(title="Drops Web API", lifespan=lifespan)
     app.state.settings = settings
     app.state.store = store
-    app.state.executor = executor
+    app.state.executor = None
 
     app.add_middleware(
         CORSMiddleware,
@@ -52,11 +76,14 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
         allow_headers=["Content-Type"],
     )
 
-    def cleanup() -> None:
-        for row in store.expired_artifacts():
-            if row["file_path"]:
-                shutil.rmtree(Path(row["file_path"]).parent, ignore_errors=True)
-        store.delete_expired()
+    def require_csrf_origin(request: Request) -> None:
+        origin = request.headers.get("origin")
+        if origin is None:
+            if settings.allow_missing_origin:
+                return
+            raise HTTPException(status_code=403, detail="Origin required")
+        if origin not in settings.allowed_origins:
+            raise HTTPException(status_code=403, detail="Origin not allowed")
 
     def current_owner(drops_session: str | None = Cookie(default=None, alias=COOKIE_NAME)) -> str:
         cleanup()
@@ -138,19 +165,28 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
                 size=artifact.stat().st_size,
                 expires_at=time.time() + settings.artifact_ttl_seconds,
             )
-        except Exception:  # worker boundary: never expose command lines or local paths
+        except Exception as exc:  # worker boundary: log identifiers and class only
+            logger.error("download worker failed job_id=%s error_type=%s", job_id, type(exc).__name__)
             shutil.rmtree(job_dir, ignore_errors=True)
             store.update_job(job_id, status="error", error="Download failed", expires_at=time.time() + settings.artifact_ttl_seconds)
 
+    @app.get("/health")
+    def health():
+        return {"status": "ok"}
+
     @app.post("/api/v1/auth/login")
-    def login(request: LoginRequest, response: Response):
-        valid = secrets.compare_digest(request.username, settings.username)
+    def login(credentials: LoginRequest, request: Request, response: Response):
+        client_key = request.client.host if request.client else "unknown"
+        if not store.allow_login_attempt(client_key, settings.login_rate_limit, settings.login_rate_window_seconds):
+            raise HTTPException(status_code=429, detail="Too many login attempts")
+        valid = secrets.compare_digest(credentials.username, settings.username)
         try:
-            valid = password_hasher.verify(settings.password_hash, request.password) and valid
+            valid = password_hasher.verify(settings.password_hash, credentials.password) and valid
         except (VerifyMismatchError, InvalidHashError):
             valid = False
         if not valid:
             raise HTTPException(status_code=401, detail="Invalid credentials")
+        store.clear_login_attempts(client_key)
         token = secrets.token_urlsafe(32)
         store.create_session(token, settings.username, settings.session_ttl_seconds)
         response.set_cookie(COOKIE_NAME, token, max_age=settings.session_ttl_seconds, httponly=True, secure=settings.cookie_secure, samesite="lax", path="/")
@@ -161,29 +197,39 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
         return {"username": owner}
 
     @app.post("/api/v1/auth/logout", status_code=204)
-    def logout(response: Response, drops_session: str | None = Cookie(default=None, alias=COOKIE_NAME)):
+    def logout(
+        response: Response,
+        _: None = Depends(require_csrf_origin),
+        owner: str = Depends(current_owner),
+        drops_session: str | None = Cookie(default=None, alias=COOKIE_NAME),
+    ):
         if drops_session:
             store.delete_session(drops_session)
         response.delete_cookie(COOKIE_NAME, httponly=True, secure=settings.cookie_secure, samesite="lax", path="/")
 
     @app.post("/api/v1/downloads", status_code=202)
-    def start_download(request: WebDownloadRequest, owner: str = Depends(current_owner)):
+    def start_download(
+        request: WebDownloadRequest,
+        owner: str = Depends(current_owner),
+        _: None = Depends(require_csrf_origin),
+    ):
         if not is_supported_url(request.url):
             raise HTTPException(status_code=400, detail="Unsupported URL")
         if request.quality not in AUDIO_QUALITY:
             raise HTTPException(status_code=400, detail="Invalid quality")
-        if store.active_count() >= settings.max_queued + settings.max_concurrent:
-            raise HTTPException(status_code=429, detail="Download queue full")
         job_id = str(uuid.uuid4())
-        store.create_job(
+        accepted = store.create_job_if_capacity(
             job_id,
             owner,
             request.url,
             "audio",
             request.quality,
             settings.max_duration_seconds + settings.artifact_ttl_seconds,
+            settings.max_queued + settings.max_concurrent,
         )
-        executor.submit(download, job_id, request.url, request.quality)
+        if not accepted:
+            raise HTTPException(status_code=429, detail="Download queue full")
+        app.state.executor.submit(download, job_id, request.url, request.quality)
         return {"id": job_id, "status": "queued"}
 
     @app.get("/api/v1/downloads/{job_id}")

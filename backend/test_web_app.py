@@ -1,5 +1,8 @@
+import os
 import tempfile
+import threading
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -25,12 +28,17 @@ class WebAppTest(unittest.TestCase):
             max_concurrent=1,
             max_duration_seconds=300,
             max_file_bytes=1_000_000,
+            login_rate_limit=3,
+            login_rate_window_seconds=60,
+            environment="test",
+            allow_missing_origin=True,
         )
         self.app = create_app(self.settings)
-        self.client = TestClient(self.app)
+        self.client_context = TestClient(self.app)
+        self.client = self.client_context.__enter__()
 
     def tearDown(self):
-        self.app.state.executor.shutdown(wait=True, cancel_futures=True)
+        self.client_context.__exit__(None, None, None)
         self.temp.cleanup()
 
     def login(self):
@@ -49,11 +57,39 @@ class WebAppTest(unittest.TestCase):
         self.assertEqual(self.client.post("/api/v1/auth/logout").status_code, 204)
         self.assertEqual(self.client.get("/api/v1/auth/me").status_code, 401)
 
+    def test_health_is_public_and_minimal(self):
+        self.assertEqual(self.client.get("/health").json(), {"status": "ok"})
+
+    def test_login_rate_limit_is_configurable(self):
+        app = create_app(replace(self.settings, state_dir=Path(self.temp.name) / "rate", login_rate_limit=2))
+        with TestClient(app) as client:
+            body = {"username": "owner", "password": "wrong"}
+            self.assertEqual(client.post("/api/v1/auth/login", json=body).status_code, 401)
+            self.assertEqual(client.post("/api/v1/auth/login", json=body).status_code, 401)
+            self.assertEqual(client.post("/api/v1/auth/login", json=body).status_code, 429)
+
     def test_cors_uses_exact_allowlist(self):
         allowed = self.client.options("/api/v1/auth/me", headers={"Origin": "https://drops.example", "Access-Control-Request-Method": "GET"})
         denied = self.client.options("/api/v1/auth/me", headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "GET"})
         self.assertEqual(allowed.headers.get("access-control-allow-origin"), "https://drops.example")
         self.assertIsNone(denied.headers.get("access-control-allow-origin"))
+
+    def test_csrf_origin_validation_and_explicit_missing_origin_policy(self):
+        strict_app = create_app(replace(self.settings, state_dir=Path(self.temp.name) / "csrf", allow_missing_origin=False))
+        with TestClient(strict_app) as client:
+            login = client.post("/api/v1/auth/login", json={"username": "owner", "password": "correct horse"})
+            self.assertEqual(login.status_code, 200)
+            body = {"url": "https://youtu.be/test", "quality": "320"}
+            self.assertEqual(client.post("/api/v1/downloads", json=body).status_code, 403)
+            self.assertEqual(client.post("/api/v1/downloads", json=body, headers={"Origin": "https://evil.example"}).status_code, 403)
+            with patch.object(strict_app.state.executor, "submit"):
+                self.assertEqual(client.post("/api/v1/downloads", json=body, headers={"Origin": "https://drops.example"}).status_code, 202)
+            self.assertEqual(client.post("/api/v1/auth/logout", headers={"Origin": "https://evil.example"}).status_code, 403)
+            self.assertEqual(client.post("/api/v1/auth/logout", headers={"Origin": "https://drops.example"}).status_code, 204)
+
+        self.login()
+        with patch.object(self.app.state.executor, "submit"):
+            self.assertEqual(self.client.post("/api/v1/downloads", json={"url": "https://youtu.be/local"}).status_code, 202)
 
     def test_unknown_job_and_path_traversal_are_not_found(self):
         self.login()
@@ -92,6 +128,99 @@ class WebAppTest(unittest.TestCase):
         self.assertEqual(response.status_code, 202)
         self.assertNotIn(self.temp.name, response.text)
         submit.assert_called_once()
+
+    def test_cleanup_derives_safe_job_directory_instead_of_file_path(self):
+        self.login()
+        victim = self.settings.state_dir / "victim"
+        victim.mkdir()
+        (victim / "keep.txt").write_text("keep")
+        store = self.app.state.store
+        store.create_job("../victim", "owner", "https://youtu.be/test", "audio", "320", 600)
+        store.update_job("../victim", file_path=str(victim / "keep.txt"), expires_at=0)
+        with self.assertLogs("drops.web", level="ERROR") as logs:
+            self.client.get("/api/v1/auth/me")
+        self.assertTrue((victim / "keep.txt").exists())
+        self.assertIn("refused unsafe cleanup", " ".join(logs.output))
+
+    def test_startup_interrupts_previous_active_jobs_and_lifespan_closes_executor(self):
+        app = create_app(replace(self.settings, state_dir=Path(self.temp.name) / "restart"))
+        app.state.store.create_job("stale", "owner", "https://youtu.be/test", "audio", "320", 600)
+        expired_dir = self.settings.state_dir / "restart" / "jobs" / "expired"
+        expired_dir.mkdir(parents=True)
+        artifact = expired_dir / "old.mp3"
+        artifact.write_bytes(b"old")
+        app.state.store.create_job("expired", "owner", "https://youtu.be/test", "audio", "320", 600)
+        app.state.store.update_job("expired", status="ready", file_path=str(artifact), expires_at=0)
+        with TestClient(app):
+            row = app.state.store.get_job("stale", "owner")
+            self.assertEqual(row["status"], "error")
+            self.assertEqual(row["error"], "Download interrupted")
+            self.assertFalse(expired_dir.exists())
+        self.assertTrue(app.state.executor._shutdown)
+
+    def test_capacity_check_and_job_insert_are_atomic(self):
+        store = self.app.state.store
+        barrier = threading.Barrier(3)
+        results = []
+
+        def reserve(job_id):
+            barrier.wait()
+            results.append(store.create_job_if_capacity(job_id, "owner", "https://youtu.be/test", "audio", "320", 600, 1))
+
+        workers = [threading.Thread(target=reserve, args=(f"atomic-{index}",)) for index in range(2)]
+        for worker in workers:
+            worker.start()
+        barrier.wait()
+        for worker in workers:
+            worker.join()
+        self.assertEqual(sorted(results), [False, True])
+
+    def test_worker_log_and_api_error_do_not_expose_sensitive_details(self):
+        self.login()
+        secret = "https://youtu.be/test?token=secret-token"
+        with patch.object(self.app.state.executor, "submit") as submit:
+            response = self.client.post("/api/v1/downloads", json={"url": secret})
+        worker, job_id, url, quality = submit.call_args.args
+        with patch("web_app.yt_dlp.YoutubeDL", side_effect=RuntimeError(f"{secret} /private/secret ffmpeg --password token")):
+            with self.assertLogs("drops.web", level="ERROR") as logs:
+                worker(job_id, url, quality)
+        log_text = " ".join(logs.output)
+        self.assertNotIn("secret-token", log_text)
+        self.assertNotIn("/private/secret", log_text)
+        self.assertNotIn("ffmpeg", log_text)
+        job = self.client.get(f"/api/v1/downloads/{job_id}")
+        self.assertEqual(job.json()["error"], "Download failed")
+
+
+class WebSettingsTest(unittest.TestCase):
+    def test_documentation_has_reproducible_python_312_test_command(self):
+        documentation = (Path(__file__).parent / "WEB_BACKEND.md").read_text()
+        self.assertIn("python3.12 -m venv .venv-web", documentation)
+        self.assertIn("unittest discover -s backend", documentation)
+
+    def test_rejects_invalid_wildcard_and_empty_production_origins(self):
+        base = {
+            "DROPS_WEB_USERNAME": "owner",
+            "DROPS_WEB_PASSWORD_HASH": PasswordHasher().hash("password"),
+            "DROPS_WEB_ENV": "production",
+        }
+        with patch.dict(os.environ, base, clear=True):
+            with self.assertRaisesRegex(ValueError, "required in production"):
+                WebSettings.from_env()
+        with patch.dict(os.environ, {**base, "DROPS_WEB_ALLOWED_ORIGINS": "https://*.example.com"}, clear=True):
+            with self.assertRaisesRegex(ValueError, "Invalid exact origin"):
+                WebSettings.from_env()
+
+    def test_accepts_exact_http_and_https_origins(self):
+        env = {
+            "DROPS_WEB_USERNAME": "owner",
+            "DROPS_WEB_PASSWORD_HASH": PasswordHasher().hash("password"),
+            "DROPS_WEB_ENV": "production",
+            "DROPS_WEB_ALLOWED_ORIGINS": "https://drops.example,http://localhost:3000",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            settings = WebSettings.from_env()
+        self.assertEqual(settings.allowed_origins, ("https://drops.example", "http://localhost:3000"))
 
 
 if __name__ == "__main__":
