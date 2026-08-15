@@ -1,4 +1,4 @@
-export type BrainNodeType = 'Artist' | 'Label' | 'City' | 'Release' | 'Set' | 'Playlist' | 'Party' | 'Story'
+export type BrainNodeType = 'Artist' | 'Label' | 'City' | 'Release' | 'Set' | 'Playlist' | 'Party' | 'Story' | 'Signal'
 export type BrainCluster = 'rom' | 'house' | 'soul' | 'mania' | 'city'
 
 export type BrainNodeFixture = {

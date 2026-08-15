@@ -16,6 +16,7 @@ describe('autenticazione App', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/app/login')
     vi.stubEnv('PUBLIC_API_URL', 'https://api.drops.test')
+    window.localStorage.clear()
   })
 
   it('mostra credenziali non valide senza confonderle con sessione scaduta', async () => {
@@ -160,13 +161,25 @@ describe('autenticazione App', () => {
     expect(fetchMock.mock.calls.every(([url, options]) => String(url).endsWith('/api/v1/auth/me') && options.credentials === 'include')).toBe(true)
   })
 
-  it('mostra Radar solo con fixture development e azioni previste', async () => {
+  it('mostra Radar con fixture development, azioni attive e prototipo in localStorage', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ username: 'dj' })))
     render(<App section="radar" navigate={vi.fn()} />)
     expect(await screen.findByRole('heading', { name: 'Radar', level: 1 })).toBeInTheDocument()
     expect(screen.getAllByText('Development fixture')).toHaveLength(2)
     expect(screen.getByText(/possono emergere anche fuori/)).toBeInTheDocument()
-    for (const action of ['Salva', 'Scarta', 'Collega al Brain', 'Trasforma in contenuto']) expect(screen.getAllByRole('button', { name: action })[0]).toBeDisabled()
+    expect(screen.getByText(/salvato solo in questo browser/)).toBeInTheDocument()
+    for (const action of ['Salva', 'Scarta', 'Collega al Brain', 'Trasforma in contenuto']) expect(screen.getAllByRole('button', { name: action })[0]).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Reset prototipo' })).toBeDisabled()
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Collega al Brain' })[0])
+    expect(await screen.findByRole('button', { name: 'Collegato ✓' })).toBeDisabled()
+    expect(screen.getByText('Berlin label follow-up surfaced after linking', { exact: false })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reset prototipo' })).not.toBeDisabled()
+    expect(JSON.parse(window.localStorage.getItem('drops:dev-prototype:radar-brain:v1') ?? '{}').extraNodes).toHaveLength(1)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reset prototipo' }))
+    expect(window.localStorage.getItem('drops:dev-prototype:radar-brain:v1')).toBeNull()
+    expect(screen.queryByText('Berlin label follow-up surfaced after linking', { exact: false })).not.toBeInTheDocument()
   })
 
   it('mostra grafo Brain esistente con tipi, cluster e interazioni', async () => {

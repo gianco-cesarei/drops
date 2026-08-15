@@ -3,8 +3,11 @@ import type { ReactNode, SyntheticEvent } from 'react'
 import { api, ApiError } from './api'
 import type { Job, User } from './api'
 import { postLoginRoute } from './lib/routes'
-import { contentFields, contentStages, radarDevelopmentFixtures } from './data/private.fixture'
+import { contentFields, contentStages, radarDevelopmentFixtures, radarLockedFixtures } from './data/private.fixture'
+import type { RadarFixture } from './data/private.fixture'
 import BrainGraph from './components/BrainGraph'
+import { linkRadarToBrain, resetPrototypeState, setRadarStatus, usePrototypeState } from './data/brainStore'
+import type { RadarStatus } from './data/brainStore'
 
 export type PrivateSection = 'login' | 'download' | 'radar' | 'brain' | 'content' | 'editorial-suggestions' | 'settings'
 
@@ -115,13 +118,52 @@ function PrivatePlaceholder({ section }: { section: PrivateSection }) {
   return <main className="private-placeholder"><span className="development-badge">Private development shell</span><h1 className="sr-only">{labels[section]}</h1><p>Strumento non implementato in questa milestone.</p></main>
 }
 
+const radarStatusLabels: Record<RadarStatus, string> = { saved: 'Salvato', discarded: 'Scartato', linked: 'Collegato al Brain', content: 'Trasformato in contenuto' }
+
 function Radar() {
-  const actions = ['Salva', 'Scarta', 'Collega al Brain', 'Trasforma in contenuto']
-  return <main className="private-workspace"><header className="workspace-heading"><span className="development-badge">Radar · development shell</span><h1 className="sr-only">Radar</h1><p>Segnali guidati dal Brain, con fonti che possono emergere anche fuori dalle relazioni già presenti.</p></header><div className="radar-grid">{radarDevelopmentFixtures.map((item) => <article className="radar-card" key={item.id}><span className="fixture-label">Development fixture</span><h2>{item.title}</h2><dl><div><dt>Fonte</dt><dd>{item.source}</dd></div><div><dt>Data</dt><dd>{item.date}</dd></div><div><dt>Luogo</dt><dd>{item.location}</dd></div><div><dt>Categoria</dt><dd>{item.category}</dd></div></dl><section><h3>Perché è rilevante</h3><p>{item.relevance}</p></section><div className="planned-actions" aria-label="Azioni previste">{actions.map((action) => <button type="button" disabled key={action}>{action}</button>)}</div></article>)}</div></main>
+  const [state, setState] = usePrototypeState()
+  const visibleFixtures = [...radarDevelopmentFixtures, ...radarLockedFixtures.filter((fixture) => state.unlockedIds.includes(fixture.id))]
+  const hasPrototypeData = state.extraNodes.length > 0 || Object.keys(state.radarStatus).length > 0
+
+  function save(id: string) { setState(setRadarStatus(id, 'saved')) }
+  function discard(id: string) { setState(setRadarStatus(id, 'discarded')) }
+  function link(fixture: RadarFixture) { setState(linkRadarToBrain(fixture)) }
+  function convert(id: string) { setState(setRadarStatus(id, 'content')) }
+  function resetPrototype() { setState(resetPrototypeState()) }
+
+  return <main className="private-workspace"><header className="workspace-heading"><span className="development-badge">Radar · development shell</span><h1 className="sr-only">Radar</h1><p>Segnali guidati dal Brain, con fonti che possono emergere anche fuori dalle relazioni già presenti.</p></header>
+    <div className="radar-toolbar">
+      <p className="prototype-note">Prototipo — stato salvato solo in questo browser (localStorage), non è ancora il database reale. “Collega al Brain” aggiunge davvero un nodo al grafo e può sbloccare nuove proposte qui sotto.</p>
+      <button type="button" className="radar-reset" onClick={resetPrototype} disabled={!hasPrototypeData}>Reset prototipo</button>
+    </div>
+    <div className="brain-preview" aria-label="Anteprima Brain">
+      <strong>Nel Brain (prototipo):</strong>
+      {state.extraNodes.length === 0
+        ? <span className="brain-preview-empty">Ancora nessun nodo aggiunto dal Radar.</span>
+        : state.extraNodes.map((node) => <span className="brain-preview-chip" key={node.id}>{node.id.replace(/^Radar · /, '')}</span>)}
+    </div>
+    <div className="radar-grid">{visibleFixtures.map((item) => {
+      const status = state.radarStatus[item.id]
+      const isNew = radarLockedFixtures.some((locked) => locked.id === item.id) && status === undefined
+      return <article className={`radar-card ${status ? `is-${status}` : ''} ${isNew ? 'is-new' : ''}`} key={item.id}>
+        <div className="radar-card-head"><span className="fixture-label">Development fixture</span>{status && <span className="radar-status-badge">{radarStatusLabels[status]}</span>}{isNew && <span className="radar-status-badge">Nuovo · sbloccato dal Brain</span>}</div>
+        <h2>{item.title}</h2>
+        <dl><div><dt>Fonte</dt><dd>{item.source}</dd></div><div><dt>Data</dt><dd>{item.date}</dd></div><div><dt>Luogo</dt><dd>{item.location}</dd></div><div><dt>Categoria</dt><dd>{item.category}</dd></div></dl>
+        <section><h3>Perché è rilevante</h3><p>{item.relevance}</p></section>
+        <div className="planned-actions" aria-label="Azioni">
+          <button type="button" data-action="save" className={status === 'saved' ? 'is-active' : ''} disabled={status === 'linked' || status === 'content'} onClick={() => save(item.id)}>Salva</button>
+          <button type="button" data-action="discard" className={status === 'discarded' ? 'is-active' : ''} disabled={status === 'linked' || status === 'content'} onClick={() => discard(item.id)}>Scarta</button>
+          <button type="button" data-action="link" disabled={status === 'linked'} onClick={() => link(item)}>{status === 'linked' ? 'Collegato ✓' : 'Collega al Brain'}</button>
+          <button type="button" data-action="content" disabled={status === 'content'} onClick={() => convert(item.id)}>{status === 'content' ? 'Trasformato ✓' : 'Trasforma in contenuto'}</button>
+        </div>
+      </article>
+    })}</div>
+  </main>
 }
 
 function Brain() {
-  return <main className="private-workspace brain-workspace"><header className="workspace-heading"><span className="development-badge">Brain · fixture locale</span><h1 className="sr-only">Brain</h1><p>Mappa relazionale privata di scene, persone, luoghi e segnali editoriali.</p></header><BrainGraph /></main>
+  const [state] = usePrototypeState()
+  return <main className="private-workspace brain-workspace"><header className="workspace-heading"><span className="development-badge">Brain · fixture locale + prototipo</span><h1 className="sr-only">Brain</h1><p>Mappa relazionale privata di scene, persone, luoghi e segnali editoriali. I nodi con anello ambra arrivano dal Radar (prototipo, salvato solo in questo browser).</p></header><BrainGraph extraNodes={state.extraNodes} extraLinks={state.extraLinks} /></main>
 }
 
 function Content() {
