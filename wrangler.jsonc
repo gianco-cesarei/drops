@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "drops",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-08-15",
+  "assets": {
+    "directory": "./web/dist",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "API_ORIGIN": "https://mp3-ytb.onrender.com",
+    "PUBLIC_API_URL": "https://drops.giancarlocesarei.workers.dev"
+  }
+}

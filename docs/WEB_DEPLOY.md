@@ -1,120 +1,176 @@
-# Deploy web staging
+# Deploy web reale
 
-Scaffolding covers one static Astro frontend and one FastAPI container. It does
-not select or provision a provider. Redis, R2, Spotify, CMS and multiple replicas
-remain out of scope.
+Deploy target già esistente:
 
-## Architecture and constraints
+```text
+Browser
+  └─ https://drops.giancarlocesarei.workers.dev
+       └─ Cloudflare Worker Static Assets -> web/dist
+       └─ /api/*, /health -> https://mp3-ytb.onrender.com
 
-- Build `web/` as static files and publish `web/dist/` on a static host.
-- Run API from root `Dockerfile` as exactly one container replica and one Uvicorn
-  worker.
-- Mount persistent storage at `/data`. SQLite database is `/data/web.sqlite3`;
-  temporary job artifacts live under `/data/jobs/` and are removed after TTL.
-- Keep frontend and API on same site, ideally sibling subdomains such as
-  `web.example.com` and `api.example.com`. Current session cookie uses
-  `SameSite=Lax`; unrelated provider domains are not compatible with credentialed
-  cross-origin requests.
-- Terminate HTTPS before API. Production cookie is `Secure` by default.
+Render service: srv-d86rcsf7f7vs73f22ej0
+Repository:     gianco-cesarei/drops
+Branch:         codex/web-first
+Runtime:        Docker, Dockerfile ./Dockerfile
+Persistent dir: /data
+```
 
-## API configuration
+No new container architecture. No second API. No custom domain. The Worker keeps
+the browser on one origin and forwards only the API routes to existing Render.
 
-Copy `.env.example` to an untracked environment file or configure equivalent
-provider variables. Generate password hash locally:
+## Worker configuration
+
+[wrangler.jsonc](../wrangler.jsonc) defines Worker name, static asset binding,
+API origin and public frontend URL. [worker/index.js](../worker/index.js) applies
+this routing:
+
+- `/api/*`: proxy to `API_ORIGIN`;
+- `/health`: proxy to `API_ORIGIN` (deployment check convenience);
+- every other path: `env.ASSETS.fetch(request)` from `web/dist`;
+- no request parameter, header or path can select an upstream.
+
+Proxy keeps original method, query string, headers, body and streaming response.
+`Set-Cookie` returns directly from Render. Browser `Origin` remains
+`https://drops.giancarlocesarei.workers.dev`; Worker does not rewrite it.
+
+`API_ORIGIN` is an environment-configurable HTTPS origin without path, credentials,
+query or fragment. It is a deployment setting, not a URL taken from request input,
+so Worker is not an open proxy. Production value:
+`https://mp3-ytb.onrender.com`.
+
+Wrangler dependency is pinned exactly to `4.31.0` in root `package.json` and lock.
+`web/.node-version` remains `22`.
+
+## Cloudflare Workers Builds
+
+Requires Cloudflare and GitHub login. No domain purchase or custom hostname step.
+
+1. Open Cloudflare dashboard → **Workers** → **Create application** →
+   **Import a repository**.
+2. Connect GitHub repository `gianco-cesarei/drops`; choose branch
+   `codex/web-first`.
+3. Set project root to repository root.
+4. Build command:
+
+   ```bash
+   npm ci && npm run build:worker
+   ```
+
+   `build:worker` runs `npm ci --prefix web` and `npm run build --prefix web`.
+5. Add production build variable:
+
+   ```dotenv
+   PUBLIC_API_URL=https://drops.giancarlocesarei.workers.dev
+   ```
+
+   This value is public and embedded in Astro assets; never put credentials here.
+6. Deploy command, if dashboard requests one:
+
+   ```bash
+   npx wrangler deploy
+   ```
+
+   Wrangler reads `wrangler.jsonc`, uploads `web/dist`, and deploys
+   `worker/index.js`. Keep production branch set to `codex/web-first`.
+7. In Worker Variables, set `API_ORIGIN` to:
+
+   ```dotenv
+   API_ORIGIN=https://mp3-ytb.onrender.com
+   ```
+
+   `PUBLIC_API_URL` in `wrangler.jsonc` documents the public binding; the Astro
+   build variable above is authoritative at build time.
+8. Verify Worker-provided URL:
+
+   ```bash
+   curl --fail --show-error https://drops.giancarlocesarei.workers.dev/
+   curl --fail --show-error https://drops.giancarlocesarei.workers.dev/health
+   ```
+
+Worker preview deployments are not production auth targets. Keep production API
+CORS restricted to the Worker origin below.
+
+## Render source and runtime update
+
+Requires Render login and deployment approval. In Render service
+`srv-d86rcsf7f7vs73f22ej0`:
+
+1. **Settings → Build → Source → Edit**.
+2. Repository: `gianco-cesarei/drops`.
+3. Branch: `codex/web-first`.
+4. Runtime: **Docker**.
+5. Dockerfile: `./Dockerfile`.
+6. Keep one service instance and existing persistent disk mounted at `/data`.
+7. Keep health check path `/health`; application listens on injected `PORT`.
+8. Add/update these service environment variables:
+
+   ```dotenv
+   DROPS_WEB_ALLOWED_ORIGINS=https://drops.giancarlocesarei.workers.dev
+   DROPS_WEB_COOKIE_SECURE=true
+   DROPS_WEB_ENV=production
+   DROPS_WEB_STATE_DIR=/data
+   ```
+
+9. Preserve existing secret variables in Render secret storage:
+   `DROPS_WEB_USERNAME` and `DROPS_WEB_PASSWORD_HASH`. Do not copy them into
+   this repository or Worker variables.
+10. Save, review, and approve deploy. Confirm Render logs show Docker build and
+    `/health` returns `200`.
+
+Generate Argon2id hash locally; paste result only into Render secret variable:
 
 ```bash
 python3.12 -c 'from argon2 import PasswordHasher; print(PasswordHasher().hash(input("Password: ")))'
 ```
 
-Required production values:
+## CORS, cookie and API behavior
 
-- `DROPS_WEB_USERNAME`
-- `DROPS_WEB_PASSWORD_HASH`, containing full Argon2id hash
-- `DROPS_WEB_ALLOWED_ORIGINS`, containing exact public frontend origin, without
-  path or wildcard
+Render accepts exactly one browser origin:
+`https://drops.giancarlocesarei.workers.dev`. Wildcard CORS is invalid with
+credentialed requests. Cookie policy stays `Secure`, `HttpOnly`, `SameSite=Lax`,
+with `credentials: include` from frontend. Worker and API share same site because
+requests stay on the Worker URL.
 
-`DROPS_WEB_STATE_DIR=/data` must stay unchanged unless persistent volume mount
-changes with it. `PORT` defaults to `8000`; runtime may override it. Do not start
-more than one worker or replica: executor scheduling and SQLite are local to
-process/container.
+Do not add `Access-Control-Allow-Origin: *`, do not expose Render API directly in
+frontend build, and do not place passwords, Argon2 hashes, tokens or cookies in
+tracked files. `PUBLIC_API_URL` is the only public build value.
 
-Build and run locally:
+## Local checks
 
-```bash
-docker build -t drops-web-api:local .
-docker run --rm --env-file .env -p 8000:8000 -v drops-web-data:/data drops-web-api:local
-```
-
-Health endpoint:
+From repository root:
 
 ```bash
-curl --fail http://127.0.0.1:8000/health
-```
-
-Container image includes FFmpeg and defines Docker healthcheck against same
-endpoint.
-
-## Static Astro build
-
-`PUBLIC_API_URL` is public build-time configuration, not a secret. Set it to exact
-HTTPS API origin without trailing slash:
-
-```bash
-cd web
-npm ci
-PUBLIC_API_URL=https://api.example.com npm run build
-grep -R --fixed-strings 'https://api.example.com' dist
-```
-
-Publish generated `web/dist/` directory. Rebuild frontend when API origin changes.
-API `DROPS_WEB_ALLOWED_ORIGINS` must equal frontend browser origin exactly. Because
-requests include credentials, wildcard CORS is invalid.
-
-Equivalent reproducible Docker target:
-
-```bash
-docker build --target web-build \
-  --build-arg PUBLIC_API_URL=https://api.example.com \
-  -t drops-web-static:local .
-docker run --rm drops-web-static:local \
-  grep -R --fixed-strings 'https://api.example.com' /web/dist
-```
-
-## Reproducible local checks
-
-Run backend suite with Python 3.12:
-
-```bash
-python3.12 -m venv .venv-web
-.venv-web/bin/pip install -r backend/requirements.txt 'httpx==0.27.0'
 .venv-web/bin/python -m unittest discover -s backend -p 'test_*.py' -v
+npm test --prefix web
+PUBLIC_API_URL=https://drops.giancarlocesarei.workers.dev npm run build --prefix web
+npm run test:worker
+git diff --check
 ```
 
-Run frontend verification:
-
-```bash
-cd web
-npm ci
-npm test
-PUBLIC_API_URL=http://localhost:8000 npm run build
-grep -R --fixed-strings 'http://localhost:8000' dist
-```
-
-Run container smoke test from repository root. It builds image, starts temporary
-single-replica API, checks health/login/session and verifies SQLite plus jobs
-directory on mounted storage. It also builds static target with unique API URL and
-requires that exact URL inside generated bundle:
+Worker tests cover static asset serving, `/api/*` routing, optional `/health`,
+method/query/body/Origin preservation, `Set-Cookie`, streaming, invalid origin
+configuration and no open proxy. Docker smoke remains available:
 
 ```bash
 ./scripts/smoke-web-deploy.sh
 ```
 
-Optional overrides: `DROPS_SMOKE_IMAGE`, `DROPS_SMOKE_WEB_IMAGE` and
-`DROPS_SMOKE_PORT`.
+Smoke validates existing API container, health, auth session, SQLite and `/data`.
 
-## Before real staging deploy
+## Automation boundary
 
-Measure image size, idle/active memory, CPU during FFmpeg conversion, artifact disk
-growth, download duration and outbound bandwidth. Choose provider only after these
-measurements. Then provision one replica, persistent volume, HTTPS endpoints and
-exact environment values. Do not place secrets in repository or static frontend.
+After GitHub connections are authorized, pushes to `codex/web-first` can trigger
+Worker build/deploy and Render deploy. Local tests, Astro build, Worker proxy
+tests and Docker smoke are automatic commands.
+
+User login/approval remains required for GitHub app authorization, Cloudflare
+Workers Builds connection, Render source edit, Render environment secrets, disk
+settings and production deploy approval. No external deployment, billing action
+or secret entry is performed by repository changes.
+
+References:
+
+- [Cloudflare Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/)
+- [Cloudflare Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/)
+- [Wrangler configuration](https://developers.cloudflare.com/workers/wrangler/configuration/)
+- [Render Docker deploys](https://render.com/docs/deploys)
