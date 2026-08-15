@@ -1,14 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { SyntheticEvent } from 'react'
 import { categoryLabels, DiscoveryType } from '../domain/discovery'
 import type { DiscoveryItem } from '../domain/discovery'
-import { serializeDiscoveryQuery } from '../lib/discovery-query'
+import { parseDiscoveryQuery, serializeDiscoveryQuery } from '../lib/discovery-query'
 import type { DiscoveryQueryState, DiscoveryView } from '../lib/discovery-query'
 
 type Props = {
   items: DiscoveryItem[]
-  initialState: DiscoveryQueryState
 }
+
+const defaultState: DiscoveryQueryState = { view: 'discovery', query: '', types: [] }
 
 const viewLabels: Record<DiscoveryView, string> = {
   discovery: 'Discovery',
@@ -16,13 +17,24 @@ const viewLabels: Record<DiscoveryView, string> = {
   map: 'Map',
 }
 
-export default function DiscoveryExplorer({ items, initialState }: Props) {
-  const [state, setState] = useState(initialState)
-  const [searchDraft, setSearchDraft] = useState(initialState.query)
+export default function DiscoveryExplorer({ items }: Props) {
+  const [state, setState] = useState(defaultState)
+  const [searchDraft, setSearchDraft] = useState('')
+
+  useEffect(() => {
+    function restoreFromLocation() {
+      const restored = parseDiscoveryQuery(new URLSearchParams(window.location.search))
+      setState(restored)
+      setSearchDraft(restored.query)
+    }
+    restoreFromLocation()
+    window.addEventListener('popstate', restoreFromLocation)
+    return () => window.removeEventListener('popstate', restoreFromLocation)
+  }, [])
 
   function update(next: DiscoveryQueryState) {
     setState(next)
-    window.history.replaceState({}, '', `/${serializeDiscoveryQuery(next)}`)
+    window.history.pushState({}, '', `/${serializeDiscoveryQuery(next)}`)
   }
 
   function submitSearch(event: SyntheticEvent<HTMLFormElement>) {
@@ -56,6 +68,7 @@ export default function DiscoveryExplorer({ items, initialState }: Props) {
         {(Object.keys(viewLabels) as DiscoveryView[]).map((view) => <button key={view} className={state.view === view ? 'active' : ''} aria-pressed={state.view === view} onClick={() => update({ ...state, view })}>{viewLabels[view]}</button>)}
       </div>
       <div className="category-filters" aria-label="Filtri categorie">
+        <button className={!state.types.length ? 'active' : ''} aria-pressed={!state.types.length} onClick={() => update({ ...state, types: [] })}>All</button>
         {(Object.values(DiscoveryType)).map((type) => <button key={type} className={state.types.includes(type) ? 'active' : ''} aria-pressed={state.types.includes(type)} onClick={() => toggleType(type)}>{categoryLabels[type]}</button>)}
       </div>
     </div>
@@ -63,7 +76,7 @@ export default function DiscoveryExplorer({ items, initialState }: Props) {
     <div className="result-summary"><strong>{filtered.length}</strong> contenuti · più recenti prima</div>
     {state.view === 'discovery' && <DiscoveryFeed items={filtered} />}
     {state.view === 'timeline' && <TimelineShell items={filtered} />}
-    {state.view === 'map' && <MapShell items={filtered.filter((item) => item.mapEligible)} />}
+    {state.view === 'map' && <MapShell items={filtered.filter((item) => item.mapEligible && item.primaryLocation.kind === 'geographic' && item.primaryLocation.latitude !== undefined && item.primaryLocation.longitude !== undefined)} />}
   </>
 }
 

@@ -14,6 +14,8 @@ export enum PartyKind {
   Event = 'event',
   Series = 'series',
   Collective = 'collective',
+  ClubNight = 'club-night',
+  Festival = 'festival',
 }
 
 export enum RelationType {
@@ -31,15 +33,26 @@ export enum RelationType {
 const sourceSchema = z.object({
   url: z.url(),
   label: z.string().min(1),
-  kind: z.enum(['original', 'reference']),
+  kind: z.enum(['original', 'official', 'listen', 'reference']),
 })
 
-const locationSchema = z.object({
+const geographicLocationSchema = z.object({
+  kind: z.literal('geographic'),
   name: z.string().min(1),
   countryCode: z.string().length(2),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
 })
+
+const onlineLocationSchema = z.object({
+  kind: z.literal('online'),
+  name: z.string().min(1),
+  countryCode: z.never().optional(),
+  latitude: z.never().optional(),
+  longitude: z.never().optional(),
+})
+
+const locationSchema = z.discriminatedUnion('kind', [geographicLocationSchema, onlineLocationSchema])
 
 const relationSchema = z.object({
   id: z.string().min(1),
@@ -79,7 +92,14 @@ const partyItemSchema = baseSchema.extend({
   partyKind: z.enum(PartyKind),
 })
 
-export const discoveryItemSchema = z.discriminatedUnion('type', [standardItemSchema, partyItemSchema])
+export const discoveryItemSchema = z.discriminatedUnion('type', [standardItemSchema, partyItemSchema]).superRefine((item, context) => {
+  if (item.primaryLocation.kind === 'online' && item.mapEligible) {
+    context.addIssue({ code: 'custom', path: ['mapEligible'], message: 'Online items cannot be map eligible' })
+  }
+  if (item.mapEligible && item.primaryLocation.kind === 'geographic' && (item.primaryLocation.latitude === undefined || item.primaryLocation.longitude === undefined)) {
+    context.addIssue({ code: 'custom', path: ['primaryLocation'], message: 'Map eligible geographic items require coordinates' })
+  }
+})
 export const discoveryDatasetSchema = z.array(discoveryItemSchema)
 export type DiscoveryItem = z.infer<typeof discoveryItemSchema>
 

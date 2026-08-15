@@ -5,7 +5,7 @@ const discoveryActive = pathname === '/'
 ---
 
 <header class="public-header">
-  <nav aria-label="Navigazione principale">
+  <nav class="desktop-nav" aria-label="Navigazione principale">
     <div class="nav-side nav-left">
       <a class:list={{ active: discoveryActive }} href={publicNavigation.discovery}>Discovery</a>
       <a class:list={{ active: pathname === '/suggests' }} href={publicNavigation.suggests}>Suggests</a>
@@ -16,4 +16,39 @@ const discoveryActive = pathname === '/'
       <a href={publicNavigation.download}>Download</a>
     </div>
   </nav>
+  <nav class="mobile-nav" aria-label="Navigazione mobile">
+    <button class="mobile-menu-button" type="button" aria-expanded="false" aria-controls="mobile-menu">Menu</button>
+    <a class="public-logo" href="/" aria-label="Drops home">Drops<span>.</span></a>
+    <a href={publicNavigation.login}>Login</a>
+    <div class="mobile-menu" id="mobile-menu" hidden>
+      <a href={publicNavigation.discovery}>Discovery</a>
+      <a href={publicNavigation.suggests}>Suggests</a>
+      <a href={publicNavigation.download}>Download</a>
+    </div>
+  </nav>
 </header>
+
+<script>
+  const menuButton = document.querySelector<HTMLButtonElement>('.mobile-menu-button')
+  const mobileMenu = document.querySelector<HTMLElement>('#mobile-menu')
+
+  function closeMenu({ restoreFocus = false } = {}) {
+    if (!menuButton || !mobileMenu) return
+    menuButton.setAttribute('aria-expanded', 'false')
+    mobileMenu.hidden = true
+    if (restoreFocus) menuButton.focus()
+  }
+
+  menuButton?.addEventListener('click', () => {
+    if (!mobileMenu) return
+    const opening = menuButton.getAttribute('aria-expanded') !== 'true'
+    menuButton.setAttribute('aria-expanded', String(opening))
+    mobileMenu.hidden = !opening
+    if (opening) mobileMenu.querySelector<HTMLAnchorElement>('a')?.focus()
+  })
+
+  mobileMenu?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => closeMenu()))
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && menuButton?.getAttribute('aria-expanded') === 'true') closeMenu({ restoreFocus: true })
+  })
+</script>
