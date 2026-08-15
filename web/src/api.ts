@@ -24,7 +24,7 @@ export class ApiError extends Error {
   }
 }
 
-const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+const API_URL = (import.meta.env.PUBLIC_API_URL ?? '').replace(/\/$/, '')
 
 const errorMessage = (status: number, payload: unknown) => {
   if (status === 401) return 'Sessione scaduta. Accedi di nuovo.'
