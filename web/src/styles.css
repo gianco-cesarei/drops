@@ -79,6 +79,7 @@ footer { padding: 20px 0; color: var(--color-text-muted); font-size: 11px; text-
 .mobile-nav { display: none; }
 .nav-side { display: flex; align-items: center; gap: 22px; font-size: 14px; }
 .nav-right { justify-content: flex-end; }
+.public-auth-link { display: inline-block; min-width: 78px; }
 .nav-side a, .public-logo { text-decoration: none; }
 .nav-side a.active { color: var(--color-accent-strong); }
 .public-logo { font-size: 25px; font-weight: 900; letter-spacing: -1px; }

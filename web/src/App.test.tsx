@@ -92,15 +92,31 @@ describe('autenticazione App', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('logout invalida stato locale e torna al login anche se chiamata termina', async () => {
+  it('logout invalida subito stato locale e torna a Discovery', async () => {
     const navigate = vi.fn()
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ user: { username: 'dj' } })).mockResolvedValueOnce(new Response(null, { status: 204 }))
     vi.stubGlobal('fetch', fetchMock)
     render(<App section="content" navigate={navigate} />)
     await userEvent.click(await screen.findByRole('button', { name: 'Esci' }))
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/login'))
-    expect(await screen.findByLabelText('Username')).toBeInTheDocument()
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/'))
+    expect(screen.queryByLabelText('Username')).not.toBeInTheDocument()
     expect(fetchMock).toHaveBeenLastCalledWith(expect.stringContaining('/api/v1/auth/logout'), expect.objectContaining({ method: 'POST', credentials: 'include' }))
+  })
+
+  it('dopo logout header pubblico torna a Login', async () => {
+    const navigate = vi.fn()
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ user: { username: 'dj' } }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(jsonResponse({}, 401))
+    vi.stubGlobal('fetch', fetchMock)
+    const privateView = render(<App section="content" navigate={navigate} />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Esci' }))
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/'))
+    privateView.unmount()
+    const { default: PublicHeader } = await import('./components/PublicHeader')
+    render(<PublicHeader />)
+    expect(await screen.findAllByRole('link', { name: 'Login' })).toHaveLength(2)
   })
 
   it('non mostra errori durante controllo iniziale silenzioso', async () => {
