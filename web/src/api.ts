@@ -29,13 +29,12 @@ const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 const errorMessage = (status: number, payload: unknown) => {
   if (status === 401) return 'Sessione scaduta. Accedi di nuovo.'
   if (status === 403) return 'Non hai i permessi per questa operazione.'
-  if (status === 429) return 'Troppe richieste. Attendi e riprova.'
-  if (payload && typeof payload === 'object') {
-    const data = payload as Record<string, unknown>
-    const detail = data.detail ?? data.message ?? data.error
-    if (typeof detail === 'string') return detail
-  }
-  return `Richiesta non riuscita (${status}).`
+  if (status === 429) return 'Troppe richieste. Attendi qualche minuto e riprova.'
+  if (status === 400 || status === 422) return 'Controlla i dati inseriti e riprova.'
+  if (status === 404) return 'Contenuto non trovato.'
+  if (status >= 500) return 'Servizio temporaneamente non disponibile. Riprova più tardi.'
+  void payload
+  return 'Operazione non riuscita. Riprova.'
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -70,10 +69,10 @@ export const normalizeJob = (payload: unknown): Job => {
 }
 
 export const api = {
-  login: (email: string, password: string) =>
+  login: (username: string, password: string) =>
     request<User | { user: User }>('/api/v1/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     }).then(unwrapUser),
   me: () => request<User | { user: User }>('/api/v1/auth/me').then(unwrapUser),
   logout: () => request<void>('/api/v1/auth/logout', { method: 'POST' }),

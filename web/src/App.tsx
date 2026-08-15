@@ -16,10 +16,8 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    api.me().then(setUser).catch((cause) => {
-      if (!(cause instanceof ApiError && cause.status === 401)) handleError(cause)
-    }).finally(() => setChecking(false))
-  }, [handleError])
+    api.me().then(setUser).catch(() => setUser(null)).finally(() => setChecking(false))
+  }, [])
 
   if (checking) return <Loading />
   if (!user) return <Login onLogin={setUser} error={error} setError={setError} />
@@ -27,7 +25,7 @@ export default function App() {
 }
 
 function Brand() {
-  return <div><div className="logo">Drops<span>.</span></div><p className="tagline">Il tuo downloader, ora sul web.</p></div>
+  return <div className="brand"><div className="logo">Drops<span>.</span></div><p className="tagline">Musica e contenuti, nel tuo spazio.</p></div>
 }
 
 function Loading() {
@@ -35,14 +33,14 @@ function Loading() {
 }
 
 function Login({ onLogin, error, setError }: { onLogin: (user: User) => void; error: string; setError: (value: string) => void }) {
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     setBusy(true); setError('')
-    try { onLogin(await api.login(email, password)) }
+    try { onLogin(await api.login(username, password)) }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Accesso non riuscito.') }
     finally { setBusy(false) }
   }
@@ -50,9 +48,9 @@ function Login({ onLogin, error, setError }: { onLogin: (user: User) => void; er
   return <main className="center">
     <section className="login-card">
       <Brand />
-      <div><h1>Accedi</h1><p className="muted">Continua nella tua area download.</p></div>
+      <div className="login-heading"><h1>Accedi</h1><p className="muted">Entra nel tuo spazio Drops.</p></div>
       <form onSubmit={submit} className="form-stack">
-        <label>Email<input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></label>
+        <label>Username<input type="text" autoComplete="username" required value={username} onChange={(e) => setUsername(e.target.value)} /></label>
         <label>Password<input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} /></label>
         {error && <div className="alert" role="alert">{error}</div>}
         <button className="primary" disabled={busy}>{busy ? 'Accesso…' : 'Accedi'}</button>
