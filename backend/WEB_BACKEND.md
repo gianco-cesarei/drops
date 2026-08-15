@@ -45,3 +45,6 @@ Avvio dalla root repository:
 ```bash
 python3.12 backend/run_web.py
 ```
+
+`PORT` configura porta HTTP (default `8000`). Profilo produzione container,
+storage persistente, CORS e smoke test: `docs/WEB_DEPLOY.md`.
