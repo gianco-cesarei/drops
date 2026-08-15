@@ -1,5 +1,5 @@
 ---
-import DiscoveryExplorer from '../components/DiscoveryExplorer'
+import { DiscoveryEnvironment } from '../components/DiscoveryExplorer'
 import { developmentDiscoveryItems } from '../data/discovery.fixture'
 import PublicLayout from '../layouts/PublicLayout.astro'
 ---
@@ -11,6 +11,6 @@ import PublicLayout from '../layouts/PublicLayout.astro'
       <h1>Discovery</h1>
       <p>Un catalogo editoriale per esplorare musica, scene e relazioni.</p>
     </section>
-    <DiscoveryExplorer items={developmentDiscoveryItems} client:load />
+    <DiscoveryEnvironment items={developmentDiscoveryItems} client:load />
   </main>
 </PublicLayout>

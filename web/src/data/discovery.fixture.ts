@@ -30,4 +30,16 @@ export const developmentDiscoveryItems = discoveryDatasetSchema.parse([
     primaryLocation: { kind: 'online', name: 'Online' }, mapEligible: false,
     tags: ['release'], sources: [{ url: 'https://example.com/development/release', label: 'Release page', kind: 'original' }], relations: [],
   },
+  {
+    id: 'dev-label-paris', slug: 'development-paris-label', type: DiscoveryType.Label,
+    title: '[Development] Paris label archive', summary: 'Fixture storica per densità Timeline e selezione geografica.',
+    publishedAt: '2025-03-10T12:00:00.000Z', primaryLocation: { kind: 'geographic', name: 'Paris', countryCode: 'FR', latitude: 48.8566, longitude: 2.3522 }, mapEligible: true,
+    tags: ['label', 'archive'], sources: [{ url: 'https://example.com/development/label', label: 'Development label source', kind: 'official' }], relations: [],
+  },
+  {
+    id: 'dev-playlist-amsterdam', slug: 'development-amsterdam-playlist', type: DiscoveryType.Playlist,
+    title: '[Development] Amsterdam playlist', summary: 'Fixture pluriennale per verificare condensazione temporale.',
+    publishedAt: '2024-06-01T12:00:00.000Z', primaryLocation: { kind: 'geographic', name: 'Amsterdam', countryCode: 'NL', latitude: 52.3676, longitude: 4.9041 }, mapEligible: true,
+    tags: ['playlist', 'archive'], sources: [{ url: 'https://example.com/development/playlist', label: 'Development playlist source', kind: 'listen' }], relations: [],
+  },
 ])

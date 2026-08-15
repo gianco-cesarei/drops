@@ -34,12 +34,10 @@ export default function PublicHeader({ pathname = '/' }: { pathname?: string }) 
 
   return <header className="public-header">
     <nav className="desktop-nav" aria-label="Navigazione principale">
-      <div className="nav-side nav-left">
-        <a className={pathname === '/' ? 'active' : undefined} href={publicNavigation.discovery}>Discovery</a>
-        <a className={pathname === '/suggests' ? 'active' : undefined} href={publicNavigation.suggests}>Suggests</a>
-      </div>
+      <div className="nav-side nav-left"><a href={publicNavigation.suggests}>Suggests</a></div>
       <a className="public-logo" href="/" aria-label="Drops home">Drops<span>.</span></a>
       <div className="nav-side nav-right">{accountLink}<a href={publicNavigation.download}>Download</a></div>
+      <div className="environment-nav" role="navigation" aria-label="Ambienti di esplorazione"><a className={pathname === '/' ? 'active' : undefined} href="/">Discovery</a><a className={pathname === '/timeline' ? 'active' : undefined} href="/timeline">Timeline</a><a className={pathname === '/map' ? 'active' : undefined} href="/map">Map</a></div>
     </nav>
     <nav className="mobile-nav" aria-label="Navigazione mobile">
       <button className="mobile-menu-button" type="button" aria-expanded={menuOpen} aria-controls="mobile-menu" onClick={() => setMenuOpen((open) => !open)}>Menu</button>
@@ -47,6 +45,8 @@ export default function PublicHeader({ pathname = '/' }: { pathname?: string }) 
       {accountLink}
       <div className="mobile-menu" id="mobile-menu" hidden={!menuOpen}>
         <a href={publicNavigation.discovery} onClick={() => setMenuOpen(false)}>Discovery</a>
+        <a href={publicNavigation.timeline} onClick={() => setMenuOpen(false)}>Timeline</a>
+        <a href={publicNavigation.map} onClick={() => setMenuOpen(false)}>Map</a>
         <a href={publicNavigation.suggests} onClick={() => setMenuOpen(false)}>Suggests</a>
         <a href={publicNavigation.download} onClick={() => setMenuOpen(false)}>Download</a>
       </div>

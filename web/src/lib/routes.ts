@@ -1,5 +1,7 @@
 export const publicNavigation = {
   discovery: '/',
+  timeline: '/timeline',
+  map: '/map',
   suggests: '/suggests',
   login: '/app/login',
   download: '/app/download',

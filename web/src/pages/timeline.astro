@@ -1,0 +1,6 @@
+---
+import { TimelineEnvironment } from '../components/DiscoveryExplorer'
+import { developmentDiscoveryItems } from '../data/discovery.fixture'
+import PublicLayout from '../layouts/PublicLayout.astro'
+---
+<PublicLayout title="Timeline — Drops"><main class="public-main"><section class="catalog-intro"><span class="development-badge">Development fixture</span><h1>Timeline</h1><p>Archivio cronologico continuo con scala temporale regolabile.</p></section><TimelineEnvironment items={developmentDiscoveryItems} client:load /></main></PublicLayout>

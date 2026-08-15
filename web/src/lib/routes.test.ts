@@ -3,7 +3,7 @@ import { downloadRoute, legacyPrivateRedirect, loginRoute, postLoginRoute, priva
 
 describe('routing', () => {
   it('mantiene route pubbliche approvate', () => {
-    expect(publicNavigation).toEqual({ discovery: '/', suggests: '/suggests', login: '/app/login', download: '/app/download' })
+    expect(publicNavigation).toEqual({ discovery: '/', timeline: '/timeline', map: '/map', suggests: '/suggests', login: '/app/login', download: '/app/download' })
   })
 
   it('porta Download al login con next quando sessione assente', () => {
