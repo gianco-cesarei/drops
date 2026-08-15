@@ -23,6 +23,7 @@ from pydantic import BaseModel
 import yt_dlp
 from bpm_analyzer import BpmAnalysisError, analyze_bpm
 from history_store import DownloadHistory
+from media_core import is_supported_url, safe_filename
 from spotify_agent import (
     SpotifyAgentError,
     approved_download_context,
@@ -326,23 +327,6 @@ def reveal_local_file(path: Path) -> None:
         )
     else:
         subprocess.Popen(["xdg-open", str(path.parent)])
-
-
-def safe_filename(name: str, ext: str) -> str:
-    clean = "".join(c for c in name if c.isalnum() or c in " .-_()[]").strip()
-    clean = clean[:80]
-    return f"{clean}.{ext}" if clean else f"audio.{ext}"
-
-
-def is_supported_url(value: str) -> bool:
-    try:
-        parsed = urllib.parse.urlsplit(value.strip())
-    except ValueError:
-        return False
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        return False
-    host = parsed.hostname.lower().rstrip(".")
-    return any(host == domain or host.endswith(f".{domain}") for domain in ALLOWED_DOMAINS)
 
 
 def playlist_entry_url(entry: dict, original_url: str) -> str | None:
