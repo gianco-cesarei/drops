@@ -43,7 +43,7 @@ describe('PublicHeader', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({}, 401)))
     render(<PublicHeader pathname="/timeline" />)
     const environments = screen.getByRole('navigation', { name: 'Ambienti di esplorazione' })
-    expect(environments).toHaveTextContent('DiscoveryTimelineMap')
+    expect(environments).toHaveTextContent('GridTimelineMap')
     expect(screen.getByRole('link', { name: 'Timeline' })).toHaveClass('active')
   })
 })

@@ -10,7 +10,7 @@ const base = {
 
 describe('DiscoveryItem schema', () => {
   it('valida dataset fixture development', () => {
-    expect(developmentDiscoveryItems).toHaveLength(6)
+    expect(developmentDiscoveryItems).toHaveLength(10)
   })
 
   it('richiede almeno una fonte', () => {

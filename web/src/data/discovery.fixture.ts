@@ -42,4 +42,28 @@ export const developmentDiscoveryItems = discoveryDatasetSchema.parse([
     publishedAt: '2024-06-01T12:00:00.000Z', primaryLocation: { kind: 'geographic', name: 'Amsterdam', countryCode: 'NL', latitude: 52.3676, longitude: 4.9041 }, mapEligible: true,
     tags: ['playlist', 'archive'], sources: [{ url: 'https://example.com/development/playlist', label: 'Development playlist source', kind: 'listen' }], relations: [],
   },
+  {
+    id: 'dev-artist-london', slug: 'development-london-artist', type: DiscoveryType.Artist,
+    title: '[Development] London artist profile', summary: 'Fixture per riempire la griglia e mostrare badge categoria.',
+    publishedAt: '2024-02-12T12:00:00.000Z', primaryLocation: { kind: 'geographic', name: 'London', countryCode: 'GB', latitude: 51.5072, longitude: -0.1276 }, mapEligible: true,
+    tags: ['artist', 'bass'], sources: [{ url: 'https://example.com/development/artist', label: 'Development artist source', kind: 'reference' }], relations: [],
+  },
+  {
+    id: 'dev-set-milan', slug: 'development-milan-set', type: DiscoveryType.Set,
+    title: '[Development] Milan late set', summary: 'Fixture set geografico per la griglia europea.',
+    publishedAt: '2023-11-05T12:00:00.000Z', primaryLocation: { kind: 'geographic', name: 'Milan', countryCode: 'IT', latitude: 45.4642, longitude: 9.19 }, mapEligible: true,
+    tags: ['set', 'club'], sources: [{ url: 'https://example.com/development/milan', label: 'Development set source', kind: 'original' }], relations: [],
+  },
+  {
+    id: 'dev-story-prague', slug: 'development-prague-story', type: DiscoveryType.Story,
+    title: '[Development] Prague scene story', summary: 'Fixture editoriale storica per lo scorrimento Timeline.',
+    publishedAt: '2022-08-20T12:00:00.000Z', primaryLocation: { kind: 'geographic', name: 'Prague', countryCode: 'CZ', latitude: 50.0755, longitude: 14.4378 }, mapEligible: true,
+    tags: ['story', 'scene'], sources: [{ url: 'https://example.com/development/prague', label: 'Development story source', kind: 'official' }], relations: [],
+  },
+  {
+    id: 'dev-party-madrid', slug: 'development-madrid-party', type: DiscoveryType.Party, partyKind: PartyKind.Festival,
+    title: '[Development] Madrid festival notes', summary: 'Fixture party per testare selezione luogo e categoria.',
+    publishedAt: '2021-07-14T12:00:00.000Z', primaryLocation: { kind: 'geographic', name: 'Madrid', countryCode: 'ES', latitude: 40.4168, longitude: -3.7038 }, mapEligible: true,
+    tags: ['party', 'festival'], sources: [{ url: 'https://example.com/development/madrid', label: 'Development party source', kind: 'original' }], relations: [],
+  },
 ])

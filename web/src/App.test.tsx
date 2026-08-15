@@ -169,12 +169,24 @@ describe('autenticazione App', () => {
     for (const action of ['Salva', 'Scarta', 'Collega al Brain', 'Trasforma in contenuto']) expect(screen.getAllByRole('button', { name: action })[0]).toBeDisabled()
   })
 
-  it('mostra shell Brain con tipi e CTA previste', async () => {
+  it('mostra grafo Brain esistente con tipi, cluster e interazioni', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ username: 'dj' })))
     render(<App section="brain" navigate={vi.fn()} />)
     expect(await screen.findByRole('heading', { name: 'Brain', level: 1 })).toBeInTheDocument()
-    for (const type of ['Artist', 'Label', 'Place', 'Release', 'Set', 'Playlist', 'Party', 'Story']) expect(screen.getByText(type)).toBeInTheDocument()
-    for (const action of ['Aggiungi nodo', 'Aggiungi relazione', 'Importa da Radar']) expect(screen.getByRole('button', { name: action })).toBeDisabled()
+    expect(screen.getByRole('img', { name: /Grafo Brain con 49 nodi e 95 relazioni/ })).toBeInTheDocument()
+    for (const type of ['Artist', 'Label', 'City', 'Release', 'Set', 'Playlist', 'Party', 'Story']) expect(screen.getByText(type)).toBeInTheDocument()
+    for (const cluster of ['Rominimal / hypnotic', 'House / tech', 'Soulful / deep', 'Mania / WOS']) expect(screen.getByText(cluster)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Aggiungi nodo' })).not.toBeInTheDocument()
+
+    const jane = screen.getByRole('button', { name: 'Jane Fitz, Artist' })
+    fireEvent.pointerEnter(jane, { clientX: 100, clientY: 100 })
+    expect(screen.getByRole('tooltip')).toHaveTextContent('co-fondatrice Night Moves')
+    fireEvent.click(jane)
+    expect(jane).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Andrea Saba, Artist' })).toHaveClass('dim')
+    expect(screen.getByRole('button', { name: 'GNMR, Artist' })).not.toHaveClass('dim')
+    fireEvent.click(screen.getByRole('button', { name: 'Mostra tutto' }))
+    expect(screen.getByRole('button', { name: 'Andrea Saba, Artist' })).not.toHaveClass('dim')
   })
 
   it('mostra pipeline e campi Content senza CMS', async () => {
