@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode, SyntheticEvent } from 'react'
 import { api, ApiError } from './api'
 import type { Job, User } from './api'
@@ -9,11 +9,13 @@ export type PrivateSection = 'home' | 'login' | 'download' | 'graph' | 'content'
 const terminalStatuses = new Set(['completed', 'complete', 'ready', 'failed', 'error', 'cancelled'])
 const readyStatuses = new Set(['completed', 'complete', 'ready'])
 const failedStatuses = new Set(['failed', 'error', 'cancelled'])
+const browserNavigate = (to: string) => window.location.assign(to)
 
-export default function App({ section = 'login', navigate = (to) => window.location.assign(to) }: { section?: PrivateSection; navigate?: (to: string) => void }) {
+export default function App({ section = 'login', navigate = browserNavigate }: { section?: PrivateSection; navigate?: (to: string) => void }) {
   const [user, setUser] = useState<User | null>(null)
   const [checking, setChecking] = useState(true)
   const [error, setError] = useState('')
+  const [logoutRedirecting, setLogoutRedirecting] = useState(false)
 
   const handleError = useCallback((cause: unknown) => {
     if (cause instanceof ApiError && cause.status === 401) setUser(null)
@@ -25,21 +27,30 @@ export default function App({ section = 'login', navigate = (to) => window.locat
   }, [])
 
   useEffect(() => {
-    if (!checking && !user && section !== 'login') {
+    if (!checking && !user && section !== 'login' && !logoutRedirecting) {
       const next = encodeURIComponent(`/app${section === 'home' ? '' : `/${section}`}`)
       navigate(`/app/login?next=${next}`)
     }
+  }, [checking, logoutRedirecting, navigate, section, user])
+
+  useEffect(() => {
+    if (!checking && user && section === 'login') navigate(postLoginRoute(window.location.search))
   }, [checking, navigate, section, user])
 
   function completeLogin(loggedUser: User) {
     setUser(loggedUser)
-    if (section === 'login') navigate(postLoginRoute(window.location.search))
+  }
+
+  function completeLogout() {
+    setLogoutRedirecting(true)
+    setUser(null)
+    navigate('/app/login')
   }
 
   if (checking) return <Loading />
   if (!user) return <Login onLogin={completeLogin} error={error} setError={setError} />
-  if (section === 'download') return <PrivateFrame user={user} onLogout={() => setUser(null)}><Download user={user} onError={handleError} error={error} setError={setError} /></PrivateFrame>
-  return <PrivateFrame user={user} onLogout={() => setUser(null)}><PrivatePlaceholder section={section} /></PrivateFrame>
+  if (section === 'download') return <PrivateFrame user={user} onLogout={completeLogout}><Download user={user} onError={handleError} error={error} setError={setError} /></PrivateFrame>
+  return <PrivateFrame user={user} onLogout={completeLogout}><PrivatePlaceholder section={section} /></PrivateFrame>
 }
 
 function Brand() {
@@ -54,12 +65,16 @@ function Login({ onLogin, error, setError }: { onLogin: (user: User) => void; er
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
+  const submitting = useRef(false)
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError('')
+    event.preventDefault()
+    if (submitting.current) return
+    submitting.current = true
+    setBusy(true); setError('')
     try { onLogin(await api.login(username, password)) }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Accesso non riuscito.') }
-    finally { setBusy(false) }
+    finally { submitting.current = false; setBusy(false) }
   }
 
   return <main className="center"><section className="login-card">
@@ -76,7 +91,7 @@ function Login({ onLogin, error, setError }: { onLogin: (user: User) => void; er
 
 function PrivateFrame({ user, onLogout, children }: { user: User; onLogout: () => void; children: ReactNode }) {
   async function logout() {
-    try { await api.logout() } finally { onLogout(); window.location.assign('/app/login') }
+    try { await api.logout() } catch { /* Local session must still be invalidated. */ } finally { onLogout() }
   }
   return <div className="private-layout">
     <header className="private-header"><a href="/app" className="logo">Drops<span>.</span></a><nav><a href="/app/download">Download</a><a href="/app/content">Content</a><a href="/app/graph">Graph</a><a href="/app/history">History</a></nav><div className="account"><span>{user.name ?? user.username ?? user.email ?? 'Account'}</span><button className="secondary" onClick={logout}>Esci</button></div></header>
