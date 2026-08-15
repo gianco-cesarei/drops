@@ -112,20 +112,20 @@ function PrivatePlaceholder({ section }: { section: PrivateSection }) {
     login: 'Login', download: 'Download', radar: 'Radar', brain: 'Brain', content: 'Content',
     'editorial-suggestions': 'Editorial suggestions', settings: 'Settings',
   }
-  return <main className="private-placeholder"><span className="development-badge">Private development shell</span><h1>{labels[section]}</h1><p>Strumento non implementato in questa milestone.</p></main>
+  return <main className="private-placeholder"><span className="development-badge">Private development shell</span><h1 className="sr-only">{labels[section]}</h1><p>Strumento non implementato in questa milestone.</p></main>
 }
 
 function Radar() {
   const actions = ['Salva', 'Scarta', 'Collega al Brain', 'Trasforma in contenuto']
-  return <main className="private-workspace"><header className="workspace-heading"><span className="development-badge">Radar · development shell</span><h1>Radar</h1><p>Segnali guidati dal Brain, con fonti che possono emergere anche fuori dalle relazioni già presenti.</p></header><div className="radar-grid">{radarDevelopmentFixtures.map((item) => <article className="radar-card" key={item.id}><span className="fixture-label">Development fixture</span><h2>{item.title}</h2><dl><div><dt>Fonte</dt><dd>{item.source}</dd></div><div><dt>Data</dt><dd>{item.date}</dd></div><div><dt>Luogo</dt><dd>{item.location}</dd></div><div><dt>Categoria</dt><dd>{item.category}</dd></div></dl><section><h3>Perché è rilevante</h3><p>{item.relevance}</p></section><div className="planned-actions" aria-label="Azioni previste">{actions.map((action) => <button type="button" disabled key={action}>{action}</button>)}</div></article>)}</div></main>
+  return <main className="private-workspace"><header className="workspace-heading"><span className="development-badge">Radar · development shell</span><h1 className="sr-only">Radar</h1><p>Segnali guidati dal Brain, con fonti che possono emergere anche fuori dalle relazioni già presenti.</p></header><div className="radar-grid">{radarDevelopmentFixtures.map((item) => <article className="radar-card" key={item.id}><span className="fixture-label">Development fixture</span><h2>{item.title}</h2><dl><div><dt>Fonte</dt><dd>{item.source}</dd></div><div><dt>Data</dt><dd>{item.date}</dd></div><div><dt>Luogo</dt><dd>{item.location}</dd></div><div><dt>Categoria</dt><dd>{item.category}</dd></div></dl><section><h3>Perché è rilevante</h3><p>{item.relevance}</p></section><div className="planned-actions" aria-label="Azioni previste">{actions.map((action) => <button type="button" disabled key={action}>{action}</button>)}</div></article>)}</div></main>
 }
 
 function Brain() {
-  return <main className="private-workspace brain-workspace"><header className="workspace-heading"><span className="development-badge">Brain · fixture locale</span><h1>Brain</h1><p>Mappa relazionale privata di scene, persone, luoghi e segnali editoriali.</p></header><BrainGraph /></main>
+  return <main className="private-workspace brain-workspace"><header className="workspace-heading"><span className="development-badge">Brain · fixture locale</span><h1 className="sr-only">Brain</h1><p>Mappa relazionale privata di scene, persone, luoghi e segnali editoriali.</p></header><BrainGraph /></main>
 }
 
 function Content() {
-  return <main className="private-workspace"><header className="workspace-heading"><span className="development-badge">Content · development shell</span><h1>Content</h1><p>Pipeline editoriale strutturale. Nessun CMS implementato.</p></header><section className="content-pipeline" aria-label="Pipeline contenuti">{contentStages.map((stage) => <article key={stage}><h2>{stage}</h2><p>0 development items</p></article>)}</section><section className="tool-shell"><h2>Campi previsti</h2><div className="type-list">{contentFields.map((field) => <span key={field}>{field}</span>)}</div></section></main>
+  return <main className="private-workspace"><header className="workspace-heading"><span className="development-badge">Content · development shell</span><h1 className="sr-only">Content</h1><p>Pipeline editoriale strutturale. Nessun CMS implementato.</p></header><section className="content-pipeline" aria-label="Pipeline contenuti">{contentStages.map((stage) => <article key={stage}><h2>{stage}</h2><p>0 development items</p></article>)}</section><section className="tool-shell"><h2>Campi previsti</h2><div className="type-list">{contentFields.map((field) => <span key={field}>{field}</span>)}</div></section></main>
 }
 
 function Download({ user, onError, error, setError }: { user: User; onError: (error: unknown) => void; error: string; setError: (value: string) => void }) {
@@ -150,7 +150,7 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
   }
 
   return <main className="shell"><div className="workspace">
-    <section className="card hero-card"><div><span className="eyebrow">DOWNLOAD PRIVATO</span><h1>Nuovo download</h1><p className="lead">Area personale di {user.name ?? user.username ?? 'utente'}.</p></div>
+    <section className="card hero-card"><div><span className="eyebrow">DOWNLOAD PRIVATO</span><h1 className="sr-only">Nuovo download</h1><p className="lead">Area personale di {user.name ?? user.username ?? 'utente'}.</p></div>
       <form onSubmit={submit} className="download-form"><label htmlFor="download-url">URL contenuto</label><div className="url-row"><input id="download-url" type="url" required placeholder="https://…" value={url} onChange={(event) => setUrl(event.target.value)} /><button className="primary" disabled={busy}>{busy ? 'Avvio…' : 'Scarica'}</button></div></form>{error && <div className="alert" role="alert">{error}</div>}
     </section>
     <aside className="card status-card"><span className="eyebrow">STATO JOB</span>{!job ? <div className="empty"><p>Nessun download attivo</p></div> : <JobStatus job={job} />}</aside>
