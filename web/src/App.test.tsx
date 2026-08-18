@@ -247,3 +247,45 @@ describe('autenticazione App', () => {
     expect(screen.getByText(/Nessun CMS implementato\./)).toBeInTheDocument()
   })
 })
+
+describe('libreria Spotify', () => {
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/app/spotify')
+    vi.stubEnv('PUBLIC_API_URL', 'https://api.drops.test')
+    window.localStorage.clear()
+  })
+
+  it('pagina automaticamente i Preferiti oltre le prime 100 tracce, senza fermarsi a 200', async () => {
+    const total = 130
+    const makeTrack = (i: number) => ({
+      id: `t${i}`, title: `Track ${i}`, artists: [`Artist ${i}`], album: 'Album', label: 'Known Label',
+      cover_url: null, isrc: null, added_at: '2026-08-01T00:00:00Z', duration_ms: 1000, bpm: null, in_catalog: false,
+    })
+    const likedCalls: string[] = []
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('/api/v1/auth/me')) return jsonResponse({ username: 'dj' })
+      if (url.includes('/api/v1/spotify/status')) return jsonResponse({ connected: true, display_name: 'DJ' })
+      if (url.includes('/api/v1/spotify/liked')) {
+        likedCalls.push(url)
+        const parsed = new URL(url)
+        const limit = Number(parsed.searchParams.get('limit'))
+        const offset = Number(parsed.searchParams.get('offset'))
+        const count = Math.max(0, Math.min(limit, total - offset))
+        const tracks = Array.from({ length: count }, (_, i) => makeTrack(offset + i))
+        return jsonResponse({ total, limit, offset, tracks })
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App section="spotify" navigate={vi.fn()} />)
+
+    await screen.findByText('Track 0')
+    await waitFor(() => expect(screen.getByText('Track 129')).toBeInTheDocument())
+    expect(screen.queryByText(/Caricamento preferiti/)).not.toBeInTheDocument()
+    expect(likedCalls).toEqual([
+      'https://api.drops.test/api/v1/spotify/liked?limit=100&offset=0',
+      'https://api.drops.test/api/v1/spotify/liked?limit=100&offset=100',
+    ])
+  })
+})

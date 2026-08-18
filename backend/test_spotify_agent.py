@@ -130,6 +130,24 @@ class SpotifyAgentTest(unittest.TestCase):
             self.assertEqual(result[0]["label"], "Discogs Label")
             self.assertEqual(result[0]["discogs_url"], "https://discogs.test/release/1")
 
+    def test_liked_surfaces_previously_discovered_discogs_label_from_cache(self):
+        # Regression: liked()/playlist_tracks() call enrich_best_effort, which
+        # hardcodes include_discogs=False, so a track's label must come back
+        # from the on-disk cache a prior /discogs/enrich call populated -
+        # not require a live Discogs call on every page load.
+        import discogs_agent
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            discogs = discogs_agent.DiscogsClient(root)
+            discogs._store_label("Artist", "Track", "ISRC-1", {"label": "Night Label", "year": 2024})
+            client = spotify_agent.WebSpotifyClient(root, root / "missing", discogs=discogs)
+            item = {"added_at": "2026-08-01T00:00:00Z", "track": {
+                "id": "track-1", "name": "Track", "artists": [{"name": "Artist"}],
+                "album": {"name": "Album", "images": []}, "external_ids": {"isrc": "ISRC-1"}, "duration_ms": 1000,
+            }}
+            result = client.enrich_best_effort([item])
+            self.assertEqual(result[0]["label"], "Night Label")
+
     def test_web_liked_cycles_spotify_pages_over_fifty(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             client = spotify_agent.WebSpotifyClient(Path(temp_dir), Path(temp_dir) / "missing")

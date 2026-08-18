@@ -254,8 +254,11 @@ class WebSpotifyClient:
                 except ValueError:
                     bpm = None
             discogs_result = None
-            if include_discogs and not labels.get(album.get("id")):
-                discogs_result = self.discogs.enrich(" ".join(artists), track.get("name") or "", isrc=isrc)
+            if not labels.get(album.get("id")):
+                if include_discogs:
+                    discogs_result = self.discogs.enrich(" ".join(artists), track.get("name") or "", isrc=isrc)
+                else:
+                    discogs_result = self.discogs.cached_label(" ".join(artists), track.get("name") or "", isrc)
             label = labels.get(album.get("id")) or (discogs_result or {}).get("label")
             enriched.append({
                 "id": track.get("id"), "title": track.get("name") or "", "artists": artists,

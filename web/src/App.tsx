@@ -140,6 +140,18 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
     api.spotifyLiked(100, 0).then((result) => { setTracks(result.tracks); setTotal(result.total) }).catch(onError).finally(() => setBusy(false))
   }, [mode, onError, status?.connected])
   useEffect(() => {
+    // Preferiti oltre i 100 iniziali: continua a paginare in automatico finché
+    // non sono caricate tutte le tracce, senza fermarsi a una singola pagina.
+    if (mode !== 'liked' || busy || tracks.length === 0 || tracks.length >= total) return
+    let cancelled = false
+    setBusy(true)
+    api.spotifyLiked(100, tracks.length)
+      .then((result) => { if (!cancelled) { setTracks((current) => [...current, ...result.tracks]); setTotal(result.total) } })
+      .catch((cause) => { if (!cancelled) onError(cause) })
+      .finally(() => { if (!cancelled) setBusy(false) })
+    return () => { cancelled = true }
+  }, [mode, tracks.length, total, busy, onError])
+  useEffect(() => {
     if (!status?.connected || mode !== 'playlists') return
     api.spotifyPlaylists().then((result) => { setPlaylists(result.playlists); setPlaylistId((current) => current || result.playlists[0]?.id || '') }).catch(onError)
   }, [mode, onError, status?.connected])
@@ -187,18 +199,10 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
     }))
   }
 
-  async function loadMore() {
-    setBusy(true)
-    try {
-      const result = await api.spotifyLiked(100, tracks.length)
-      setTracks((current) => [...current, ...result.tracks]); setTotal(result.total)
-    } catch (cause) { onError(cause) } finally { setBusy(false) }
-  }
-
   if (!status) return <main className="spotify-workspace">{error ? <div className="alert" role="alert">{error}</div> : <p className="spotify-state" role="status">Controllo Spotify…</p>}</main>
   if (!status.connected) return <main className="spotify-workspace spotify-connect"><p>Collega account Premium per leggere preferiti e playlist.</p><a className="primary spotify-connect-button" href={api.spotifyConnectUrl()}>Connetti Spotify</a></main>
   const visibleTracks = selectedLabel === null ? tracks : tracks.filter((track) => (track.label?.trim() || 'Senza label') === selectedLabel)
-  return <main className="spotify-workspace"><div className="spotify-toolbar"><div className="spotify-account"><span className="status-dot" /><span>Spotify collegato</span><strong>{status.display_name}</strong></div><div className="spotify-toggle" role="group" aria-label="Libreria Spotify"><button className={mode === 'liked' ? 'active' : ''} onClick={() => { setMode('liked'); setSelectedLabel(null) }}>Preferiti</button><button className={mode === 'playlists' ? 'active' : ''} onClick={() => { setMode('playlists'); setSelectedLabel(null) }}>Playlist</button></div><div className="spotify-sort" role="group" aria-label="Vista Spotify"><button className={modeView === 'recent' ? 'active' : ''} onClick={() => { setModeView('recent'); setSelectedLabel(null) }}>Recenti</button><button className={modeView === 'labels' ? 'active' : ''} onClick={() => { setModeView('labels'); setSelectedLabel(null) }}>Label</button><button className={modeView === 'bpm' ? 'active' : ''} onClick={() => { setModeView('bpm'); setSelectedLabel(null) }}>BPM</button></div>{mode === 'playlists' && <label className="playlist-picker">Playlist<select aria-label="Seleziona playlist" value={playlistId} onChange={(event) => setPlaylistId(event.target.value)}>{playlists.map((playlist) => <option key={playlist.id} value={playlist.id}>{playlist.name} ({playlist.tracks_total})</option>)}</select></label>}</div>{error && <div className="alert" role="alert">{error}</div>}{busy && tracks.length === 0 ? <p className="spotify-state" role="status">Caricamento tracce…</p> : modeView === 'labels' && selectedLabel === null ? <LabelBrowser tracks={tracks} onSelect={setSelectedLabel} /> : modeView === 'labels' ? <div><button className="spotify-back" onClick={() => setSelectedLabel(null)}>← Tutte le label</button><TrackGroups tracks={visibleTracks} mode="recent" /></div> : modeView === 'bpm' ? <div><div className="bpm-selection-bar"><span>Selezionate {selected.size}/3</span><button className="primary" disabled={!selected.size} onClick={calculateBpm}>Calcola BPM ({selected.size}/3)</button></div><TrackGroups tracks={tracks} mode="bpm-select" selected={selected} bpmState={bpmState} onToggle={toggleSelected} /></div> : <TrackGroups tracks={tracks} mode="recent" />}{mode === 'liked' && tracks.length < total && <button className="spotify-more" disabled={busy} onClick={loadMore}>{busy ? 'Caricamento…' : `Carica altri · ${tracks.length}/${total}`}</button>}</main>
+  return <main className="spotify-workspace"><div className="spotify-toolbar"><div className="spotify-account"><span className="status-dot" /><span>Spotify collegato</span><strong>{status.display_name}</strong></div><div className="spotify-toggle" role="group" aria-label="Libreria Spotify"><button className={mode === 'liked' ? 'active' : ''} onClick={() => { setMode('liked'); setSelectedLabel(null) }}>Preferiti</button><button className={mode === 'playlists' ? 'active' : ''} onClick={() => { setMode('playlists'); setSelectedLabel(null) }}>Playlist</button></div><div className="spotify-sort" role="group" aria-label="Vista Spotify"><button className={modeView === 'recent' ? 'active' : ''} onClick={() => { setModeView('recent'); setSelectedLabel(null) }}>Recenti</button><button className={modeView === 'labels' ? 'active' : ''} onClick={() => { setModeView('labels'); setSelectedLabel(null) }}>Label</button><button className={modeView === 'bpm' ? 'active' : ''} onClick={() => { setModeView('bpm'); setSelectedLabel(null) }}>BPM</button></div>{mode === 'playlists' && <label className="playlist-picker">Playlist<select aria-label="Seleziona playlist" value={playlistId} onChange={(event) => setPlaylistId(event.target.value)}>{playlists.map((playlist) => <option key={playlist.id} value={playlist.id}>{playlist.name} ({playlist.tracks_total})</option>)}</select></label>}</div>{error && <div className="alert" role="alert">{error}</div>}{busy && tracks.length === 0 ? <p className="spotify-state" role="status">Caricamento tracce…</p> : modeView === 'labels' && selectedLabel === null ? <LabelBrowser tracks={tracks} onSelect={setSelectedLabel} /> : modeView === 'labels' ? <div><button className="spotify-back" onClick={() => setSelectedLabel(null)}>← Tutte le label</button><TrackGroups tracks={visibleTracks} mode="recent" /></div> : modeView === 'bpm' ? <div><div className="bpm-selection-bar"><span>Selezionate {selected.size}/3</span><button className="primary" disabled={!selected.size} onClick={calculateBpm}>Calcola BPM ({selected.size}/3)</button></div><TrackGroups tracks={tracks} mode="bpm-select" selected={selected} bpmState={bpmState} onToggle={toggleSelected} /></div> : <TrackGroups tracks={tracks} mode="recent" />}{mode === 'liked' && tracks.length < total && <p className="spotify-more" role="status">{`Caricamento preferiti… ${tracks.length}/${total}`}</p>}</main>
 }
 
 function LabelBrowser({ tracks, onSelect }: { tracks: SpotifyTrack[]; onSelect: (label: string) => void }) {

@@ -75,6 +75,7 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
+        discogs.log_startup_status()
         store.interrupt_active_jobs(settings.artifact_ttl_seconds)
         cleanup()
         executor = ThreadPoolExecutor(max_workers=settings.max_concurrent, thread_name_prefix="drops-web")
@@ -108,14 +109,36 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
         if origin not in settings.allowed_origins:
             raise HTTPException(status_code=403, detail="Origin not allowed")
 
-    def current_owner(drops_session: str | None = Cookie(default=None, alias=COOKIE_NAME)) -> str:
-        cleanup()
+    def current_owner(
+        response: Response,
+        drops_session: str | None = Cookie(default=None, alias=COOKIE_NAME),
+    ) -> str:
+        # Look up the session BEFORE cleanup() purges expired rows, otherwise
+        # an expired session is indistinguishable from an unknown one by the
+        # time we get to log/raise - defeating the missing/invalid/expired
+        # diagnosis this depends on.
         if not drops_session:
+            cleanup()
+            logger.info("auth rejected reason=cookie_missing")
             raise HTTPException(status_code=401, detail="Authentication required")
-        owner = store.session_owner(drops_session)
-        if not owner:
+        session = store.session_lookup(drops_session)
+        if not session:
+            cleanup()
+            logger.info("auth rejected reason=cookie_invalid")
             raise HTTPException(status_code=401, detail="Invalid or expired session")
-        return owner
+        if session["expires_at"] <= time.time():
+            cleanup()
+            logger.info("auth rejected reason=cookie_expired owner=%s", session["owner"])
+            raise HTTPException(status_code=401, detail="Invalid or expired session")
+        # Sliding session: extend on every authenticated call so an active user
+        # never gets logged out mid-session, only after real inactivity.
+        store.touch_session(drops_session, settings.session_ttl_seconds)
+        response.set_cookie(
+            COOKIE_NAME, drops_session, max_age=settings.session_ttl_seconds,
+            httponly=True, secure=settings.cookie_secure, samesite="lax", path="/",
+        )
+        cleanup()
+        return session["owner"]
 
     def public_job(row) -> dict:
         result = {

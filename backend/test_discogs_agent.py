@@ -37,6 +37,29 @@ class DiscogsAgentTest(unittest.TestCase):
                     client._get("/database/search", {"artist": "A", "title": "B"})
             self.assertEqual(urlopen.call_count, 1)
 
+    def test_enrich_persists_label_for_disk_only_cached_lookup(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(os.environ, {"DISCOGS_TOKEN": "test-token"}):
+                client = DiscogsClient(Path(temp_dir))
+                with patch.object(client, "_get", side_effect=[
+                    {"results": [{"id": 42}]},
+                    {"id": 42, "labels": [{"name": "Night Label"}], "artists": []},
+                ]) as get:
+                    client.enrich("Artist", "Track", isrc="PT-ISRC")
+                # cached_label must not touch the network at all.
+                cached = client.cached_label("Artist", "Track", isrc="PT-ISRC")
+                self.assertEqual(cached["label"], "Night Label")
+                self.assertEqual(get.call_count, 2)
+                # a different artist/title but same isrc still resolves via the isrc key.
+                self.assertEqual(client.cached_label("Someone Else", "Other Title", isrc="pt-isrc")["label"], "Night Label")
+
+    def test_cached_label_is_none_and_makes_no_request_when_unknown(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            client = DiscogsClient(Path(temp_dir))
+            with patch("discogs_agent.urllib.request.urlopen") as urlopen:
+                self.assertIsNone(client.cached_label("Unknown Artist", "Unknown Track"))
+            urlopen.assert_not_called()
+
     def test_discogs_down_degrades_to_null(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             with patch.dict(os.environ, {"DISCOGS_TOKEN": "test-token"}):

@@ -60,6 +60,34 @@ class WebAppTest(unittest.TestCase):
         self.assertEqual(self.client.post("/api/v1/auth/logout").status_code, 204)
         self.assertEqual(self.client.get("/api/v1/auth/me").status_code, 401)
 
+    def test_auth_me_slides_session_expiry_and_refreshes_cookie(self):
+        self.login()
+        token = self.client.cookies.get(COOKIE_NAME)
+        store = self.app.state.store
+        store.touch_session(token, 5)  # simulate a session close to expiry
+        before = store.session_lookup(token)["expires_at"]
+        response = self.client.get("/api/v1/auth/me")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("set-cookie", response.headers)
+        after = store.session_lookup(token)["expires_at"]
+        self.assertGreater(after, before)
+
+    def test_auth_me_401_when_session_expired_logs_reason(self):
+        self.login()
+        token = self.client.cookies.get(COOKIE_NAME)
+        self.app.state.store.touch_session(token, -1)  # force expiry in the past
+        with self.assertLogs("drops.web", level="INFO") as captured:
+            response = self.client.get("/api/v1/auth/me")
+        self.assertEqual(response.status_code, 401)
+        self.assertTrue(any("cookie_expired" in message for message in captured.output))
+
+    def test_auth_me_401_with_bogus_cookie_logs_reason(self):
+        self.client.cookies.set(COOKIE_NAME, "not-a-real-token")
+        with self.assertLogs("drops.web", level="INFO") as captured:
+            response = self.client.get("/api/v1/auth/me")
+        self.assertEqual(response.status_code, 401)
+        self.assertTrue(any("cookie_invalid" in message for message in captured.output))
+
     def test_health_is_public_and_minimal(self):
         self.assertEqual(self.client.get("/health").json(), {"status": "ok"})
 

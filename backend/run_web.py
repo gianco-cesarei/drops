@@ -1,6 +1,12 @@
+import logging
 import os
 
 import uvicorn
+
+# uvicorn only configures its own "uvicorn*" loggers; without this, the app's
+# "drops.*" loggers inherit the root logger's default WARNING level and INFO
+# diagnostics (session/discogs status) never reach Render's log viewer.
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 
 if __name__ == "__main__":

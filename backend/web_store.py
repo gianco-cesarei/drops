@@ -48,6 +48,17 @@ class WebStore:
             row = db.execute("SELECT owner FROM sessions WHERE token_hash=? AND expires_at>?", (self.token_hash(token), now)).fetchone()
         return row["owner"] if row else None
 
+    def session_lookup(self, token: str) -> dict | None:
+        """Return {owner, expires_at} regardless of expiry, so callers can log why a session is rejected."""
+        with self.connect() as db:
+            row = db.execute("SELECT owner, expires_at FROM sessions WHERE token_hash=?", (self.token_hash(token),)).fetchone()
+        return {"owner": row["owner"], "expires_at": row["expires_at"]} if row else None
+
+    def touch_session(self, token: str, ttl: int) -> None:
+        """Slide the session expiry forward on active use, up to ttl from now."""
+        with self.connect() as db:
+            db.execute("UPDATE sessions SET expires_at=? WHERE token_hash=?", (time.time() + ttl, self.token_hash(token)))
+
     def delete_session(self, token: str):
         with self.connect() as db:
             db.execute("DELETE FROM sessions WHERE token_hash=?", (self.token_hash(token),))
