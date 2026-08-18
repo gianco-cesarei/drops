@@ -137,14 +137,16 @@ export default function BrainGraph({ extraNodes = [], extraLinks = [] }: Props) 
 
   void revision
   return <section className="brain-panel" aria-labelledby="brain-graph-title">
-    <header className="brain-panel-header">
-      <div><span className="fixture-label">Fixture · seed v2</span><h2 id="brain-graph-title">Etichette, artisti, città e party</h2><p>Clicca un nodo per isolarlo. Filtra per tipo o cluster. Trascina per riposizionare. Passa sopra per dettagli.</p></div>
-      <button type="button" className="brain-reset" onClick={resetView} disabled={!selected && !filtersActive}>Mostra tutto</button>
-    </header>
-    <div className="brain-type-legend" aria-label="Filtra per tipo di nodo">{brainNodeTypes.map((type) => <button type="button" key={type} data-type={type} aria-pressed={activeTypes.has(type)} onClick={() => toggleType(type)}>{type}</button>)}</div>
-    <div className="brain-cluster-legend" aria-label="Filtra per cluster">{Object.entries(clusterLabels).filter(([cluster]) => cluster !== 'city').map(([cluster, label]) => <button type="button" key={cluster} data-cluster={cluster} aria-pressed={activeClusters.has(cluster as BrainCluster)} onClick={() => toggleCluster(cluster as BrainCluster)}><i />{label}</button>)}</div>
+    <div className="brain-controls-overlay">
+      <header className="brain-panel-header">
+        <span className="fixture-label">Brain · fixture seed v2</span><h2 id="brain-graph-title" className="sr-only">Etichette, artisti, città e party</h2>
+        <button type="button" className="brain-reset" onClick={resetView} disabled={!selected && !filtersActive}>Mostra tutto</button>
+      </header>
+      <div className="brain-type-legend" aria-label="Filtra per tipo di nodo">{brainNodeTypes.map((type) => <button type="button" key={type} data-type={type} aria-pressed={activeTypes.has(type)} onClick={() => toggleType(type)}>{type}</button>)}</div>
+      <div className="brain-cluster-legend" aria-label="Filtra per cluster">{Object.entries(clusterLabels).filter(([cluster]) => cluster !== 'city').map(([cluster, label]) => <button type="button" key={cluster} data-cluster={cluster} aria-pressed={activeClusters.has(cluster as BrainCluster)} onClick={() => toggleCluster(cluster as BrainCluster)}><i />{label}</button>)}</div>
+    </div>
     <div className="brain-canvas" ref={containerRef}>
-      <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} role="img" aria-label={`Grafo Brain con ${nodes.length} nodi e ${links.length} relazioni`} onClick={() => setSelected(null)}>
+      <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label={`Grafo Brain con ${nodes.length} nodi e ${links.length} relazioni`} onClick={() => setSelected(null)}>
         <g className="brain-links">{links.map((link) => {
           const source = index.get(link.source); const target = index.get(link.target)
           if (!source || !target) return null

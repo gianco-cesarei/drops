@@ -56,11 +56,11 @@ export default function App({ section = 'login', navigate = browserNavigate }: {
   if (checking) return <Loading />
   if (logoutRedirecting) return <Loading />
   if (!user) return <Login onLogin={completeLogin} error={error} setError={setError} />
-  if (section === 'download') return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Download user={user} onError={handleError} error={error} setError={setError} /></PrivateFrame>
-  if (section === 'radar') return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Radar /></PrivateFrame>
-  if (section === 'brain') return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Brain /></PrivateFrame>
-  if (section === 'content') return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Content /></PrivateFrame>
-  return <PrivateFrame user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><PrivatePlaceholder section={section} /></PrivateFrame>
+  if (section === 'download') return <PrivateFrame section={section} user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Download user={user} onError={handleError} error={error} setError={setError} /></PrivateFrame>
+  if (section === 'radar') return <PrivateFrame section={section} user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Radar /></PrivateFrame>
+  if (section === 'brain') return <PrivateFrame section={section} user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Brain /></PrivateFrame>
+  if (section === 'content') return <PrivateFrame section={section} user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Content /></PrivateFrame>
+  return <PrivateFrame section={section} user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><PrivatePlaceholder section={section} /></PrivateFrame>
 }
 
 function Brand() {
@@ -99,12 +99,12 @@ function Login({ onLogin, error, setError }: { onLogin: (user: User) => void; er
   </section></main>
 }
 
-function PrivateFrame({ user, onLogoutStart, onLogoutEnd, children }: { user: User; onLogoutStart: () => void; onLogoutEnd: () => void; children: ReactNode }) {
+function PrivateFrame({ section, user, onLogoutStart, onLogoutEnd, children }: { section: PrivateSection; user: User; onLogoutStart: () => void; onLogoutEnd: () => void; children: ReactNode }) {
   async function logout() {
     onLogoutStart()
     try { await api.logout() } catch { /* Local session remains invalidated. */ } finally { onLogoutEnd() }
   }
-  return <div className="private-layout">
+  return <div className={`private-layout private-layout-${section}`}>
     <div className="private-header-bar"><header className="private-header"><a href="/" className="logo">Drops<span>.</span></a><nav aria-label="Area privata"><a href="/">Discovery</a><a href="/app/download">Download</a><a href="/app/radar">Radar</a><a href="/app/brain">Brain</a><a href="/app/content">Content</a></nav><div className="account"><span>{user.name ?? user.username ?? user.email ?? 'Account'}</span><button className="secondary" onClick={logout}>Esci</button></div></header></div>
     {children}
   </div>
@@ -163,7 +163,7 @@ function Radar() {
 
 function Brain() {
   const [state] = usePrototypeState()
-  return <main className="private-workspace brain-workspace"><header className="workspace-heading"><span className="development-badge">Brain · fixture locale + prototipo</span><h1 className="sr-only">Brain</h1><p>Mappa relazionale privata di scene, persone, luoghi e segnali editoriali. I nodi con anello ambra arrivano dal Radar (prototipo, salvato solo in questo browser).</p></header><BrainGraph extraNodes={state.extraNodes} extraLinks={state.extraLinks} /></main>
+  return <main className="brain-workspace"><h1 className="sr-only">Brain</h1><BrainGraph extraNodes={state.extraNodes} extraLinks={state.extraLinks} /></main>
 }
 
 function Content() {
