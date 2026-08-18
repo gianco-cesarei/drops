@@ -10,7 +10,9 @@ export type Job = {
   status: string
   progress?: number
   title?: string
+  artist?: string
   fileName?: string
+  coverUrl?: string
   message?: string
 }
 
@@ -79,7 +81,9 @@ export const normalizeJob = (payload: unknown): Job => {
     status: String(raw.status ?? raw.state ?? 'queued').toLowerCase(),
     progress: typeof raw.progress === 'number' ? raw.progress : undefined,
     title: typeof raw.title === 'string' ? raw.title : undefined,
+    artist: typeof raw.artist === 'string' ? raw.artist : typeof raw.artist_name === 'string' ? raw.artist_name : undefined,
     fileName: typeof raw.file_name === 'string' ? raw.file_name : typeof raw.filename === 'string' ? raw.filename : undefined,
+    coverUrl: typeof raw.cover_url === 'string' ? raw.cover_url : typeof raw.thumbnail === 'string' ? raw.thumbnail : typeof raw.thumbnail_url === 'string' ? raw.thumbnail_url : undefined,
     message: typeof raw.message === 'string' ? raw.message : typeof raw.error === 'string' ? raw.error : undefined,
   }
 }

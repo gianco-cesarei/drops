@@ -132,7 +132,27 @@ describe('autenticazione App', () => {
     const user = userEvent.setup()
     await user.type(await screen.findByLabelText('URL contenuto'), 'https://example.com/track')
     await user.click(screen.getByRole('button', { name: 'Scarica' }))
-    await waitFor(() => expect(screen.getByRole('link', { name: 'Scarica artefatto' })).toHaveAttribute('href', expect.stringContaining('/api/v1/downloads/abc/file')))
+    await waitFor(() => expect(screen.getByRole('link', { name: '↓ Scarica file' })).toHaveAttribute('href', expect.stringContaining('/api/v1/downloads/abc/file')))
+  })
+
+  it('mostra scheda traccia subito dopo submit e avanza da coda a pronto via polling', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ username: 'dj' }))
+      .mockResolvedValueOnce(jsonResponse({ id: 'job-1', status: 'queued', title: 'My Track', artist: 'DJ Someone' }))
+      .mockResolvedValueOnce(jsonResponse({ id: 'job-1', status: 'downloading', progress: 40, title: 'My Track', artist: 'DJ Someone' }))
+      .mockResolvedValueOnce(jsonResponse({ id: 'job-1', status: 'ready', title: 'My Track', artist: 'DJ Someone' }))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App section="download" navigate={vi.fn()} />)
+    const user = userEvent.setup()
+    await user.type(await screen.findByLabelText('URL contenuto'), 'https://soundcloud.com/example/track')
+    await user.click(screen.getByRole('button', { name: 'Scarica' }))
+
+    expect(await screen.findByText('My Track')).toBeInTheDocument()
+    expect(screen.getByText('DJ Someone')).toBeInTheDocument()
+    expect(screen.getByText('In coda')).toBeInTheDocument()
+
+    expect(await screen.findByText('Download in corso', {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: '↓ Scarica file' }, { timeout: 3000 })).toBeInTheDocument()
   })
 
   it('espone navigazione privata approvata senza History o Graph', async () => {
