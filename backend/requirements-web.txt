@@ -1,6 +1,9 @@
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
-yt-dlp>=2026.7.4
+# TEMP diagnostic pin: revert to the version in use when YouTube downloads
+# still worked on Render, to test whether the bot-check tracks the yt-dlp
+# bump or blocks the datacenter IP regardless of version. Revert once known.
+yt-dlp==2025.1.15
 numpy>=1.26.4
 argon2-cffi==23.1.0
 itsdangerous==2.2.0
