@@ -124,4 +124,6 @@ export const api = {
   spotifyPlaylists: () => request<{ playlists: SpotifyPlaylist[] }>('/api/v1/spotify/playlists'),
   spotifyPlaylistTracks: (id: string) => request<{ total: number; tracks: SpotifyTrack[] }>(`/api/v1/spotify/playlists/${encodeURIComponent(id)}/tracks`),
   discogsEnrich: (track: Pick<SpotifyTrack, 'title' | 'artists' | 'isrc'>) => request<DiscogsEnrichment | null>('/api/v1/discogs/enrich', { method: 'POST', body: JSON.stringify({ artist: track.artists.join(', '), title: track.title, isrc: track.isrc }) }),
+  bpmCompute: (track: Pick<SpotifyTrack, 'id' | 'title' | 'artists' | 'isrc'>, sourceUrl?: string) => request<{ job_id: string; status: string; bpm?: number; confidence?: number }>('/api/v1/bpm/compute', { method: 'POST', body: JSON.stringify({ track_key: track.id, artist: track.artists[0] ?? '', title: track.title, isrc: track.isrc, source_url: sourceUrl }) }),
+  bpmJob: (jobId: string) => request<{ id: string; status: string; bpm?: number; confidence?: number; error?: string }>(`/api/v1/bpm/job/${encodeURIComponent(jobId)}`),
 }

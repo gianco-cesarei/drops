@@ -37,6 +37,8 @@ RUN pip install --no-cache-dir -r backend/requirements-web.txt
 
 COPY --chown=drops:drops \
     backend/discogs_agent.py \
+    backend/bpm_analyzer.py \
+    backend/bpm_jobs.py \
     backend/media_core.py \
     backend/run_web.py \
     backend/spotify_agent.py \

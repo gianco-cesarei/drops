@@ -77,6 +77,17 @@ class WebAppTest(unittest.TestCase):
         for path in paths:
             self.assertEqual(self.client.get(path, follow_redirects=False).status_code, 401, path)
         self.assertEqual(self.client.post("/api/v1/discogs/enrich", json={"artist": "A", "title": "B"}).status_code, 401)
+        self.assertEqual(self.client.post("/api/v1/bpm/compute", json={"artist": "A", "title": "B"}).status_code, 401)
+        self.assertEqual(self.client.get("/api/v1/bpm/job/nope").status_code, 401)
+
+    def test_bpm_compute_returns_async_job_and_poll_is_private(self):
+        self.login()
+        with patch("web_app.BpmJobManager.submit", return_value={"job_id": "job-1", "status": "queued"}) as submit, patch("web_app.BpmJobManager.get", return_value={"id": "job-1", "status": "ready", "bpm": 128, "confidence": 0.9}):
+            response = self.client.post("/api/v1/bpm/compute", json={"track_key": "spotify:1", "artist": "Artist", "title": "Track", "source_url": "https://soundcloud.com/search?q=x"})
+            self.assertEqual(response.status_code, 202)
+            self.assertEqual(response.json()["job_id"], "job-1")
+            self.assertEqual(self.client.get("/api/v1/bpm/job/job-1").json()["bpm"], 128)
+            submit.assert_called_once()
 
     def test_spotify_web_routes_return_safe_shapes_and_redirects(self):
         self.login()
