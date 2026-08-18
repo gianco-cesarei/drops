@@ -264,8 +264,8 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
             shutil.rmtree(job_dir, ignore_errors=True)
             detail = str(exc).replace(url, "[url]").replace(str(job_dir), "[job]").strip() or "Download failed"
             store.update_job(job_id, status="error", error=detail[:300], expires_at=time.time() + settings.artifact_ttl_seconds)
-        except Exception as exc:  # worker boundary: log identifiers and class only
-            logger.error("download worker failed job_id=%s error_type=%s", job_id, type(exc).__name__)
+        except Exception as exc:  # worker boundary: detail goes to the server log only, never the API response
+            logger.error("download worker failed job_id=%s error_type=%s detail=%r", job_id, type(exc).__name__, str(exc)[:300])
             shutil.rmtree(job_dir, ignore_errors=True)
             store.update_job(job_id, status="error", error="Download failed", expires_at=time.time() + settings.artifact_ttl_seconds)
 
