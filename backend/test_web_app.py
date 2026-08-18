@@ -10,6 +10,7 @@ from unittest.mock import patch
 from argon2 import PasswordHasher
 from fastapi.testclient import TestClient
 
+import bpm_jobs
 import spotify_agent
 import discogs_agent
 import web_app
@@ -468,6 +469,67 @@ class WebAppTest(unittest.TestCase):
         sleep.assert_not_called()
         job = self.client.get(f"/api/v1/downloads/{job_id}")
         self.assertEqual(job.json()["error"], "Download size limit exceeded")
+
+    def test_download_and_bpm_serialize_through_shared_ytdlp_lock(self):
+        # Concurrent yt-dlp calls from the same process/IP add up to more
+        # "bot-like" traffic; the download worker and BPM engine must never
+        # run yt-dlp at the same instant - one waits for the other, not fails.
+        self.login()
+        with patch.object(self.app.state.executor, "submit") as submit:
+            response = self.client.post("/api/v1/downloads", json={"url": "https://youtu.be/test"})
+        worker, job_id, url, quality = submit.call_args.args
+
+        events: list[tuple[str, float]] = []
+        events_lock = threading.Lock()
+
+        def record(label: str) -> None:
+            with events_lock:
+                events.append((label, time.monotonic()))
+
+        bpm_manager = bpm_jobs.BpmJobManager(Path(self.temp.name) / "lock-bpm-state")
+        bpm_dir = Path(self.temp.name) / "lock-bpm-work"
+        bpm_dir.mkdir()
+
+        # web_app.py and bpm_jobs.py both `import yt_dlp`, so they share the
+        # same module object - patching YoutubeDL via either module path
+        # patches the same underlying attribute. One fake dispatching on the
+        # options shape (only the download worker sets "postprocessors").
+        class SharedFakeYoutubeDL:
+            def __init__(self, options):
+                self.options = options
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def extract_info(self, source, download=True):
+                label = "download" if "postprocessors" in self.options else "bpm"
+                record(f"{label}-start")
+                time.sleep(0.15)
+                record(f"{label}-end")
+                out_dir = self.options["outtmpl"].rsplit("/", 1)[0]
+                Path(out_dir, "audio.mp3").write_bytes(b"fake-audio")
+                return {"title": "Track", "duration": 10} if label == "download" else None
+
+        with (
+            patch("web_app.yt_dlp.YoutubeDL", SharedFakeYoutubeDL),
+            patch("bpm_jobs.analyze_bpm", return_value={"bpm": 120.0, "bpm_confidence": 0.9}),
+        ):
+            download_thread = threading.Thread(target=worker, args=(job_id, url, quality))
+            bpm_thread = threading.Thread(target=bpm_manager._compute, args=(bpm_dir, "Artist", "Title", None, None))
+            download_thread.start()
+            bpm_thread.start()
+            download_thread.join()
+            bpm_thread.join()
+
+        self.assertEqual(len(events), 4)
+        ordered = sorted(events, key=lambda item: item[1])
+        suffixes = [label.split("-")[1] for label, _ in ordered]
+        self.assertEqual(suffixes, ["start", "end", "start", "end"])
+        # the two "start"/"end" pairs must belong to different jobs (real overlap-free interleave)
+        self.assertNotEqual(ordered[0][0].split("-")[0], ordered[2][0].split("-")[0])
 
 
 class WebSettingsTest(unittest.TestCase):

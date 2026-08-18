@@ -1,8 +1,16 @@
 import os
+import threading
 import urllib.parse
 
 
 ALLOWED_DOMAINS = ("youtube.com", "youtu.be", "soundcloud.com", "music.youtube.com")
+
+
+# Single-flight lock shared by the download worker and the BPM engine: only
+# one yt-dlp extraction runs per process at a time. Concurrent yt-dlp calls
+# from the same IP add up to more "bot-like" traffic and resource contention;
+# other jobs block here and run once the lock frees, they don't fail.
+YTDLP_LOCK = threading.Lock()
 
 
 YTDLP_PLAYER_CLIENTS = ["tv", "ios", "android", "web"]

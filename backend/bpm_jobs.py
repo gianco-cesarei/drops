@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 import yt_dlp
 
 from bpm_analyzer import analyze_bpm
-from media_core import ytdlp_cookiefile, ytdlp_extractor_args
+from media_core import YTDLP_LOCK, ytdlp_cookiefile, ytdlp_extractor_args
 
 
 def normalize_key(value: str) -> str:
@@ -112,7 +112,7 @@ class BpmJobManager:
                     }
                     if cookies:
                         options["cookiefile"] = cookies
-                    with yt_dlp.YoutubeDL(options) as downloader:
+                    with YTDLP_LOCK, yt_dlp.YoutubeDL(options) as downloader:
                         downloader.extract_info(source, download=True)
                     files = [path for path in directory.iterdir() if path.is_file() and not path.name.endswith((".part", ".ytdl"))]
                     if not files:

@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 
-from media_core import is_supported_url, safe_filename, ytdlp_cookiefile, ytdlp_extractor_args
+from media_core import YTDLP_LOCK, is_supported_url, safe_filename, ytdlp_cookiefile, ytdlp_extractor_args
 from spotify_agent import SpotifyAgentError, WebSpotifyClient
 from discogs_agent import DiscogsClient
 from bpm_jobs import BpmJobManager
@@ -218,7 +218,7 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
             last_extract_error: yt_dlp.utils.DownloadError | None = None
             for attempt in range(1, 4):
                 try:
-                    with yt_dlp.YoutubeDL(options) as ydl:
+                    with YTDLP_LOCK, yt_dlp.YoutubeDL(options) as ydl:
                         info = ydl.extract_info(url, download=True)
                     break
                 except yt_dlp.utils.DownloadError as exc:
