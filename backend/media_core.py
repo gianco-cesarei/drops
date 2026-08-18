@@ -1,4 +1,6 @@
 import os
+import shutil
+import tempfile
 import threading
 import urllib.parse
 
@@ -34,7 +36,17 @@ def ytdlp_cookiefile() -> str | None:
     Optional: missing/invalid must never block startup or fall through to an error.
     """
     path = os.environ.get("DROPS_YTDLP_COOKIES", "").strip()
-    return path if path and os.path.isfile(path) else None
+    if not path or not os.path.isfile(path):
+        return None
+    if os.access(path, os.W_OK):
+        return path
+    # yt-dlp rewrites the cookie jar after use, but Render's Secret Files are
+    # mounted read-only (OSError [Errno 30]) - copy once to a writable spot
+    # and hand yt-dlp that copy instead; the original Secret File is untouched.
+    writable_copy = os.path.join(tempfile.gettempdir(), "drops-cookies.txt")
+    if not os.path.isfile(writable_copy):
+        shutil.copyfile(path, writable_copy)
+    return writable_copy
 
 
 def safe_filename(name: str, ext: str) -> str:
