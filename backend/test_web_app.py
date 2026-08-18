@@ -9,6 +9,8 @@ from unittest.mock import patch
 from argon2 import PasswordHasher
 from fastapi.testclient import TestClient
 
+import spotify_agent
+import web_app
 from web_app import COOKIE_NAME, create_app
 from web_settings import WebSettings
 
@@ -59,6 +61,9 @@ class WebAppTest(unittest.TestCase):
 
     def test_health_is_public_and_minimal(self):
         self.assertEqual(self.client.get("/health").json(), {"status": "ok"})
+
+    def test_web_app_imports_internal_spotify_module(self):
+        self.assertIs(web_app.WebSpotifyClient, spotify_agent.WebSpotifyClient)
 
     def test_spotify_routes_require_login(self):
         paths = [
