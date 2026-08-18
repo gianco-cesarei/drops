@@ -1,4 +1,5 @@
 import logging
+import os
 import secrets
 import shutil
 import time
@@ -16,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 
-from media_core import is_supported_url, safe_filename
+from media_core import is_supported_url, safe_filename, ytdlp_cookiefile
 from spotify_agent import SpotifyAgentError, WebSpotifyClient
 from discogs_agent import DiscogsClient
 from bpm_jobs import BpmJobManager
@@ -81,6 +82,10 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         discogs.log_startup_status()
+        if os.environ.get("DROPS_YTDLP_COOKIES", "").strip():
+            logger.info("yt-dlp startup: cookiefile %s", "trovato" if ytdlp_cookiefile() else "configurato ma illeggibile, ignorato")
+        else:
+            logger.info("yt-dlp startup: DROPS_YTDLP_COOKIES non configurato, download senza cookie")
         store.interrupt_active_jobs(settings.artifact_ttl_seconds)
         cleanup()
         executor = ThreadPoolExecutor(max_workers=settings.max_concurrent, thread_name_prefix="drops-web")
@@ -198,6 +203,9 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
                 "socket_timeout": 30,
                 "progress_hooks": [progress],
             }
+            cookies = ytdlp_cookiefile()
+            if cookies:
+                options["cookiefile"] = cookies
             with yt_dlp.YoutubeDL(options) as ydl:
                 info = ydl.extract_info(url, download=True)
             if int(info.get("duration") or 0) > settings.max_duration_seconds:
@@ -221,6 +229,15 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
                 size=artifact.stat().st_size,
                 expires_at=time.time() + settings.artifact_ttl_seconds,
             )
+        except yt_dlp.utils.DownloadError as exc:
+            # DownloadError carries yt-dlp's own diagnosis (e.g. YouTube's bot
+            # check, geo-block, age gate) - surface it so the UI shows *why*
+            # without digging through logs, but scrub anything that could
+            # embed our request url or local paths before it leaves the worker.
+            logger.error("download worker failed job_id=%s error_type=DownloadError", job_id)
+            shutil.rmtree(job_dir, ignore_errors=True)
+            detail = str(exc).replace(url, "[url]").replace(str(job_dir), "[job]").strip() or "Download failed"
+            store.update_job(job_id, status="error", error=detail[:300], expires_at=time.time() + settings.artifact_ttl_seconds)
         except Exception as exc:  # worker boundary: log identifiers and class only
             logger.error("download worker failed job_id=%s error_type=%s", job_id, type(exc).__name__)
             shutil.rmtree(job_dir, ignore_errors=True)

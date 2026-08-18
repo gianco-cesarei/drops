@@ -1,7 +1,19 @@
+import os
 import urllib.parse
 
 
 ALLOWED_DOMAINS = ("youtube.com", "youtu.be", "soundcloud.com", "music.youtube.com")
+
+
+def ytdlp_cookiefile() -> str | None:
+    """Path to a Netscape-format cookies file for yt-dlp, shared by download and BPM.
+
+    Render's datacenter IPs get YouTube's "Sign in to confirm you're not a bot"
+    bot-check; a browser-exported cookies file is yt-dlp's documented workaround.
+    Optional: missing/invalid must never block startup or fall through to an error.
+    """
+    path = os.environ.get("DROPS_YTDLP_COOKIES", "").strip()
+    return path if path and os.path.isfile(path) else None
 
 
 def safe_filename(name: str, ext: str) -> str:

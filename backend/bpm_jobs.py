@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import shutil
 import tempfile
@@ -16,6 +15,7 @@ from urllib.parse import urlparse
 import yt_dlp
 
 from bpm_analyzer import analyze_bpm
+from media_core import ytdlp_cookiefile
 
 
 def normalize_key(value: str) -> str:
@@ -95,7 +95,7 @@ class BpmJobManager:
         query = f"{artist} {title}".strip()
         candidates = [source_url] if source_url and self._allowed_source(source_url) else []
         candidates.extend([f"scsearch1:{query}", f"ytsearch1:{query}"])
-        cookies = os.environ.get("DROPS_YTDLP_COOKIES", "").strip()
+        cookies = ytdlp_cookiefile()
         last_error: Exception | None = None
         for source in candidates:
             try:
@@ -104,7 +104,7 @@ class BpmJobManager:
                     "quiet": True, "no_warnings": True, "noplaylist": True,
                     "socket_timeout": 15, "retries": 1,
                 }
-                if cookies and Path(cookies).is_file():
+                if cookies:
                     options["cookiefile"] = cookies
                 with yt_dlp.YoutubeDL(options) as downloader:
                     downloader.extract_info(source, download=True)

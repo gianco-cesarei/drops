@@ -303,6 +303,86 @@ class WebAppTest(unittest.TestCase):
         job = self.client.get(f"/api/v1/downloads/{job_id}")
         self.assertEqual(job.json()["error"], "Download failed")
 
+    def test_download_worker_propagates_real_downloaderror_message_sanitized(self):
+        # Render's datacenter IPs trip YouTube's bot-check; the UI needs the
+        # real reason, not a generic "Download failed" that hides it.
+        self.login()
+        url = "https://youtu.be/test?token=secret-token"
+        with patch.object(self.app.state.executor, "submit") as submit:
+            response = self.client.post("/api/v1/downloads", json={"url": url})
+        worker, job_id, worker_url, quality = submit.call_args.args
+        bot_check = f"ERROR: {url}: Sign in to confirm you're not a bot. Use --cookies for the authentication."
+        with patch("web_app.yt_dlp.YoutubeDL", side_effect=web_app.yt_dlp.utils.DownloadError(bot_check)):
+            worker(job_id, worker_url, quality)
+        job = self.client.get(f"/api/v1/downloads/{job_id}")
+        error = job.json()["error"]
+        self.assertIn("Sign in to confirm you're not a bot", error)
+        self.assertNotIn("secret-token", error)
+        self.assertIn("[url]", error)
+
+    def test_download_worker_unexpected_error_stays_generic(self):
+        self.login()
+        with patch.object(self.app.state.executor, "submit") as submit:
+            response = self.client.post("/api/v1/downloads", json={"url": "https://youtu.be/test"})
+        worker, job_id, url, quality = submit.call_args.args
+        with patch("web_app.yt_dlp.YoutubeDL", side_effect=RuntimeError("boom")):
+            worker(job_id, url, quality)
+        job = self.client.get(f"/api/v1/downloads/{job_id}")
+        self.assertEqual(job.json()["error"], "Download failed")
+
+    def test_download_passes_cookiefile_when_configured(self):
+        self.login()
+        with patch.object(self.app.state.executor, "submit") as submit:
+            response = self.client.post("/api/v1/downloads", json={"url": "https://youtu.be/test"})
+        worker, job_id, url, quality = submit.call_args.args
+        with tempfile.TemporaryDirectory() as cookie_dir:
+            cookies = Path(cookie_dir) / "cookies.txt"
+            cookies.write_text("# Netscape HTTP Cookie File\n")
+            seen_options = []
+
+            class FakeYoutubeDL:
+                def __init__(self, options):
+                    seen_options.append(options)
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *exc):
+                    return False
+
+                def extract_info(self, source, download=True):
+                    raise web_app.yt_dlp.utils.DownloadError("stop after capturing options")
+
+            with patch.dict(os.environ, {"DROPS_YTDLP_COOKIES": str(cookies)}), patch("web_app.yt_dlp.YoutubeDL", FakeYoutubeDL):
+                worker(job_id, url, quality)
+        self.assertTrue(seen_options)
+        self.assertEqual(seen_options[0]["cookiefile"], str(cookies))
+
+    def test_download_omits_cookiefile_when_not_configured(self):
+        self.login()
+        with patch.object(self.app.state.executor, "submit") as submit:
+            response = self.client.post("/api/v1/downloads", json={"url": "https://youtu.be/test"})
+        worker, job_id, url, quality = submit.call_args.args
+        seen_options = []
+
+        class FakeYoutubeDL:
+            def __init__(self, options):
+                seen_options.append(options)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def extract_info(self, source, download=True):
+                raise web_app.yt_dlp.utils.DownloadError("stop after capturing options")
+
+        with patch.dict(os.environ, {}, clear=True), patch("web_app.yt_dlp.YoutubeDL", FakeYoutubeDL):
+            worker(job_id, url, quality)
+        self.assertTrue(seen_options)
+        self.assertNotIn("cookiefile", seen_options[0])
+
 
 class WebSettingsTest(unittest.TestCase):
     def test_documentation_has_reproducible_python_312_test_command(self):
