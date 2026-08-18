@@ -312,7 +312,7 @@ class WebAppTest(unittest.TestCase):
             response = self.client.post("/api/v1/downloads", json={"url": url})
         worker, job_id, worker_url, quality = submit.call_args.args
         bot_check = f"ERROR: {url}: Sign in to confirm you're not a bot. Use --cookies for the authentication."
-        with patch("web_app.yt_dlp.YoutubeDL", side_effect=web_app.yt_dlp.utils.DownloadError(bot_check)):
+        with patch("web_app.yt_dlp.YoutubeDL", side_effect=web_app.yt_dlp.utils.DownloadError(bot_check)), patch("web_app.time.sleep"):
             worker(job_id, worker_url, quality)
         job = self.client.get(f"/api/v1/downloads/{job_id}")
         error = job.json()["error"]
@@ -353,7 +353,7 @@ class WebAppTest(unittest.TestCase):
                 def extract_info(self, source, download=True):
                     raise web_app.yt_dlp.utils.DownloadError("stop after capturing options")
 
-            with patch.dict(os.environ, {"DROPS_YTDLP_COOKIES": str(cookies)}), patch("web_app.yt_dlp.YoutubeDL", FakeYoutubeDL):
+            with patch.dict(os.environ, {"DROPS_YTDLP_COOKIES": str(cookies)}), patch("web_app.yt_dlp.YoutubeDL", FakeYoutubeDL), patch("web_app.time.sleep"):
                 worker(job_id, url, quality)
         self.assertTrue(seen_options)
         self.assertEqual(seen_options[0]["cookiefile"], str(cookies))
@@ -378,10 +378,96 @@ class WebAppTest(unittest.TestCase):
             def extract_info(self, source, download=True):
                 raise web_app.yt_dlp.utils.DownloadError("stop after capturing options")
 
-        with patch.dict(os.environ, {}, clear=True), patch("web_app.yt_dlp.YoutubeDL", FakeYoutubeDL):
+        with patch.dict(os.environ, {}, clear=True), patch("web_app.yt_dlp.YoutubeDL", FakeYoutubeDL), patch("web_app.time.sleep"):
             worker(job_id, url, quality)
         self.assertTrue(seen_options)
         self.assertNotIn("cookiefile", seen_options[0])
+
+    def test_download_options_include_player_client_fallback(self):
+        self.login()
+        with patch.object(self.app.state.executor, "submit") as submit:
+            response = self.client.post("/api/v1/downloads", json={"url": "https://youtu.be/test"})
+        worker, job_id, url, quality = submit.call_args.args
+        seen_options = []
+
+        class FakeYoutubeDL:
+            def __init__(self, options):
+                seen_options.append(options)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def extract_info(self, source, download=True):
+                raise web_app.yt_dlp.utils.DownloadError("stop after capturing options")
+
+        with patch("web_app.yt_dlp.YoutubeDL", FakeYoutubeDL), patch("web_app.time.sleep"):
+            worker(job_id, url, quality)
+        self.assertTrue(seen_options)
+        self.assertEqual(seen_options[0]["extractor_args"]["youtube"]["player_client"], ["tv", "ios", "android", "web"])
+
+    def test_download_retries_downloaderror_then_succeeds(self):
+        # YouTube's bot-check is intermittent; a later attempt can succeed
+        # without ever needing cookies.
+        self.login()
+        with patch.object(self.app.state.executor, "submit") as submit:
+            response = self.client.post("/api/v1/downloads", json={"url": "https://youtu.be/test"})
+        worker, job_id, url, quality = submit.call_args.args
+        attempts = []
+
+        class FakeYoutubeDL:
+            def __init__(self, options):
+                self.options = options
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def extract_info(self, source, download=True):
+                attempts.append(1)
+                if len(attempts) < 3:
+                    raise web_app.yt_dlp.utils.DownloadError("Sign in to confirm you're not a bot")
+                job_dir = self.options["outtmpl"].rsplit("/", 1)[0]
+                Path(job_dir, "audio.mp3").write_bytes(b"fake-audio")
+                return {"title": "Track", "duration": 10}
+
+        with patch("web_app.yt_dlp.YoutubeDL", FakeYoutubeDL), patch("web_app.time.sleep"):
+            worker(job_id, url, quality)
+        self.assertEqual(len(attempts), 3)
+        job = self.client.get(f"/api/v1/downloads/{job_id}")
+        self.assertEqual(job.json()["status"], "ready")
+
+    def test_download_does_not_retry_own_size_limit_abort(self):
+        self.login()
+        with patch.object(self.app.state.executor, "submit") as submit:
+            response = self.client.post("/api/v1/downloads", json={"url": "https://youtu.be/test"})
+        worker, job_id, url, quality = submit.call_args.args
+        attempts = []
+
+        class FakeYoutubeDL:
+            def __init__(self, options):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def extract_info(self, source, download=True):
+                attempts.append(1)
+                raise web_app.yt_dlp.utils.DownloadError("Download size limit exceeded")
+
+        with patch("web_app.yt_dlp.YoutubeDL", FakeYoutubeDL), patch("web_app.time.sleep") as sleep:
+            worker(job_id, url, quality)
+        self.assertEqual(len(attempts), 1)
+        sleep.assert_not_called()
+        job = self.client.get(f"/api/v1/downloads/{job_id}")
+        self.assertEqual(job.json()["error"], "Download size limit exceeded")
 
 
 class WebSettingsTest(unittest.TestCase):

@@ -7,6 +7,7 @@ import re
 import shutil
 import tempfile
 import threading
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -15,7 +16,7 @@ from urllib.parse import urlparse
 import yt_dlp
 
 from bpm_analyzer import analyze_bpm
-from media_core import ytdlp_cookiefile
+from media_core import ytdlp_cookiefile, ytdlp_extractor_args
 
 
 def normalize_key(value: str) -> str:
@@ -98,25 +99,33 @@ class BpmJobManager:
         cookies = ytdlp_cookiefile()
         last_error: Exception | None = None
         for source in candidates:
-            try:
-                options = {
-                    "format": "bestaudio/best", "outtmpl": str(directory / "source.%(ext)s"),
-                    "quiet": True, "no_warnings": True, "noplaylist": True,
-                    "socket_timeout": 15, "retries": 1,
-                }
-                if cookies:
-                    options["cookiefile"] = cookies
-                with yt_dlp.YoutubeDL(options) as downloader:
-                    downloader.extract_info(source, download=True)
-                files = [path for path in directory.iterdir() if path.is_file() and not path.name.endswith((".part", ".ytdl"))]
-                if not files:
-                    raise RuntimeError("audio missing")
-                return analyze_bpm(files[0], max_seconds=180)
-            except Exception as exc:
-                last_error = exc
-                for path in directory.iterdir():
-                    if path.is_file():
-                        path.unlink(missing_ok=True)
+            # YouTube's bot-check is intermittent per player client/IP, so retry
+            # the same source a couple of times before falling through to the
+            # next search engine.
+            for attempt in range(1, 3 + 1):
+                try:
+                    options = {
+                        "format": "bestaudio/best", "outtmpl": str(directory / "source.%(ext)s"),
+                        "quiet": True, "no_warnings": True, "noplaylist": True,
+                        "socket_timeout": 15, "retries": 1,
+                        "extractor_args": ytdlp_extractor_args(),
+                    }
+                    if cookies:
+                        options["cookiefile"] = cookies
+                    with yt_dlp.YoutubeDL(options) as downloader:
+                        downloader.extract_info(source, download=True)
+                    files = [path for path in directory.iterdir() if path.is_file() and not path.name.endswith((".part", ".ytdl"))]
+                    if not files:
+                        raise RuntimeError("audio missing")
+                    return analyze_bpm(files[0], max_seconds=180)
+                except Exception as exc:
+                    last_error = exc
+                    for path in directory.iterdir():
+                        if path.is_file():
+                            path.unlink(missing_ok=True)
+                    if not isinstance(exc, yt_dlp.utils.DownloadError) or attempt == 3:
+                        break
+                    time.sleep(1)
         raise RuntimeError("BPM sources unavailable") from last_error
 
     @staticmethod

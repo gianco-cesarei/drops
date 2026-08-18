@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 
-from media_core import is_supported_url, safe_filename, ytdlp_cookiefile
+from media_core import is_supported_url, safe_filename, ytdlp_cookiefile, ytdlp_extractor_args
 from spotify_agent import SpotifyAgentError, WebSpotifyClient
 from discogs_agent import DiscogsClient
 from bpm_jobs import BpmJobManager
@@ -26,6 +26,13 @@ from web_store import WebStore
 
 COOKIE_NAME = "drops_session"
 AUDIO_QUALITY = {"128": "128", "192": "192", "320": "0"}
+# Our own abort messages (progress hook / duration check) - never retryable,
+# retrying an oversized/too-long media just repeats the same failure.
+DOWNLOAD_ABORT_MESSAGES = {
+    "Download duration limit exceeded",
+    "Download size limit exceeded",
+    "Media duration limit exceeded",
+}
 logger = logging.getLogger("drops.web")
 
 
@@ -203,11 +210,30 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
                 "socket_timeout": 30,
                 "progress_hooks": [progress],
             }
+            options["extractor_args"] = ytdlp_extractor_args()
             cookies = ytdlp_cookiefile()
             if cookies:
                 options["cookiefile"] = cookies
-            with yt_dlp.YoutubeDL(options) as ydl:
-                info = ydl.extract_info(url, download=True)
+            info = None
+            last_extract_error: yt_dlp.utils.DownloadError | None = None
+            for attempt in range(1, 4):
+                try:
+                    with yt_dlp.YoutubeDL(options) as ydl:
+                        info = ydl.extract_info(url, download=True)
+                    break
+                except yt_dlp.utils.DownloadError as exc:
+                    last_extract_error = exc
+                    for leftover in job_dir.iterdir():
+                        if leftover.is_file():
+                            leftover.unlink(missing_ok=True)
+                    if str(exc) in DOWNLOAD_ABORT_MESSAGES or attempt == 3:
+                        raise
+                    # YouTube's bot-check is intermittent per player client/IP;
+                    # a short retry often clears it without needing cookies.
+                    logger.warning("download retrying job_id=%s attempt=%s", job_id, attempt)
+                    time.sleep(1)
+            if info is None:
+                raise last_extract_error
             if int(info.get("duration") or 0) > settings.max_duration_seconds:
                 raise yt_dlp.utils.DownloadError("Media duration limit exceeded")
             candidates = [path for path in job_dir.iterdir() if path.is_file() and not path.name.endswith((".part", ".ytdl"))]

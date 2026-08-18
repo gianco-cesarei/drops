@@ -5,6 +5,19 @@ import urllib.parse
 ALLOWED_DOMAINS = ("youtube.com", "youtu.be", "soundcloud.com", "music.youtube.com")
 
 
+YTDLP_PLAYER_CLIENTS = ["tv", "ios", "android", "web"]
+
+
+def ytdlp_extractor_args() -> dict:
+    """youtube player clients to try, shared by download and BPM (same engine).
+
+    Render's datacenter IPs trip YouTube's "Sign in to confirm you're not a
+    bot" check on the default web client; tv/ios/android clients frequently
+    skip it entirely. Tried before falling back to cookies.
+    """
+    return {"youtube": {"player_client": list(YTDLP_PLAYER_CLIENTS)}}
+
+
 def ytdlp_cookiefile() -> str | None:
     """Path to a Netscape-format cookies file for yt-dlp, shared by download and BPM.
 
