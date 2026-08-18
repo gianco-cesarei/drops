@@ -200,25 +200,43 @@ class WebSpotifyClient:
         return by_spotify, by_isrc, by_name
 
     def _album_labels(self, tracks: list[dict[str, Any]]) -> dict[str, str | None]:
-        ids = list(dict.fromkeys((track.get("album") or {}).get("id") for track in tracks if (track.get("album") or {}).get("id")))
-        labels: dict[str, str | None] = {}
-        for start in range(0, len(ids), 20):
-            batch = ids[start:start + 20]
-            payload = self.get(f"/albums?ids={urllib.parse.quote(','.join(batch))}")
-            for album in payload.get("albums") or []:
-                if album and album.get("id"):
-                    labels[album["id"]] = album.get("label")
-        return labels
+        # Spotify Development Mode removed album.label and GET /albums batch.
+        # Keep labels nullable; Drops catalog remains source for BPM only.
+        return {}
+
+    @staticmethod
+    def _fallback_track(item: dict[str, Any]) -> dict[str, Any] | None:
+        track = item.get("item") or item.get("track") or item
+        if not isinstance(track, dict) or not track.get("id"):
+            return None
+        artists = track.get("artists") or []
+        names = [artist.get("name", "") for artist in artists if isinstance(artist, dict) and artist.get("name")]
+        album = track.get("album") or {}
+        images = album.get("images") or []
+        isrc = (track.get("external_ids") or {}).get("isrc")
+        return {
+            "id": track.get("id"), "title": track.get("name") or "", "artists": names,
+            "album": album.get("name") or "", "label": None,
+            "cover_url": images[0].get("url") if images and isinstance(images[0], dict) else None,
+            "isrc": isrc, "added_at": item.get("added_at"), "duration_ms": track.get("duration_ms"),
+            "bpm": None, "in_catalog": False,
+        }
+
+    def enrich_best_effort(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        try:
+            return self.enrich(items)
+        except Exception:
+            return [fallback for item in items if (fallback := self._fallback_track(item)) is not None]
 
     def enrich(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        pairs = [(item, item.get("track") or item) for item in items]
+        pairs = [(item, item.get("item") or item.get("track") or item) for item in items]
         pairs = [(item, track) for item, track in pairs if isinstance(track, dict) and track.get("id")]
         raw_tracks = [track for _, track in pairs]
         labels = self._album_labels(raw_tracks)
         by_spotify, by_isrc, by_name = self._catalog_indexes()
         enriched = []
         for item, track in pairs:
-            artists = [artist.get("name", "") for artist in track.get("artists") or [] if artist.get("name")]
+            artists = [artist.get("name", "") for artist in track.get("artists") or [] if isinstance(artist, dict) and artist.get("name")]
             isrc = (track.get("external_ids") or {}).get("isrc")
             catalog = by_spotify.get(str(track.get("id")))
             if catalog is None and isrc:
@@ -257,7 +275,7 @@ class WebSpotifyClient:
                 break
             remaining -= len(page_items)
             cursor += len(page_items)
-        return {"total": total, "limit": limit, "offset": offset, "tracks": self.enrich(items)}
+        return {"total": total, "limit": limit, "offset": offset, "tracks": self.enrich_best_effort(items)}
 
     def playlists(self) -> dict[str, Any]:
         items: list[dict[str, Any]] = []
@@ -266,18 +284,18 @@ class WebSpotifyClient:
             page = self.get(next_url)
             items.extend(page.get("items") or [])
             next_url = page.get("next")
-        return {"playlists": [{"id": x.get("id"), "name": x.get("name") or "Senza nome", "tracks_total": (x.get("tracks") or {}).get("total", 0)} for x in items if x.get("id")]}
+        return {"playlists": [{"id": x.get("id"), "name": x.get("name") or "Senza nome", "tracks_total": (x.get("items") or x.get("tracks") or {}).get("total", 0)} for x in items if x.get("id")]}
 
     def playlist_tracks(self, playlist_id: str) -> dict[str, Any]:
         items: list[dict[str, Any]] = []
-        next_url: str | None = f"/playlists/{urllib.parse.quote(playlist_id, safe='')}/tracks?limit=50"
+        next_url: str | None = f"/playlists/{urllib.parse.quote(playlist_id, safe='')}/items?limit=50"
         total = 0
         while next_url:
             page = self.get(next_url)
             total = int(page.get("total") or total)
             items.extend(page.get("items") or [])
             next_url = page.get("next")
-        return {"total": total, "tracks": self.enrich(items)}
+        return {"total": total, "tracks": self.enrich_best_effort(items)}
 
 
 def _atomic_json(path: Path, data: Any) -> None:

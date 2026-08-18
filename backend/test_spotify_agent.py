@@ -1,7 +1,6 @@
 import json
 import tempfile
 import unittest
-import urllib.parse
 from pathlib import Path
 from unittest.mock import patch
 
@@ -78,7 +77,7 @@ class SpotifyAgentTest(unittest.TestCase):
             self.assertEqual(exported["tracks"][0]["artists"], ["Artista"])
             self.assertNotIn("audio", exported["tracks"][0])
 
-    def test_web_enrichment_batches_album_labels_and_matches_catalog(self):
+    def test_web_enrichment_matches_catalog_without_removed_spotify_batch_fields(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             catalog_dir = root / "catalog"
@@ -101,30 +100,46 @@ class SpotifyAgentTest(unittest.TestCase):
                     "external_ids": {"isrc": isrc} if isrc else {}, "duration_ms": 1000,
                 }})
 
-            calls = []
-            def album_get(path):
-                calls.append(path)
-                ids = urllib.parse.unquote(path.split("ids=", 1)[1]).split(",")
-                return {"albums": [{"id": album_id, "label": f"Label {album_id}"} for album_id in ids]}
-
-            with patch.object(client, "get", side_effect=album_get):
-                tracks = client.enrich(items)
-            self.assertEqual(len(calls), 2)
+            tracks = client.enrich(items)
             self.assertEqual([track["bpm"] for track in tracks[:3]], [125, 128, 131])
             self.assertTrue(all(track["in_catalog"] for track in tracks[:3]))
-            self.assertEqual(tracks[0]["label"], "Label album-0")
+            self.assertIsNone(tracks[0]["label"])
+
+    def test_web_enrichment_returns_tracks_when_isrc_and_label_missing(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            client = spotify_agent.WebSpotifyClient(Path(temp_dir), Path(temp_dir) / "missing")
+            item = {"added_at": "2026-08-01T00:00:00Z", "item": {
+                "id": "track-missing-fields", "name": "No Metadata", "artists": [{"name": "Artist"}],
+                "album": {"name": "Album", "images": []}, "duration_ms": 1000,
+            }}
+            result = client.enrich_best_effort([item])
+            self.assertEqual(result[0]["id"], "track-missing-fields")
+            self.assertIsNone(result[0]["isrc"])
+            self.assertIsNone(result[0]["label"])
+            self.assertIsNone(result[0]["bpm"])
+            self.assertFalse(result[0]["in_catalog"])
 
     def test_web_liked_cycles_spotify_pages_over_fifty(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             client = spotify_agent.WebSpotifyClient(Path(temp_dir), Path(temp_dir) / "missing")
             pages = [
-                {"total": 75, "items": [{"track": {"id": str(i), "artists": [], "album": {}, "external_ids": {}}} for i in range(50)]},
-                {"total": 75, "items": [{"track": {"id": str(i), "artists": [], "album": {}, "external_ids": {}}} for i in range(50, 75)]},
+                {"total": 75, "items": [{"item": {"id": str(i), "artists": [], "album": {}}} for i in range(50)]},
+                {"total": 75, "items": [{"item": {"id": str(i), "artists": [], "album": {}}} for i in range(50, 75)]},
             ]
             with patch.object(client, "get", side_effect=pages) as get, patch.object(client, "enrich", side_effect=lambda items: items):
                 result = client.liked(75, 0)
             self.assertEqual(len(result["tracks"]), 75)
             self.assertEqual(get.call_count, 2)
+
+    def test_web_playlist_uses_items_endpoint_and_handles_items_field(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            client = spotify_agent.WebSpotifyClient(Path(temp_dir), Path(temp_dir) / "missing")
+            with patch.object(client, "get", return_value={
+                "total": 1, "items": [{"item": {"id": "playlist-track", "name": "Track", "artists": [], "album": {}}}],
+            }) as get:
+                result = client.playlist_tracks("playlist-id")
+            self.assertEqual(result["tracks"][0]["id"], "playlist-track")
+            self.assertIn("/playlists/playlist-id/items?limit=50", get.call_args.args[0])
 
 
 if __name__ == "__main__":

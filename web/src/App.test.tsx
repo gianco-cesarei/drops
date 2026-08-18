@@ -157,7 +157,7 @@ describe('autenticazione App', () => {
       ] })))
     render(<App section="spotify" navigate={vi.fn()} />)
     expect(await screen.findByText('Gianco')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Night Label' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Night Label' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Senza label' })).toBeInTheDocument()
     expect(screen.getByText('124')).toBeInTheDocument()
     expect(screen.getAllByText('—')).not.toHaveLength(0)
