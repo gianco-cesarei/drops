@@ -1,6 +1,7 @@
 import os
 import tempfile
 import threading
+import time
 import unittest
 from dataclasses import replace
 from pathlib import Path
@@ -60,26 +61,54 @@ class WebAppTest(unittest.TestCase):
         self.assertEqual(self.client.post("/api/v1/auth/logout").status_code, 204)
         self.assertEqual(self.client.get("/api/v1/auth/me").status_code, 401)
 
-    def test_auth_me_slides_session_expiry_and_refreshes_cookie(self):
+    def test_auth_me_slides_session_and_refreshes_cookie(self):
         self.login()
         token = self.client.cookies.get(COOKIE_NAME)
-        store = self.app.state.store
-        store.touch_session(token, 5)  # simulate a session close to expiry
-        before = store.session_lookup(token)["expires_at"]
+        time.sleep(1.1)  # itsdangerous timestamps have 1s resolution
         response = self.client.get("/api/v1/auth/me")
         self.assertEqual(response.status_code, 200)
         self.assertIn("set-cookie", response.headers)
-        after = store.session_lookup(token)["expires_at"]
-        self.assertGreater(after, before)
+        # The signed token is reissued with a fresh timestamp on every
+        # authenticated call, so it differs from the one just used.
+        self.assertNotEqual(self.client.cookies.get(COOKIE_NAME), token)
 
     def test_auth_me_401_when_session_expired_logs_reason(self):
+        # A signed token carries no server-side record to mutate, so expiry is
+        # exercised for real: issue one with a 1s TTL and let it lapse. The
+        # cookie is passed explicitly (bypassing the client jar's own Max-Age
+        # bookkeeping) so the server actually receives - and rejects - a
+        # signature that has aged past session_ttl_seconds, rather than the
+        # client simply dropping an expired cookie before sending it.
+        short_lived = replace(self.settings, session_ttl_seconds=1)
+        app = create_app(short_lived)
+        with TestClient(app) as client:
+            response = client.post("/api/v1/auth/login", json={"username": "owner", "password": "correct horse"})
+            self.assertEqual(response.status_code, 200)
+            token = response.cookies.get(COOKIE_NAME)
+            time.sleep(2.2)  # itsdangerous timestamps truncate to whole seconds
+            client.cookies.set(COOKIE_NAME, token)
+            with self.assertLogs("drops.web", level="INFO") as captured:
+                response = client.get("/api/v1/auth/me")
+        self.assertEqual(response.status_code, 401)
+        self.assertTrue(any("cookie_expired" in message for message in captured.output))
+
+    def test_auth_restart_without_store_keeps_session_valid(self):
+        # Confirms the fix: a fresh WebStore (simulating Render wiping the
+        # ephemeral /tmp on redeploy) must not invalidate an existing session,
+        # since the signed cookie carries its own proof and needs no lookup.
+        self.login()
+        restarted_app = create_app(self.settings)
+        with TestClient(restarted_app, cookies=self.client.cookies) as client:
+            self.assertEqual(client.get("/api/v1/auth/me").json(), {"username": "owner"})
+
+    def test_auth_me_401_with_tampered_cookie(self):
         self.login()
         token = self.client.cookies.get(COOKIE_NAME)
-        self.app.state.store.touch_session(token, -1)  # force expiry in the past
+        self.client.cookies.set(COOKIE_NAME, token[:-1] + ("A" if token[-1] != "A" else "B"))
         with self.assertLogs("drops.web", level="INFO") as captured:
             response = self.client.get("/api/v1/auth/me")
         self.assertEqual(response.status_code, 401)
-        self.assertTrue(any("cookie_expired" in message for message in captured.output))
+        self.assertTrue(any("cookie_invalid" in message for message in captured.output))
 
     def test_auth_me_401_with_bogus_cookie_logs_reason(self):
         self.client.cookies.set(COOKIE_NAME, "not-a-real-token")
@@ -300,6 +329,7 @@ class WebSettingsTest(unittest.TestCase):
             "DROPS_WEB_PASSWORD_HASH": PasswordHasher().hash("password"),
             "DROPS_WEB_ENV": "production",
             "DROPS_WEB_ALLOWED_ORIGINS": "https://drops.example,http://localhost:3000",
+            "DROPS_WEB_SESSION_SECRET": "test-secret",
         }
         with patch.dict(os.environ, env, clear=True):
             settings = WebSettings.from_env()

@@ -33,6 +33,7 @@ class WebSettings:
     login_rate_window_seconds: int
     environment: str = "production"
     allow_missing_origin: bool = False
+    session_secret: str = ""
 
     def __post_init__(self) -> None:
         if self.environment not in {"production", "development", "test"}:
@@ -58,6 +59,8 @@ class WebSettings:
                 or "*" in origin
             ):
                 raise ValueError(f"Invalid exact origin: {origin}")
+        if self.environment == "production" and not self.session_secret:
+            raise ValueError("DROPS_WEB_SESSION_SECRET is required in production")
 
     @classmethod
     def from_env(cls) -> "WebSettings":
@@ -85,4 +88,5 @@ class WebSettings:
             login_rate_window_seconds=_positive_int("DROPS_WEB_LOGIN_RATE_WINDOW_SECONDS", 60),
             environment=os.environ.get("DROPS_WEB_ENV", "production").strip().lower(),
             allow_missing_origin=_bool("DROPS_WEB_ALLOW_MISSING_ORIGIN", False),
+            session_secret=os.environ.get("DROPS_WEB_SESSION_SECRET", "").strip(),
         )

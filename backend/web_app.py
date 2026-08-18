@@ -11,6 +11,7 @@ import yt_dlp
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Request, Response
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
@@ -63,6 +64,10 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
     spotify = WebSpotifyClient(settings.state_dir, discogs=discogs)
     bpm_jobs = BpmJobManager(settings.state_dir, max_workers=min(2, settings.max_concurrent))
     password_hasher = PasswordHasher()
+    session_serializer = URLSafeTimedSerializer(settings.session_secret, salt="drops-web-session")
+
+    def issue_session_token(owner: str) -> str:
+        return session_serializer.dumps({"username": owner, "iat": int(time.time())})
 
     def cleanup() -> None:
         for row in store.expired_artifacts():
@@ -109,36 +114,41 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
         if origin not in settings.allowed_origins:
             raise HTTPException(status_code=403, detail="Origin not allowed")
 
-    def current_owner(
-        response: Response,
-        drops_session: str | None = Cookie(default=None, alias=COOKIE_NAME),
-    ) -> str:
-        # Look up the session BEFORE cleanup() purges expired rows, otherwise
-        # an expired session is indistinguishable from an unknown one by the
-        # time we get to log/raise - defeating the missing/invalid/expired
-        # diagnosis this depends on.
+    def verify_session(drops_session: str | None = Cookie(default=None, alias=COOKIE_NAME)) -> str:
+        # Sessions are a signed, stateless token (no disk/DB lookup): Render's
+        # free tier wipes DROPS_WEB_STATE_DIR (an ephemeral /tmp) on every
+        # redeploy, which used to invalidate every session instantly.
         if not drops_session:
             cleanup()
             logger.info("auth rejected reason=cookie_missing")
             raise HTTPException(status_code=401, detail="Authentication required")
-        session = store.session_lookup(drops_session)
-        if not session:
+        try:
+            payload = session_serializer.loads(drops_session, max_age=settings.session_ttl_seconds)
+        except SignatureExpired:
+            cleanup()
+            logger.info("auth rejected reason=cookie_expired")
+            raise HTTPException(status_code=401, detail="Invalid or expired session")
+        except BadSignature:
             cleanup()
             logger.info("auth rejected reason=cookie_invalid")
             raise HTTPException(status_code=401, detail="Invalid or expired session")
-        if session["expires_at"] <= time.time():
+        owner = payload.get("username")
+        if not owner:
             cleanup()
-            logger.info("auth rejected reason=cookie_expired owner=%s", session["owner"])
+            logger.info("auth rejected reason=cookie_invalid")
             raise HTTPException(status_code=401, detail="Invalid or expired session")
-        # Sliding session: extend on every authenticated call so an active user
-        # never gets logged out mid-session, only after real inactivity.
-        store.touch_session(drops_session, settings.session_ttl_seconds)
+        cleanup()
+        return owner
+
+    def current_owner(response: Response, owner: str = Depends(verify_session)) -> str:
+        # Sliding session: reissue with a fresh timestamp on every authenticated
+        # call so an active user never gets logged out mid-session, only after
+        # real inactivity.
         response.set_cookie(
-            COOKIE_NAME, drops_session, max_age=settings.session_ttl_seconds,
+            COOKIE_NAME, issue_session_token(owner), max_age=settings.session_ttl_seconds,
             httponly=True, secure=settings.cookie_secure, samesite="lax", path="/",
         )
-        cleanup()
-        return session["owner"]
+        return owner
 
     def public_job(row) -> dict:
         result = {
@@ -233,8 +243,7 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
         if not valid:
             raise HTTPException(status_code=401, detail="Invalid credentials")
         store.clear_login_attempts(client_key)
-        token = secrets.token_urlsafe(32)
-        store.create_session(token, settings.username, settings.session_ttl_seconds)
+        token = issue_session_token(settings.username)
         response.set_cookie(COOKIE_NAME, token, max_age=settings.session_ttl_seconds, httponly=True, secure=settings.cookie_secure, samesite="lax", path="/")
         return {"username": settings.username}
 
@@ -299,11 +308,8 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
     def logout(
         response: Response,
         _: None = Depends(require_csrf_origin),
-        owner: str = Depends(current_owner),
-        drops_session: str | None = Cookie(default=None, alias=COOKIE_NAME),
+        owner: str = Depends(verify_session),
     ):
-        if drops_session:
-            store.delete_session(drops_session)
         response.delete_cookie(COOKIE_NAME, httponly=True, secure=settings.cookie_secure, samesite="lax", path="/")
 
     @app.post("/api/v1/downloads", status_code=202)
