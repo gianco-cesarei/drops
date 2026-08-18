@@ -10,12 +10,13 @@ from pathlib import Path
 import yt_dlp
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
-from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 
 from media_core import is_supported_url, safe_filename
+from spotify_agent import SpotifyAgentError, WebSpotifyClient
 from web_settings import WebSettings
 from web_store import WebStore
 
@@ -40,6 +41,7 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
     jobs_dir = settings.state_dir / "jobs"
     jobs_dir.mkdir(parents=True, exist_ok=True)
     store = WebStore(settings.state_dir / "web.sqlite3")
+    spotify = WebSpotifyClient(settings.state_dir)
     password_hasher = PasswordHasher()
 
     def cleanup() -> None:
@@ -195,6 +197,38 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
     @app.get("/api/v1/auth/me")
     def me(owner: str = Depends(current_owner)):
         return {"username": owner}
+
+    def spotify_call(operation):
+        try:
+            return operation()
+        except SpotifyAgentError as exc:
+            logger.warning("spotify request failed error_type=%s", type(exc).__name__)
+            raise HTTPException(status_code=502, detail="Spotify request failed") from exc
+
+    @app.get("/api/v1/spotify/status")
+    def spotify_status(owner: str = Depends(current_owner)):
+        return spotify_call(spotify.status)
+
+    @app.get("/api/v1/spotify/connect")
+    def spotify_connect(owner: str = Depends(current_owner)):
+        return RedirectResponse(spotify_call(spotify.create_authorization), status_code=302)
+
+    @app.get("/api/v1/spotify/callback")
+    def spotify_callback(code: str, state: str, owner: str = Depends(current_owner)):
+        spotify_call(lambda: spotify.exchange_code(code, state))
+        return RedirectResponse("/app/spotify", status_code=302)
+
+    @app.get("/api/v1/spotify/liked")
+    def spotify_liked(limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0), owner: str = Depends(current_owner)):
+        return spotify_call(lambda: spotify.liked(limit, offset))
+
+    @app.get("/api/v1/spotify/playlists")
+    def spotify_playlists(owner: str = Depends(current_owner)):
+        return spotify_call(spotify.playlists)
+
+    @app.get("/api/v1/spotify/playlists/{playlist_id}/tracks")
+    def spotify_playlist_tracks(playlist_id: str, owner: str = Depends(current_owner)):
+        return spotify_call(lambda: spotify.playlist_tracks(playlist_id))
 
     @app.post("/api/v1/auth/logout", status_code=204)
     def logout(

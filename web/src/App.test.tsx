@@ -141,10 +141,32 @@ describe('autenticazione App', () => {
     render(<App section="brain" navigate={vi.fn()} />)
     const nav = await screen.findByRole('navigation', { name: 'Area privata' })
     const links = within(nav).getAllByRole('link')
-    expect(links.map((link) => link.textContent)).toEqual(['Discovery', 'Download', 'Radar', 'Brain', 'Content'])
-    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/', '/app/download', '/app/radar', '/app/brain', '/app/content'])
+    expect(links.map((link) => link.textContent)).toEqual(['Discovery', 'Download', 'Spotify', 'Radar', 'Brain', 'Content'])
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/', '/app/download', '/app/spotify', '/app/radar', '/app/brain', '/app/content'])
     expect(within(nav).queryByText('History')).not.toBeInTheDocument()
     expect(within(nav).queryByText('Graph')).not.toBeInTheDocument()
+  })
+
+  it('mostra Spotify collegato raggruppato per label e BPM catalogo', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ username: 'dj' }))
+      .mockResolvedValueOnce(jsonResponse({ connected: true, display_name: 'Gianco' }))
+      .mockResolvedValueOnce(jsonResponse({ total: 2, tracks: [
+        { id: '1', title: 'Signal A', artists: ['Artist A'], album: 'Album A', label: 'Night Label', cover_url: 'https://img.test/a.jpg', isrc: 'IT1', added_at: '2026-08-01T00:00:00Z', duration_ms: 1000, bpm: 124, in_catalog: true },
+        { id: '2', title: 'Signal B', artists: ['Artist B'], album: 'Album B', label: null, cover_url: null, isrc: null, added_at: null, duration_ms: 2000, bpm: null, in_catalog: false },
+      ] })))
+    render(<App section="spotify" navigate={vi.fn()} />)
+    expect(await screen.findByText('Gianco')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Night Label' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Senza label' })).toBeInTheDocument()
+    expect(screen.getByText('124')).toBeInTheDocument()
+    expect(screen.getAllByText('—')).not.toHaveLength(0)
+  })
+
+  it('mostra connessione Spotify quando account non collegato', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ username: 'dj' })).mockResolvedValueOnce(jsonResponse({ connected: false, display_name: null })))
+    render(<App section="spotify" navigate={vi.fn()} />)
+    expect(await screen.findByRole('link', { name: 'Connetti Spotify' })).toHaveAttribute('href', 'https://api.drops.test/api/v1/spotify/connect')
   })
 
   it('mantiene sessione tornando da Discovery nell’area privata', async () => {

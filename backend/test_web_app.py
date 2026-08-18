@@ -60,6 +60,33 @@ class WebAppTest(unittest.TestCase):
     def test_health_is_public_and_minimal(self):
         self.assertEqual(self.client.get("/health").json(), {"status": "ok"})
 
+    def test_spotify_routes_require_login(self):
+        paths = [
+            "/api/v1/spotify/status", "/api/v1/spotify/connect",
+            "/api/v1/spotify/liked", "/api/v1/spotify/playlists",
+            "/api/v1/spotify/playlists/example/tracks",
+            "/api/v1/spotify/callback?code=x&state=y",
+        ]
+        for path in paths:
+            self.assertEqual(self.client.get(path, follow_redirects=False).status_code, 401, path)
+
+    def test_spotify_web_routes_return_safe_shapes_and_redirects(self):
+        self.login()
+        with (
+            patch("spotify_agent.WebSpotifyClient.status", return_value={"connected": True, "display_name": "Gianco"}),
+            patch("spotify_agent.WebSpotifyClient.create_authorization", return_value="https://accounts.spotify.com/authorize?state=safe"),
+            patch("spotify_agent.WebSpotifyClient.exchange_code", return_value={"display_name": "Gianco"}),
+            patch("spotify_agent.WebSpotifyClient.liked", return_value={"total": 0, "limit": 50, "offset": 0, "tracks": []}),
+            patch("spotify_agent.WebSpotifyClient.playlists", return_value={"playlists": []}),
+            patch("spotify_agent.WebSpotifyClient.playlist_tracks", return_value={"total": 0, "tracks": []}),
+        ):
+            self.assertEqual(self.client.get("/api/v1/spotify/status").json(), {"connected": True, "display_name": "Gianco"})
+            self.assertEqual(self.client.get("/api/v1/spotify/connect", follow_redirects=False).headers["location"], "https://accounts.spotify.com/authorize?state=safe")
+            self.assertEqual(self.client.get("/api/v1/spotify/callback?code=x&state=y", follow_redirects=False).headers["location"], "/app/spotify")
+            self.assertEqual(self.client.get("/api/v1/spotify/liked").json()["tracks"], [])
+            self.assertEqual(self.client.get("/api/v1/spotify/playlists").json(), {"playlists": []})
+            self.assertEqual(self.client.get("/api/v1/spotify/playlists/example/tracks").json()["tracks"], [])
+
     def test_login_rate_limit_is_configurable(self):
         app = create_app(replace(self.settings, state_dir=Path(self.temp.name) / "rate", login_rate_limit=2))
         with TestClient(app) as client:

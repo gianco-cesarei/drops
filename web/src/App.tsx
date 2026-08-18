@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode, SyntheticEvent } from 'react'
 import { api, ApiError } from './api'
-import type { Job, User } from './api'
+import type { Job, SpotifyPlaylist, SpotifyTrack, User } from './api'
 import { postLoginRoute } from './lib/routes'
 import { contentFields, contentStages, radarDevelopmentFixtures, radarLockedFixtures } from './data/private.fixture'
 import type { RadarFixture } from './data/private.fixture'
@@ -9,7 +9,7 @@ import BrainGraph from './components/BrainGraph'
 import { linkRadarToBrain, resetPrototypeState, setRadarStatus, usePrototypeState } from './data/brainStore'
 import type { RadarStatus } from './data/brainStore'
 
-export type PrivateSection = 'login' | 'download' | 'radar' | 'brain' | 'content' | 'editorial-suggestions' | 'settings'
+export type PrivateSection = 'login' | 'download' | 'spotify' | 'radar' | 'brain' | 'content' | 'editorial-suggestions' | 'settings'
 
 const terminalStatuses = new Set(['completed', 'complete', 'ready', 'failed', 'error', 'cancelled'])
 const readyStatuses = new Set(['completed', 'complete', 'ready'])
@@ -57,6 +57,7 @@ export default function App({ section = 'login', navigate = browserNavigate }: {
   if (logoutRedirecting) return <Loading />
   if (!user) return <Login onLogin={completeLogin} error={error} setError={setError} />
   if (section === 'download') return <PrivateFrame section={section} user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Download user={user} onError={handleError} error={error} setError={setError} /></PrivateFrame>
+  if (section === 'spotify') return <PrivateFrame section={section} user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><SpotifyLibrary onError={handleError} error={error} /></PrivateFrame>
   if (section === 'radar') return <PrivateFrame section={section} user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Radar /></PrivateFrame>
   if (section === 'brain') return <PrivateFrame section={section} user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Brain /></PrivateFrame>
   if (section === 'content') return <PrivateFrame section={section} user={user} onLogoutStart={beginLogout} onLogoutEnd={finishLogout}><Content /></PrivateFrame>
@@ -105,17 +106,71 @@ function PrivateFrame({ section, user, onLogoutStart, onLogoutEnd, children }: {
     try { await api.logout() } catch { /* Local session remains invalidated. */ } finally { onLogoutEnd() }
   }
   return <div className={`private-layout private-layout-${section}`}>
-    <div className="private-header-bar"><header className="private-header"><a href="/" className="logo">Drops<span>.</span></a><nav aria-label="Area privata"><a href="/">Discovery</a><a href="/app/download">Download</a><a href="/app/radar">Radar</a><a href="/app/brain">Brain</a><a href="/app/content">Content</a></nav><div className="account"><span>{user.name ?? user.username ?? user.email ?? 'Account'}</span><button className="secondary" onClick={logout}>Esci</button></div></header></div>
+    <div className="private-header-bar"><header className="private-header"><a href="/" className="logo">Drops<span>.</span></a><nav aria-label="Area privata"><a href="/">Discovery</a><a href="/app/download">Download</a><a href="/app/spotify">Spotify</a><a href="/app/radar">Radar</a><a href="/app/brain">Brain</a><a href="/app/content">Content</a></nav><div className="account"><span>{user.name ?? user.username ?? user.email ?? 'Account'}</span><button className="secondary" onClick={logout}>Esci</button></div></header></div>
     {children}
   </div>
 }
 
 function PrivatePlaceholder({ section }: { section: PrivateSection }) {
   const labels: Record<PrivateSection, string> = {
-    login: 'Login', download: 'Download', radar: 'Radar', brain: 'Brain', content: 'Content',
+    login: 'Login', download: 'Download', spotify: 'Spotify', radar: 'Radar', brain: 'Brain', content: 'Content',
     'editorial-suggestions': 'Editorial suggestions', settings: 'Settings',
   }
   return <main className="private-placeholder"><span className="development-badge">Private development shell</span><h1 className="sr-only">{labels[section]}</h1><p>Strumento non implementato in questa milestone.</p></main>
+}
+
+function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void; error: string }) {
+  const [status, setStatus] = useState<{ connected: boolean; display_name: string | null } | null>(null)
+  const [mode, setMode] = useState<'liked' | 'playlists'>('liked')
+  const [tracks, setTracks] = useState<SpotifyTrack[]>([])
+  const [total, setTotal] = useState(0)
+  const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([])
+  const [playlistId, setPlaylistId] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => { api.spotifyStatus().then(setStatus).catch(onError) }, [onError])
+  useEffect(() => {
+    if (!status?.connected || mode !== 'liked') return
+    setBusy(true)
+    api.spotifyLiked(100, 0).then((result) => { setTracks(result.tracks); setTotal(result.total) }).catch(onError).finally(() => setBusy(false))
+  }, [mode, onError, status?.connected])
+  useEffect(() => {
+    if (!status?.connected || mode !== 'playlists') return
+    api.spotifyPlaylists().then((result) => { setPlaylists(result.playlists); setPlaylistId((current) => current || result.playlists[0]?.id || '') }).catch(onError)
+  }, [mode, onError, status?.connected])
+  useEffect(() => {
+    if (mode !== 'playlists' || !playlistId) return
+    setBusy(true)
+    api.spotifyPlaylistTracks(playlistId).then((result) => { setTracks(result.tracks); setTotal(result.total) }).catch(onError).finally(() => setBusy(false))
+  }, [mode, onError, playlistId])
+
+  async function loadMore() {
+    setBusy(true)
+    try {
+      const result = await api.spotifyLiked(100, tracks.length)
+      setTracks((current) => [...current, ...result.tracks]); setTotal(result.total)
+    } catch (cause) { onError(cause) } finally { setBusy(false) }
+  }
+
+  if (!status) return <main className="spotify-workspace">{error ? <div className="alert" role="alert">{error}</div> : <p className="spotify-state" role="status">Controllo Spotify…</p>}</main>
+  if (!status.connected) return <main className="spotify-workspace spotify-connect"><p>Collega account Premium per leggere preferiti e playlist.</p><a className="primary spotify-connect-button" href={api.spotifyConnectUrl()}>Connetti Spotify</a></main>
+  return <main className="spotify-workspace"><div className="spotify-toolbar"><div className="spotify-account"><span className="status-dot" /><span>Spotify collegato</span><strong>{status.display_name}</strong></div><div className="spotify-toggle" role="group" aria-label="Libreria Spotify"><button className={mode === 'liked' ? 'active' : ''} onClick={() => setMode('liked')}>Preferiti</button><button className={mode === 'playlists' ? 'active' : ''} onClick={() => setMode('playlists')}>Playlist</button></div>{mode === 'playlists' && <label className="playlist-picker">Playlist<select aria-label="Seleziona playlist" value={playlistId} onChange={(event) => setPlaylistId(event.target.value)}>{playlists.map((playlist) => <option key={playlist.id} value={playlist.id}>{playlist.name} ({playlist.tracks_total})</option>)}</select></label>}</div>{error && <div className="alert" role="alert">{error}</div>}{busy && tracks.length === 0 ? <p className="spotify-state" role="status">Caricamento tracce…</p> : <TrackGroups tracks={tracks} />}{mode === 'liked' && tracks.length < total && <button className="spotify-more" disabled={busy} onClick={loadMore}>{busy ? 'Caricamento…' : `Carica altri · ${tracks.length}/${total}`}</button>}</main>
+}
+
+function TrackGroups({ tracks }: { tracks: SpotifyTrack[] }) {
+  const groups = Object.entries(tracks.reduce<Record<string, SpotifyTrack[]>>((result, track) => {
+    const label = track.label?.trim() || 'Senza label'
+    ;(result[label] ||= []).push(track)
+    return result
+  }, {})).sort(([a], [b]) => a === 'Senza label' ? 1 : b === 'Senza label' ? -1 : a.localeCompare(b))
+  if (!tracks.length) return <p className="spotify-state">Nessuna traccia.</p>
+  return <div className="label-groups">{groups.map(([label, entries]) => <section className="label-group" key={label}><header><h2>{label}</h2><span>{entries.length} {entries.length === 1 ? 'traccia' : 'tracce'}</span></header><div>{entries.map((track) => <article className="spotify-track" key={track.id}><div className="track-cover">{track.cover_url ? <img src={track.cover_url} alt="" loading="lazy" /> : <span />}</div><div className="track-main"><strong>{track.title}</strong><span>{track.artists.join(', ')}</span></div><span className="track-album">{track.album}</span><span className="track-bpm"><b>{track.bpm ?? '—'}</b><small>BPM</small></span><time dateTime={track.added_at ?? undefined}>{formatSpotifyDate(track.added_at)}</time></article>)}</div></section>)}</div>
+}
+
+function formatSpotifyDate(value: string | null) {
+  if (!value) return '—'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '—' : new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', year: 'numeric' }).format(date)
 }
 
 const radarStatusLabels: Record<RadarStatus, string> = { saved: 'Salvato', discarded: 'Scartato', linked: 'Collegato al Brain', content: 'Trasformato in contenuto' }

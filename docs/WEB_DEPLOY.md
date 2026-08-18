@@ -114,6 +114,16 @@ Requires Render login and deployment approval. In Render service
 9. Preserve existing secret variables in Render secret storage:
    `DROPS_WEB_USERNAME` and `DROPS_WEB_PASSWORD_HASH`. Do not copy them into
    this repository or Worker variables.
+   Configure Spotify values in Render environment only:
+
+   ```dotenv
+   SPOTIFY_CLIENT_ID=<Spotify app client ID>
+   SPOTIFY_REDIRECT_URI=https://drops.giancarlocesarei.workers.dev/api/v1/spotify/callback
+   SPOTIFY_REFRESH_TOKEN=<refresh token copied after first OAuth connect>
+   ```
+
+   Register exact redirect URI in Spotify app dashboard. `SPOTIFY_REFRESH_TOKEN`
+   seeds connection after restarts; runtime token JSON remains on `/data`.
 10. Save, review, and approve deploy. Confirm Render logs show Docker build and
     `/health` returns `200`.
 

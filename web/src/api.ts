@@ -14,6 +14,22 @@ export type Job = {
   message?: string
 }
 
+export type SpotifyTrack = {
+  id: string
+  title: string
+  artists: string[]
+  album: string
+  label: string | null
+  cover_url: string | null
+  isrc: string | null
+  added_at: string | null
+  duration_ms: number | null
+  bpm: number | null
+  in_catalog: boolean
+}
+
+export type SpotifyPlaylist = { id: string; name: string; tracks_total: number }
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -96,4 +112,9 @@ export const api = {
     request<unknown>('/api/v1/downloads', { method: 'POST', body: JSON.stringify({ url }) }).then(normalizeJob),
   getDownload: (id: string) => request<unknown>(`/api/v1/downloads/${encodeURIComponent(id)}`).then(normalizeJob),
   fileUrl: (id: string) => `${apiUrl()}/api/v1/downloads/${encodeURIComponent(id)}/file`,
+  spotifyConnectUrl: () => `${apiUrl()}/api/v1/spotify/connect`,
+  spotifyStatus: () => request<{ connected: boolean; display_name: string | null }>('/api/v1/spotify/status'),
+  spotifyLiked: (limit = 100, offset = 0) => request<{ total: number; tracks: SpotifyTrack[] }>(`/api/v1/spotify/liked?limit=${limit}&offset=${offset}`),
+  spotifyPlaylists: () => request<{ playlists: SpotifyPlaylist[] }>('/api/v1/spotify/playlists'),
+  spotifyPlaylistTracks: (id: string) => request<{ total: number; tracks: SpotifyTrack[] }>(`/api/v1/spotify/playlists/${encodeURIComponent(id)}/tracks`),
 }

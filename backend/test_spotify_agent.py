@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+import urllib.parse
 from pathlib import Path
 from unittest.mock import patch
 
@@ -73,9 +74,57 @@ class SpotifyAgentTest(unittest.TestCase):
                 result = spotify_agent.export_saved_tracks(Path(temp_dir))
             exported = json.loads(Path(result["path"]).read_text())
 
-        self.assertEqual(result["total"], 1)
-        self.assertEqual(exported["tracks"][0]["artists"], ["Artista"])
-        self.assertNotIn("audio", exported["tracks"][0])
+            self.assertEqual(result["total"], 1)
+            self.assertEqual(exported["tracks"][0]["artists"], ["Artista"])
+            self.assertNotIn("audio", exported["tracks"][0])
+
+    def test_web_enrichment_batches_album_labels_and_matches_catalog(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            catalog_dir = root / "catalog"
+            catalog_dir.mkdir()
+            (catalog_dir / "tracks.json").write_text(json.dumps({"tracks": [
+                {"spotify_id": "spotify-match", "artist": "Wrong", "title": "Wrong", "bpm": 125},
+                {"isrc": "ISRC-MATCH", "artist": "Other", "title": "Other", "bpm": 128},
+                {"artist": "Àrtist Three", "title": "Track (Three)", "bpm": 131},
+            ]}))
+            client = spotify_agent.WebSpotifyClient(root, catalog_dir)
+            items = []
+            for index in range(21):
+                track_id = "spotify-match" if index == 0 else f"track-{index}"
+                isrc = "ISRC-MATCH" if index == 1 else None
+                artist = "Artist Three" if index == 2 else f"Artist {index}"
+                title = "Track Three" if index == 2 else f"Track {index}"
+                items.append({"added_at": "2026-08-01T00:00:00Z", "track": {
+                    "id": track_id, "name": title, "artists": [{"name": artist}],
+                    "album": {"id": f"album-{index}", "name": f"Album {index}", "images": []},
+                    "external_ids": {"isrc": isrc} if isrc else {}, "duration_ms": 1000,
+                }})
+
+            calls = []
+            def album_get(path):
+                calls.append(path)
+                ids = urllib.parse.unquote(path.split("ids=", 1)[1]).split(",")
+                return {"albums": [{"id": album_id, "label": f"Label {album_id}"} for album_id in ids]}
+
+            with patch.object(client, "get", side_effect=album_get):
+                tracks = client.enrich(items)
+            self.assertEqual(len(calls), 2)
+            self.assertEqual([track["bpm"] for track in tracks[:3]], [125, 128, 131])
+            self.assertTrue(all(track["in_catalog"] for track in tracks[:3]))
+            self.assertEqual(tracks[0]["label"], "Label album-0")
+
+    def test_web_liked_cycles_spotify_pages_over_fifty(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            client = spotify_agent.WebSpotifyClient(Path(temp_dir), Path(temp_dir) / "missing")
+            pages = [
+                {"total": 75, "items": [{"track": {"id": str(i), "artists": [], "album": {}, "external_ids": {}}} for i in range(50)]},
+                {"total": 75, "items": [{"track": {"id": str(i), "artists": [], "album": {}, "external_ids": {}}} for i in range(50, 75)]},
+            ]
+            with patch.object(client, "get", side_effect=pages) as get, patch.object(client, "enrich", side_effect=lambda items: items):
+                result = client.liked(75, 0)
+            self.assertEqual(len(result["tracks"]), 75)
+            self.assertEqual(get.call_count, 2)
 
 
 if __name__ == "__main__":

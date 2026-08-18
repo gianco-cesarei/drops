@@ -12,6 +12,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -22,7 +23,7 @@ SPOTIFY_AUTHORIZE = "https://accounts.spotify.com/authorize"
 SPOTIFY_TOKEN = "https://accounts.spotify.com/api/token"
 SPOTIFY_API = "https://api.spotify.com/v1"
 DEFAULT_SPOTIFY_CLIENT_ID = "7b99b9653fba45ae974edcd553312387"
-SCOPE = "user-library-read user-read-email user-read-private"
+SCOPE = "user-library-read playlist-read-private playlist-read-collaborative user-read-private"
 
 DROPS_HOME = Path(
     os.environ.get("DROPS_STATE_DIR", str(Path.home() / ".drops"))
@@ -63,6 +64,220 @@ GENRE_RULES = (
 
 class SpotifyAgentError(RuntimeError):
     pass
+
+
+def normalize_track_text(value: str | None) -> str:
+    """Normalize catalog identity fields without guessing metadata."""
+    ascii_value = unicodedata.normalize("NFKD", (value or "").casefold()).encode("ascii", "ignore").decode()
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", ascii_value).split())
+
+
+class WebSpotifyClient:
+    """Single-owner Spotify OAuth client used by authenticated web routes."""
+
+    def __init__(self, state_dir: Path, catalog_dir: Path | None = None):
+        self.state_dir = state_dir
+        self.token_file = state_dir / "spotify-token.json"
+        self.account_file = state_dir / "spotify-account.json"
+        self.auth_state_file = state_dir / "spotify-auth-state.json"
+        self.catalog_dir = catalog_dir or Path(
+            os.environ.get("DROPS_CATALOG_DIR", Path(__file__).parents[1] / "data" / "catalog")
+        ).expanduser()
+
+    @property
+    def redirect_uri(self) -> str:
+        value = os.environ.get("SPOTIFY_REDIRECT_URI", "").strip()
+        if not value:
+            raise SpotifyAgentError("Configura SPOTIFY_REDIRECT_URI")
+        return value
+
+    def create_authorization(self) -> str:
+        verifier = secrets.token_urlsafe(64)
+        challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+        state = secrets.token_urlsafe(24)
+        _atomic_json(self.auth_state_file, {"state": state, "verifier": verifier, "created_at": time.time()})
+        params = {
+            "client_id": _client_id(),
+            "response_type": "code",
+            "redirect_uri": self.redirect_uri,
+            "scope": SCOPE,
+            "code_challenge_method": "S256",
+            "code_challenge": challenge,
+            "state": state,
+            "show_dialog": "true",
+        }
+        return f"{SPOTIFY_AUTHORIZE}?{urllib.parse.urlencode(params)}"
+
+    def exchange_code(self, code: str, state: str) -> dict[str, Any]:
+        saved = _read_json(self.auth_state_file, {})
+        if not saved or not secrets.compare_digest(state, saved.get("state", "")):
+            raise SpotifyAgentError("Stato OAuth Spotify non valido")
+        if time.time() - float(saved.get("created_at", 0)) > 600:
+            raise SpotifyAgentError("Login Spotify scaduto: ripeti connessione")
+        token = _request_json(SPOTIFY_TOKEN, method="POST", form={
+            "client_id": _client_id(), "grant_type": "authorization_code", "code": code,
+            "redirect_uri": self.redirect_uri, "code_verifier": saved["verifier"],
+        })
+        token["expires_at"] = time.time() + int(token.get("expires_in", 3600)) - 60
+        _atomic_json(self.token_file, token)
+        profile = self.get("/me")
+        account = _account_payload(profile)
+        _atomic_json(self.account_file, account)
+        self.auth_state_file.unlink(missing_ok=True)
+        return account
+
+    def _token(self) -> dict[str, Any]:
+        token = _read_json(self.token_file, {})
+        if not token:
+            refresh = os.environ.get("SPOTIFY_REFRESH_TOKEN", "").strip()
+            if refresh:
+                token = {"refresh_token": refresh, "expires_at": 0}
+        if not token:
+            raise SpotifyAgentError("Spotify non collegato")
+        if time.time() >= float(token.get("expires_at", 0)):
+            refresh = token.get("refresh_token") or os.environ.get("SPOTIFY_REFRESH_TOKEN", "").strip()
+            if not refresh:
+                raise SpotifyAgentError("Sessione Spotify scaduta: ricollega account")
+            renewed = _request_json(SPOTIFY_TOKEN, method="POST", form={
+                "client_id": _client_id(), "grant_type": "refresh_token", "refresh_token": refresh,
+            })
+            renewed["refresh_token"] = renewed.get("refresh_token", refresh)
+            renewed["expires_at"] = time.time() + int(renewed.get("expires_in", 3600)) - 60
+            _atomic_json(self.token_file, renewed)
+            token = renewed
+        return token
+
+    def get(self, path_or_url: str) -> dict[str, Any]:
+        url = path_or_url if path_or_url.startswith("https://") else SPOTIFY_API + path_or_url
+        return _request_json(url, headers={"Authorization": f"Bearer {self._token()['access_token']}"})
+
+    def status(self) -> dict[str, Any]:
+        try:
+            profile = self.get("/me")
+        except SpotifyAgentError as exc:
+            if "non collegato" in str(exc).lower() or "scaduta" in str(exc).lower():
+                return {"connected": False, "display_name": None}
+            raise
+        account = _account_payload(profile)
+        _atomic_json(self.account_file, account)
+        return {"connected": True, "display_name": account.get("display_name") or account.get("id")}
+
+    def _catalog_tracks(self) -> list[dict[str, Any]]:
+        files = sorted(self.catalog_dir.rglob("*.json")) if self.catalog_dir.is_dir() else []
+        fallback = self.state_dir / "spotify-library.json"
+        if fallback.is_file():
+            files.append(fallback)
+        tracks: list[dict[str, Any]] = []
+        for path in files:
+            payload = _read_json(path, {})
+            if isinstance(payload, list):
+                tracks.extend(item for item in payload if isinstance(item, dict))
+            elif isinstance(payload, dict):
+                values = payload.get("tracks") or payload.get("items") or []
+                tracks.extend(item for item in values if isinstance(item, dict))
+        return tracks
+
+    def _catalog_indexes(self) -> tuple[dict[str, dict], dict[str, dict], dict[tuple[str, str], dict]]:
+        by_spotify: dict[str, dict] = {}
+        by_isrc: dict[str, dict] = {}
+        by_name: dict[tuple[str, str], dict] = {}
+        for item in self._catalog_tracks():
+            spotify_id = item.get("spotify_id") or item.get("spotify_track_id") or item.get("id")
+            isrc = item.get("isrc") or (item.get("external_ids") or {}).get("isrc")
+            artists = item.get("artists") or item.get("artist") or []
+            if isinstance(artists, str):
+                artists = [artists]
+            elif isinstance(artists, dict):
+                artists = [artists]
+            artist_key = normalize_track_text(" ".join(str(x.get("name") if isinstance(x, dict) else x) for x in artists))
+            title_key = normalize_track_text(item.get("title") or item.get("name"))
+            if spotify_id:
+                by_spotify[str(spotify_id)] = item
+            if isrc:
+                by_isrc[str(isrc).upper()] = item
+            if artist_key and title_key:
+                by_name[(artist_key, title_key)] = item
+        return by_spotify, by_isrc, by_name
+
+    def _album_labels(self, tracks: list[dict[str, Any]]) -> dict[str, str | None]:
+        ids = list(dict.fromkeys((track.get("album") or {}).get("id") for track in tracks if (track.get("album") or {}).get("id")))
+        labels: dict[str, str | None] = {}
+        for start in range(0, len(ids), 20):
+            batch = ids[start:start + 20]
+            payload = self.get(f"/albums?ids={urllib.parse.quote(','.join(batch))}")
+            for album in payload.get("albums") or []:
+                if album and album.get("id"):
+                    labels[album["id"]] = album.get("label")
+        return labels
+
+    def enrich(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        pairs = [(item, item.get("track") or item) for item in items]
+        pairs = [(item, track) for item, track in pairs if isinstance(track, dict) and track.get("id")]
+        raw_tracks = [track for _, track in pairs]
+        labels = self._album_labels(raw_tracks)
+        by_spotify, by_isrc, by_name = self._catalog_indexes()
+        enriched = []
+        for item, track in pairs:
+            artists = [artist.get("name", "") for artist in track.get("artists") or [] if artist.get("name")]
+            isrc = (track.get("external_ids") or {}).get("isrc")
+            catalog = by_spotify.get(str(track.get("id")))
+            if catalog is None and isrc:
+                catalog = by_isrc.get(str(isrc).upper())
+            if catalog is None:
+                catalog = by_name.get((normalize_track_text(" ".join(artists)), normalize_track_text(track.get("name"))))
+            album = track.get("album") or {}
+            images = album.get("images") or []
+            bpm = catalog.get("bpm") if catalog else None
+            if isinstance(bpm, str):
+                try:
+                    bpm = float(bpm)
+                except ValueError:
+                    bpm = None
+            enriched.append({
+                "id": track.get("id"), "title": track.get("name") or "", "artists": artists,
+                "album": album.get("name") or "", "label": labels.get(album.get("id")),
+                "cover_url": images[0].get("url") if images else None, "isrc": isrc,
+                "added_at": item.get("added_at"), "duration_ms": track.get("duration_ms"),
+                "bpm": bpm if isinstance(bpm, (int, float)) else None, "in_catalog": catalog is not None,
+            })
+        return enriched
+
+    def liked(self, limit: int, offset: int) -> dict[str, Any]:
+        items: list[dict[str, Any]] = []
+        remaining = limit
+        cursor = offset
+        total = 0
+        while remaining:
+            size = min(50, remaining)
+            page = self.get(f"/me/tracks?limit={size}&offset={cursor}")
+            page_items = page.get("items") or []
+            total = int(page.get("total") or 0)
+            items.extend(page_items)
+            if len(page_items) < size:
+                break
+            remaining -= len(page_items)
+            cursor += len(page_items)
+        return {"total": total, "limit": limit, "offset": offset, "tracks": self.enrich(items)}
+
+    def playlists(self) -> dict[str, Any]:
+        items: list[dict[str, Any]] = []
+        next_url: str | None = "/me/playlists?limit=50"
+        while next_url:
+            page = self.get(next_url)
+            items.extend(page.get("items") or [])
+            next_url = page.get("next")
+        return {"playlists": [{"id": x.get("id"), "name": x.get("name") or "Senza nome", "tracks_total": (x.get("tracks") or {}).get("total", 0)} for x in items if x.get("id")]}
+
+    def playlist_tracks(self, playlist_id: str) -> dict[str, Any]:
+        items: list[dict[str, Any]] = []
+        next_url: str | None = f"/playlists/{urllib.parse.quote(playlist_id, safe='')}/tracks?limit=50"
+        total = 0
+        while next_url:
+            page = self.get(next_url)
+            total = int(page.get("total") or total)
+            items.extend(page.get("items") or [])
+            next_url = page.get("next")
+        return {"total": total, "tracks": self.enrich(items)}
 
 
 def _atomic_json(path: Path, data: Any) -> None:
