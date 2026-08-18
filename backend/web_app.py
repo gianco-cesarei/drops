@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from media_core import is_supported_url, safe_filename
 from spotify_agent import SpotifyAgentError, WebSpotifyClient
 from discogs_agent import DiscogsClient
+from bpm_jobs import BpmJobManager
 from web_settings import WebSettings
 from web_store import WebStore
 
@@ -44,6 +45,14 @@ class DiscogsEnrichRequest(BaseModel):
     barcode: str | None = None
 
 
+class BpmComputeRequest(BaseModel):
+    track_key: str | None = None
+    artist: str
+    title: str
+    isrc: str | None = None
+    source_url: str | None = None
+
+
 def create_app(settings: WebSettings | None = None) -> FastAPI:
     settings = settings or WebSettings.from_env()
     settings.state_dir.mkdir(parents=True, exist_ok=True)
@@ -52,6 +61,7 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
     store = WebStore(settings.state_dir / "web.sqlite3")
     discogs = DiscogsClient(settings.state_dir)
     spotify = WebSpotifyClient(settings.state_dir, discogs=discogs)
+    bpm_jobs = BpmJobManager(settings.state_dir, max_workers=min(2, settings.max_concurrent))
     password_hasher = PasswordHasher()
 
     def cleanup() -> None:
@@ -69,6 +79,7 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
         cleanup()
         executor = ThreadPoolExecutor(max_workers=settings.max_concurrent, thread_name_prefix="drops-web")
         app.state.executor = executor
+        bpm_jobs.bind_executor(executor)
         try:
             yield
         finally:
@@ -223,6 +234,22 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
     def discogs_enrich(request: DiscogsEnrichRequest, owner: str = Depends(current_owner)):
         # Discogs client is best-effort by design: no token/downstream failure is null.
         return discogs.enrich(request.artist, request.title, request.isrc, request.catalog_no, request.barcode)
+
+    @app.post("/api/v1/bpm/compute", status_code=202)
+    def bpm_compute(request: BpmComputeRequest, owner: str = Depends(current_owner)):
+        if not request.artist.strip() or not request.title.strip():
+            raise HTTPException(status_code=422, detail="Artist and title required")
+        try:
+            return bpm_jobs.submit(track_key=request.track_key, artist=request.artist, title=request.title, isrc=request.isrc, source_url=request.source_url)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail="BPM worker unavailable") from exc
+
+    @app.get("/api/v1/bpm/job/{job_id}")
+    def bpm_job(job_id: str, owner: str = Depends(current_owner)):
+        result = bpm_jobs.get(job_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="BPM job not found")
+        return result
 
     @app.get("/api/v1/spotify/connect")
     def spotify_connect(owner: str = Depends(current_owner)):
