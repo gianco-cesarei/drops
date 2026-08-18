@@ -14,6 +14,10 @@ export type PrivateSection = 'login' | 'download' | 'spotify' | 'radar' | 'brain
 const terminalStatuses = new Set(['completed', 'complete', 'ready', 'failed', 'error', 'cancelled'])
 const readyStatuses = new Set(['completed', 'complete', 'ready'])
 const failedStatuses = new Set(['failed', 'error', 'cancelled'])
+const queuedStatuses = new Set(['queued', 'pending'])
+const statusLabels: Record<string, string> = {
+  queued: 'In coda', pending: 'In coda', downloading: 'Download in corso', processing: 'Elaborazione…',
+}
 const browserNavigate = (to: string) => window.location.assign(to)
 
 export default function App({ section = 'login', navigate = browserNavigate }: { section?: PrivateSection; navigate?: (to: string) => void }) {
@@ -296,7 +300,7 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
     const timer = window.setInterval(async () => {
       try { setJob(await api.getDownload(job.id)) }
       catch (cause) { window.clearInterval(timer); onError(cause) }
-    }, 2000)
+    }, 1500)
     return () => window.clearInterval(timer)
   }, [job?.id, job?.status, onError])
 
@@ -311,13 +315,25 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
     <section className="card hero-card"><div><span className="eyebrow">DOWNLOAD PRIVATO</span><h1 className="sr-only">Nuovo download</h1><p className="lead">Area personale di {user.name ?? user.username ?? 'utente'}.</p></div>
       <form onSubmit={submit} className="download-form"><label htmlFor="download-url">URL contenuto</label><div className="url-row"><input id="download-url" type="url" required placeholder="https://…" value={url} onChange={(event) => setUrl(event.target.value)} /><button className="primary" disabled={busy}>{busy ? 'Avvio…' : 'Scarica'}</button></div></form>{error && <div className="alert" role="alert">{error}</div>}
     </section>
-    <aside className="card status-card"><span className="eyebrow">STATO JOB</span>{!job ? <div className="empty"><p>Nessun download attivo</p></div> : <JobStatus job={job} />}</aside>
+    <aside className="card status-card"><span className="eyebrow">STATO JOB</span>{!job ? <div className="empty"><p>Nessun download attivo</p></div> : <TrackCard job={job} />}</aside>
   </div></main>
 }
 
-function JobStatus({ job }: { job: Job }) {
+function TrackCard({ job }: { job: Job }) {
   const ready = readyStatuses.has(job.status)
   const failed = failedStatuses.has(job.status)
+  const queued = queuedStatuses.has(job.status)
+  const statusLabel = ready ? 'Pronto' : failed ? 'Download fallito' : statusLabels[job.status] ?? 'Elaborazione…'
   const progress = Math.max(0, Math.min(100, job.progress ?? (ready ? 100 : 0)))
-  return <div className={`job ${ready ? 'ready' : failed ? 'failed' : ''}`}><div className="job-head"><span className="status-dot" /><strong>{ready ? 'Pronto' : failed ? 'Download fallito' : 'In elaborazione'}</strong></div><p className="job-title">{job.title ?? job.fileName ?? `Job ${job.id}`}</p>{!failed && <><div className="progress"><span style={{ width: `${progress}%` }} /></div><small>{progress ? `${progress}%` : 'Elaborazione in corso…'}</small></>}{failed && <div className="alert" role="alert">{job.message ?? 'Il job non è stato completato. Riprova.'}</div>}{ready && <a className="primary download-link" href={api.fileUrl(job.id)} download>Scarica artefatto</a>}</div>
+  return <div className={`track-card ${ready ? 'ready' : failed ? 'failed' : ''}`}>
+    <div className="track-cover" aria-hidden="true">{job.coverUrl ? <img src={job.coverUrl} alt="" /> : <span className="track-cover-fallback">♪</span>}</div>
+    <div className="track-info">
+      <p className="track-title">{job.title ?? job.fileName ?? `Job ${job.id}`}</p>
+      {job.artist && <p className="track-artist">{job.artist}</p>}
+      <div className="track-status-row"><span className="status-dot" /><span className="track-status-label">{statusLabel}</span></div>
+      {!failed && !ready && <><div className="progress"><span style={{ width: `${queued ? 0 : progress}%` }} /></div><small>{!queued && progress ? `${progress}%` : ''}</small></>}
+      {failed && <div className="alert" role="alert">{job.message ?? 'Il job non è stato completato. Riprova.'}</div>}
+      {ready && <a className="primary download-link" href={api.fileUrl(job.id)} download>↓ Scarica file</a>}
+    </div>
+  </div>
 }
