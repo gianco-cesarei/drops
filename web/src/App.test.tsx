@@ -161,6 +161,11 @@ describe('autenticazione App', () => {
     expect(screen.getByRole('heading', { name: 'Senza label' })).toBeInTheDocument()
     expect(screen.getByText('124')).toBeInTheDocument()
     expect(screen.getAllByText('—')).not.toHaveLength(0)
+    await userEvent.click(screen.getByRole('button', { name: 'BPM ↑' }))
+    const list = screen.getByText('Signal A').closest('.track-list')!
+    expect(list.textContent!.indexOf('Signal A')).toBeLessThan(list.textContent!.indexOf('Signal B'))
+    await userEvent.click(screen.getByRole('button', { name: 'BPM ↑' }))
+    expect(screen.getByRole('button', { name: 'BPM ↓' })).toBeInTheDocument()
   })
 
   it('mostra connessione Spotify quando account non collegato', async () => {

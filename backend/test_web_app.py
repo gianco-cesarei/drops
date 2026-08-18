@@ -10,6 +10,7 @@ from argon2 import PasswordHasher
 from fastapi.testclient import TestClient
 
 import spotify_agent
+import discogs_agent
 import web_app
 from web_app import COOKIE_NAME, create_app
 from web_settings import WebSettings
@@ -64,6 +65,7 @@ class WebAppTest(unittest.TestCase):
 
     def test_web_app_imports_internal_spotify_module(self):
         self.assertIs(web_app.WebSpotifyClient, spotify_agent.WebSpotifyClient)
+        self.assertIs(web_app.DiscogsClient, discogs_agent.DiscogsClient)
 
     def test_spotify_routes_require_login(self):
         paths = [
@@ -74,6 +76,7 @@ class WebAppTest(unittest.TestCase):
         ]
         for path in paths:
             self.assertEqual(self.client.get(path, follow_redirects=False).status_code, 401, path)
+        self.assertEqual(self.client.post("/api/v1/discogs/enrich", json={"artist": "A", "title": "B"}).status_code, 401)
 
     def test_spotify_web_routes_return_safe_shapes_and_redirects(self):
         self.login()
@@ -91,6 +94,15 @@ class WebAppTest(unittest.TestCase):
             self.assertEqual(self.client.get("/api/v1/spotify/liked").json()["tracks"], [])
             self.assertEqual(self.client.get("/api/v1/spotify/playlists").json(), {"playlists": []})
             self.assertEqual(self.client.get("/api/v1/spotify/playlists/example/tracks").json()["tracks"], [])
+
+    def test_discogs_enrich_route_is_authenticated_and_best_effort(self):
+        self.login()
+        result = {"label": "Night Label", "year": 2024, "country": "Portugal", "styles": ["House"], "artists": ["Artist"], "discogs_url": "https://discogs.test/release/1"}
+        with patch("web_app.DiscogsClient.enrich", return_value=result) as enrich:
+            response = self.client.post("/api/v1/discogs/enrich", json={"artist": "Artist", "title": "Track", "isrc": None})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), result)
+        enrich.assert_called_once_with("Artist", "Track", None, None, None)
 
     def test_login_rate_limit_is_configurable(self):
         app = create_app(replace(self.settings, state_dir=Path(self.temp.name) / "rate", login_rate_limit=2))

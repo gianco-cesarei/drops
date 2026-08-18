@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import yt_dlp
+from discogs_agent import DiscogsClient
 
 SPOTIFY_AUTHORIZE = "https://accounts.spotify.com/authorize"
 SPOTIFY_TOKEN = "https://accounts.spotify.com/api/token"
@@ -75,7 +76,7 @@ def normalize_track_text(value: str | None) -> str:
 class WebSpotifyClient:
     """Single-owner Spotify OAuth client used by authenticated web routes."""
 
-    def __init__(self, state_dir: Path, catalog_dir: Path | None = None):
+    def __init__(self, state_dir: Path, catalog_dir: Path | None = None, discogs: DiscogsClient | None = None):
         self.state_dir = state_dir
         self.token_file = state_dir / "spotify-token.json"
         self.account_file = state_dir / "spotify-account.json"
@@ -83,6 +84,7 @@ class WebSpotifyClient:
         self.catalog_dir = catalog_dir or Path(
             os.environ.get("DROPS_CATALOG_DIR", Path(__file__).parents[1] / "data" / "catalog")
         ).expanduser()
+        self.discogs = discogs or DiscogsClient(state_dir)
 
     @property
     def redirect_uri(self) -> str:
@@ -251,12 +253,19 @@ class WebSpotifyClient:
                     bpm = float(bpm)
                 except ValueError:
                     bpm = None
+            discogs_result = None
+            if not labels.get(album.get("id")):
+                discogs_result = self.discogs.enrich(" ".join(artists), track.get("name") or "", isrc=isrc)
+            label = labels.get(album.get("id")) or (discogs_result or {}).get("label")
             enriched.append({
                 "id": track.get("id"), "title": track.get("name") or "", "artists": artists,
-                "album": album.get("name") or "", "label": labels.get(album.get("id")),
+                "album": album.get("name") or "", "label": label,
                 "cover_url": images[0].get("url") if images else None, "isrc": isrc,
                 "added_at": item.get("added_at"), "duration_ms": track.get("duration_ms"),
                 "bpm": bpm if isinstance(bpm, (int, float)) else None, "in_catalog": catalog is not None,
+                "year": (discogs_result or {}).get("year"), "country": (discogs_result or {}).get("country"),
+                "styles": (discogs_result or {}).get("styles", []), "catalog_no": (discogs_result or {}).get("catalog_no"),
+                "discogs_url": (discogs_result or {}).get("discogs_url"),
             })
         return enriched
 

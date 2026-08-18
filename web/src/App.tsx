@@ -127,6 +127,7 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([])
   const [playlistId, setPlaylistId] = useState('')
   const [busy, setBusy] = useState(false)
+  const [sort, setSort] = useState<'label' | 'bpm-asc' | 'bpm-desc'>('label')
 
   useEffect(() => { api.spotifyStatus().then(setStatus).catch(onError) }, [onError])
   useEffect(() => {
@@ -154,17 +155,31 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
 
   if (!status) return <main className="spotify-workspace">{error ? <div className="alert" role="alert">{error}</div> : <p className="spotify-state" role="status">Controllo Spotify…</p>}</main>
   if (!status.connected) return <main className="spotify-workspace spotify-connect"><p>Collega account Premium per leggere preferiti e playlist.</p><a className="primary spotify-connect-button" href={api.spotifyConnectUrl()}>Connetti Spotify</a></main>
-  return <main className="spotify-workspace"><div className="spotify-toolbar"><div className="spotify-account"><span className="status-dot" /><span>Spotify collegato</span><strong>{status.display_name}</strong></div><div className="spotify-toggle" role="group" aria-label="Libreria Spotify"><button className={mode === 'liked' ? 'active' : ''} onClick={() => setMode('liked')}>Preferiti</button><button className={mode === 'playlists' ? 'active' : ''} onClick={() => setMode('playlists')}>Playlist</button></div>{mode === 'playlists' && <label className="playlist-picker">Playlist<select aria-label="Seleziona playlist" value={playlistId} onChange={(event) => setPlaylistId(event.target.value)}>{playlists.map((playlist) => <option key={playlist.id} value={playlist.id}>{playlist.name} ({playlist.tracks_total})</option>)}</select></label>}</div>{error && <div className="alert" role="alert">{error}</div>}{busy && tracks.length === 0 ? <p className="spotify-state" role="status">Caricamento tracce…</p> : <TrackGroups tracks={tracks} />}{mode === 'liked' && tracks.length < total && <button className="spotify-more" disabled={busy} onClick={loadMore}>{busy ? 'Caricamento…' : `Carica altri · ${tracks.length}/${total}`}</button>}</main>
+  return <main className="spotify-workspace"><div className="spotify-toolbar"><div className="spotify-account"><span className="status-dot" /><span>Spotify collegato</span><strong>{status.display_name}</strong></div><div className="spotify-toggle" role="group" aria-label="Libreria Spotify"><button className={mode === 'liked' ? 'active' : ''} onClick={() => setMode('liked')}>Preferiti</button><button className={mode === 'playlists' ? 'active' : ''} onClick={() => setMode('playlists')}>Playlist</button></div><div className="spotify-sort" role="group" aria-label="Ordina per"><span>Ordina per</span><button className={sort === 'label' ? 'active' : ''} onClick={() => setSort('label')}>Label</button><button className={sort === 'bpm-asc' ? 'active' : ''} onClick={() => setSort(sort === 'bpm-asc' ? 'bpm-desc' : 'bpm-asc')}>BPM {sort === 'bpm-desc' ? '↓' : '↑'}</button></div>{mode === 'playlists' && <label className="playlist-picker">Playlist<select aria-label="Seleziona playlist" value={playlistId} onChange={(event) => setPlaylistId(event.target.value)}>{playlists.map((playlist) => <option key={playlist.id} value={playlist.id}>{playlist.name} ({playlist.tracks_total})</option>)}</select></label>}</div>{error && <div className="alert" role="alert">{error}</div>}{busy && tracks.length === 0 ? <p className="spotify-state" role="status">Caricamento tracce…</p> : <TrackGroups tracks={tracks} sort={sort} />}{mode === 'liked' && tracks.length < total && <button className="spotify-more" disabled={busy} onClick={loadMore}>{busy ? 'Caricamento…' : `Carica altri · ${tracks.length}/${total}`}</button>}</main>
 }
 
-function TrackGroups({ tracks }: { tracks: SpotifyTrack[] }) {
+function TrackGroups({ tracks, sort }: { tracks: SpotifyTrack[]; sort: 'label' | 'bpm-asc' | 'bpm-desc' }) {
+  if (sort !== 'label') {
+    const direction = sort === 'bpm-asc' ? 1 : -1
+    const ordered = [...tracks].sort((left, right) => {
+      if (left.bpm === null && right.bpm === null) return 0
+      if (left.bpm === null) return 1
+      if (right.bpm === null) return -1
+      return (left.bpm - right.bpm) * direction
+    })
+    return <div className="track-list">{ordered.map((track) => <TrackRow key={track.id} track={track} />)}</div>
+  }
   const groups = Object.entries(tracks.reduce<Record<string, SpotifyTrack[]>>((result, track) => {
     const label = track.label?.trim() || 'Senza label'
     ;(result[label] ||= []).push(track)
     return result
   }, {})).sort(([a], [b]) => a === 'Senza label' ? 1 : b === 'Senza label' ? -1 : a.localeCompare(b))
   if (!tracks.length) return <p className="spotify-state">Nessuna traccia.</p>
-  return <div className="label-groups">{groups.map(([label, entries]) => <section className="label-group" key={label}><header><h2>{label}</h2><span>{entries.length} {entries.length === 1 ? 'traccia' : 'tracce'}</span></header><div>{entries.map((track) => <article className="spotify-track" key={track.id}><div className="track-cover">{track.cover_url ? <img src={track.cover_url} alt="" loading="lazy" /> : <span />}</div><div className="track-main"><strong>{track.title}</strong><span>{track.artists.join(', ')}</span></div><span className="track-album">{track.album}</span><span className="track-bpm"><b>{track.bpm ?? '—'}</b><small>BPM</small></span><time dateTime={track.added_at ?? undefined}>{formatSpotifyDate(track.added_at)}</time></article>)}</div></section>)}</div>
+  return <div className="label-groups">{groups.map(([label, entries]) => <section className="label-group" key={label}><header><h2>{label}</h2><span>{entries.length} {entries.length === 1 ? 'traccia' : 'tracce'}</span></header><div>{entries.map((track) => <TrackRow key={track.id} track={track} />)}</div></section>)}</div>
+}
+
+function TrackRow({ track }: { track: SpotifyTrack }) {
+  return <article className="spotify-track"><div className="track-cover">{track.cover_url ? <img src={track.cover_url} alt="" loading="lazy" /> : <span />}</div><div className="track-main"><strong>{track.title}</strong><span>{track.artists.join(', ')}</span></div><span className="track-album">{track.album}</span><span className="track-bpm"><b>{track.bpm ?? '—'}</b><small>BPM</small></span><time dateTime={track.added_at ?? undefined}>{formatSpotifyDate(track.added_at)}</time></article>
 }
 
 function formatSpotifyDate(value: string | null) {

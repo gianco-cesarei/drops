@@ -36,6 +36,7 @@ COPY backend/requirements-web.txt backend/requirements-web.txt
 RUN pip install --no-cache-dir -r backend/requirements-web.txt
 
 COPY --chown=drops:drops \
+    backend/discogs_agent.py \
     backend/media_core.py \
     backend/run_web.py \
     backend/spotify_agent.py \
@@ -46,7 +47,7 @@ COPY --chown=drops:drops \
 
 # Fail image build if runtime import graph is incomplete. Backend runs with
 # /app/backend on sys.path because run_web.py is executed as backend/run_web.py.
-RUN python -c "import sys; sys.path.insert(0, '/app/backend'); import web_app; import spotify_agent"
+RUN python -c "import sys; sys.path.insert(0, '/app/backend'); import web_app; import spotify_agent; import discogs_agent"
 
 USER drops
 

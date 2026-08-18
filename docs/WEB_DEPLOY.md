@@ -124,6 +124,15 @@ Requires Render login and deployment approval. In Render service
 
    Register exact redirect URI in Spotify app dashboard. `SPOTIFY_REFRESH_TOKEN`
    seeds connection after restarts; runtime token JSON remains on `/data`.
+   Configure Discogs only in Render secret/environment settings:
+
+   ```dotenv
+   DISCOGS_TOKEN=<Discogs personal token>
+   DISCOGS_USER_AGENT=Drops/1.0 +https://drops.giancarlocesarei.workers.dev
+   ```
+
+   Discogs responses cache under `/data/discogs-cache`; missing token or upstream
+   failure leaves Spotify tracks available without Discogs metadata.
 10. Save, review, and approve deploy. Confirm Render logs show Docker build and
     `/health` returns `200`.
 

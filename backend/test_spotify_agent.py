@@ -119,6 +119,17 @@ class SpotifyAgentTest(unittest.TestCase):
             self.assertIsNone(result[0]["bpm"])
             self.assertFalse(result[0]["in_catalog"])
 
+    def test_web_enrichment_uses_discogs_label_when_spotify_label_missing(self):
+        class FakeDiscogs:
+            def enrich(self, artist, title, **kwargs):
+                return {"label": "Discogs Label", "year": 2024, "country": "Portugal", "styles": ["House"], "discogs_url": "https://discogs.test/release/1"}
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            client = spotify_agent.WebSpotifyClient(Path(temp_dir), Path(temp_dir) / "missing", discogs=FakeDiscogs())
+            result = client.enrich([{"added_at": None, "track": {"id": "discogs-track", "name": "Track", "artists": [{"name": "Artist"}], "album": {"name": "Album"}}}])
+            self.assertEqual(result[0]["label"], "Discogs Label")
+            self.assertEqual(result[0]["discogs_url"], "https://discogs.test/release/1")
+
     def test_web_liked_cycles_spotify_pages_over_fifty(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             client = spotify_agent.WebSpotifyClient(Path(temp_dir), Path(temp_dir) / "missing")

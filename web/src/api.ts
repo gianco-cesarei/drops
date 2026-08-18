@@ -26,6 +26,11 @@ export type SpotifyTrack = {
   duration_ms: number | null
   bpm: number | null
   in_catalog: boolean
+  year?: number | null
+  country?: string | null
+  styles?: string[]
+  catalog_no?: string | null
+  discogs_url?: string | null
 }
 
 export type SpotifyPlaylist = { id: string; name: string; tracks_total: number }

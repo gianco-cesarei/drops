@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 from media_core import is_supported_url, safe_filename
 from spotify_agent import SpotifyAgentError, WebSpotifyClient
+from discogs_agent import DiscogsClient
 from web_settings import WebSettings
 from web_store import WebStore
 
@@ -35,13 +36,22 @@ class WebDownloadRequest(BaseModel):
     quality: str = "320"
 
 
+class DiscogsEnrichRequest(BaseModel):
+    artist: str
+    title: str
+    isrc: str | None = None
+    catalog_no: str | None = None
+    barcode: str | None = None
+
+
 def create_app(settings: WebSettings | None = None) -> FastAPI:
     settings = settings or WebSettings.from_env()
     settings.state_dir.mkdir(parents=True, exist_ok=True)
     jobs_dir = settings.state_dir / "jobs"
     jobs_dir.mkdir(parents=True, exist_ok=True)
     store = WebStore(settings.state_dir / "web.sqlite3")
-    spotify = WebSpotifyClient(settings.state_dir)
+    discogs = DiscogsClient(settings.state_dir)
+    spotify = WebSpotifyClient(settings.state_dir, discogs=discogs)
     password_hasher = PasswordHasher()
 
     def cleanup() -> None:
@@ -208,6 +218,11 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
     @app.get("/api/v1/spotify/status")
     def spotify_status(owner: str = Depends(current_owner)):
         return spotify_call(spotify.status)
+
+    @app.post("/api/v1/discogs/enrich")
+    def discogs_enrich(request: DiscogsEnrichRequest, owner: str = Depends(current_owner)):
+        # Discogs client is best-effort by design: no token/downstream failure is null.
+        return discogs.enrich(request.artist, request.title, request.isrc, request.catalog_no, request.barcode)
 
     @app.get("/api/v1/spotify/connect")
     def spotify_connect(owner: str = Depends(current_owner)):
