@@ -34,6 +34,7 @@ export type SpotifyTrack = {
 }
 
 export type SpotifyPlaylist = { id: string; name: string; tracks_total: number }
+export type DiscogsEnrichment = { label: string | null; year?: number | null; country?: string | null; styles?: string[]; artists?: string[]; catalog_no?: string | null; discogs_url?: string | null }
 
 export class ApiError extends Error {
   constructor(
@@ -122,4 +123,5 @@ export const api = {
   spotifyLiked: (limit = 100, offset = 0) => request<{ total: number; tracks: SpotifyTrack[] }>(`/api/v1/spotify/liked?limit=${limit}&offset=${offset}`),
   spotifyPlaylists: () => request<{ playlists: SpotifyPlaylist[] }>('/api/v1/spotify/playlists'),
   spotifyPlaylistTracks: (id: string) => request<{ total: number; tracks: SpotifyTrack[] }>(`/api/v1/spotify/playlists/${encodeURIComponent(id)}/tracks`),
+  discogsEnrich: (track: Pick<SpotifyTrack, 'title' | 'artists' | 'isrc'>) => request<DiscogsEnrichment | null>('/api/v1/discogs/enrich', { method: 'POST', body: JSON.stringify({ artist: track.artists.join(', '), title: track.title, isrc: track.isrc }) }),
 }

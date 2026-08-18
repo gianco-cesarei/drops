@@ -226,11 +226,11 @@ class WebSpotifyClient:
 
     def enrich_best_effort(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         try:
-            return self.enrich(items)
+            return self.enrich(items, include_discogs=False)
         except Exception:
             return [fallback for item in items if (fallback := self._fallback_track(item)) is not None]
 
-    def enrich(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def enrich(self, items: list[dict[str, Any]], *, include_discogs: bool = False) -> list[dict[str, Any]]:
         pairs = [(item, item.get("item") or item.get("track") or item) for item in items]
         pairs = [(item, track) for item, track in pairs if isinstance(track, dict) and track.get("id")]
         raw_tracks = [track for _, track in pairs]
@@ -254,7 +254,7 @@ class WebSpotifyClient:
                 except ValueError:
                     bpm = None
             discogs_result = None
-            if not labels.get(album.get("id")):
+            if include_discogs and not labels.get(album.get("id")):
                 discogs_result = self.discogs.enrich(" ".join(artists), track.get("name") or "", isrc=isrc)
             label = labels.get(album.get("id")) or (discogs_result or {}).get("label")
             enriched.append({

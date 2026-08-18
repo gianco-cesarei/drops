@@ -128,6 +128,7 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
   const [playlistId, setPlaylistId] = useState('')
   const [busy, setBusy] = useState(false)
   const [sort, setSort] = useState<'label' | 'bpm-asc' | 'bpm-desc'>('label')
+  const discogsRequested = useRef(new Set<string>())
 
   useEffect(() => { api.spotifyStatus().then(setStatus).catch(onError) }, [onError])
   useEffect(() => {
@@ -144,6 +145,16 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
     setBusy(true)
     api.spotifyPlaylistTracks(playlistId).then((result) => { setTracks(result.tracks); setTotal(result.total) }).catch(onError).finally(() => setBusy(false))
   }, [mode, onError, playlistId])
+  useEffect(() => {
+    if (!status?.connected) return
+    tracks.filter((track) => !track.label && !discogsRequested.current.has(track.id)).forEach((track) => {
+      discogsRequested.current.add(track.id)
+      api.discogsEnrich(track).then((metadata) => {
+        if (!metadata?.label) return
+        setTracks((current) => current.map((item) => item.id === track.id ? { ...item, label: metadata.label, year: metadata.year, country: metadata.country, styles: metadata.styles, catalog_no: metadata.catalog_no, discogs_url: metadata.discogs_url } : item))
+      }).catch(() => { /* Discogs optional; Spotify rows stay visible. */ })
+    })
+  }, [status?.connected, tracks])
 
   async function loadMore() {
     setBusy(true)

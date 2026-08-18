@@ -154,7 +154,9 @@ describe('autenticazione App', () => {
       .mockResolvedValueOnce(jsonResponse({ total: 2, tracks: [
         { id: '1', title: 'Signal A', artists: ['Artist A'], album: 'Album A', label: 'Night Label', cover_url: 'https://img.test/a.jpg', isrc: 'IT1', added_at: '2026-08-01T00:00:00Z', duration_ms: 1000, bpm: 124, in_catalog: true },
         { id: '2', title: 'Signal B', artists: ['Artist B'], album: 'Album B', label: null, cover_url: null, isrc: null, added_at: null, duration_ms: 2000, bpm: null, in_catalog: false },
-      ] })))
+      ] }))
+      .mockResolvedValueOnce(jsonResponse(null))
+      .mockResolvedValueOnce(jsonResponse(null)))
     render(<App section="spotify" navigate={vi.fn()} />)
     expect(await screen.findByText('Gianco')).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Night Label' })).toBeInTheDocument()
