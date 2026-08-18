@@ -126,7 +126,7 @@ class SpotifyAgentTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temp_dir:
             client = spotify_agent.WebSpotifyClient(Path(temp_dir), Path(temp_dir) / "missing", discogs=FakeDiscogs())
-            result = client.enrich([{"added_at": None, "track": {"id": "discogs-track", "name": "Track", "artists": [{"name": "Artist"}], "album": {"name": "Album"}}}])
+            result = client.enrich([{"added_at": None, "track": {"id": "discogs-track", "name": "Track", "artists": [{"name": "Artist"}], "album": {"name": "Album"}}}], include_discogs=True)
             self.assertEqual(result[0]["label"], "Discogs Label")
             self.assertEqual(result[0]["discogs_url"], "https://discogs.test/release/1")
 
