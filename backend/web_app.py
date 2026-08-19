@@ -70,7 +70,20 @@ def _playlist_entry_url(entry: dict, original_url: str) -> str | None:
     video_id = entry.get("id")
     if video_id and "youtube" in extractor:
         return f"https://www.youtube.com/watch?v={video_id}"
+    if isinstance(video_id, str) and video_id.startswith("http"):
+        return video_id
     return original_url if is_supported_url(original_url) else None
+
+
+def _clean_entry_title(entry: dict, entry_url: str | None) -> str:
+    title = entry.get("title")
+    if title and str(title).strip() and str(title).strip().lower() not in ("none", "null", ""):
+        return str(title).strip()
+    if entry_url:
+        path = urllib.parse.urlsplit(entry_url).path.strip("/").split("/")[-1]
+        if path:
+            return path.replace("-", " ").replace("_", " ").title()
+    return "Senza titolo"
 
 
 def create_app(settings: WebSettings | None = None) -> FastAPI:
@@ -443,7 +456,7 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
                 continue
             entries.append({
                 "url": entry_url,
-                "title": entry.get("title") or "Senza titolo",
+                "title": _clean_entry_title(entry, entry_url),
                 "uploader": entry.get("uploader") or entry.get("channel") or "",
                 "duration": entry.get("duration"),
             })
