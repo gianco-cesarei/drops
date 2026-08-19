@@ -153,7 +153,12 @@ def _oembed(endpoint: str, url: str) -> dict | None:
     try:
         with urllib.request.urlopen(request, timeout=8) as response:
             return json.loads(response.read())
-    except (urllib.error.URLError, ValueError) as exc:
+    except Exception as exc:
+        # Bare Exception, not just URLError/ValueError: http.client exceptions
+        # (IncompleteRead, BadStatusLine, ...) are not OSError subclasses, so
+        # urllib does not wrap them into URLError - they'd otherwise escape
+        # here and break resolve_track's "never raises" guarantee. Mirrors
+        # the same bare-except pattern used in _resolve_via_ytdlp below.
         logger.info("resolve_track oembed fallita endpoint=%s error=%s", endpoint, exc)
         return None
 
@@ -173,7 +178,10 @@ def _resolve_via_ytdlp(url: str) -> dict:
         options["cookiefile"] = cookies
     try:
         with YTDLP_LOCK, yt_dlp.YoutubeDL(options) as ydl:
-            info = ydl.extract_info(url, download=False)
+            # extract_info can return None without raising on some
+            # flat/playlist extraction paths; treat that the same as an
+            # extraction failure instead of crashing on info.get(...) below.
+            info = ydl.extract_info(url, download=False) or {}
     except Exception as exc:
         logger.info("resolve_track ytdlp fallback fallito url_host=%s error=%r", urllib.parse.urlsplit(url).hostname, str(exc)[:200])
         return {"title": None, "artist": None, "raw_title": None, "cover_url": None, "duration": None}

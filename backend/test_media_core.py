@@ -1,3 +1,4 @@
+import http.client
 import json
 import os
 import tempfile
@@ -174,6 +175,46 @@ class ResolveTrackTest(unittest.TestCase):
         options = fake_ydl_class.call_args.args[0]
         self.assertTrue(options["skip_download"])
         fake_ydl.extract_info.assert_called_once_with("https://youtu.be/private123", download=False)
+
+    def test_oembed_http_exception_not_urlerror_falls_back(self):
+        # http.client exceptions (e.g. IncompleteRead) are NOT OSError
+        # subclasses, so urllib does not wrap them into URLError - _oembed
+        # must still catch them (not just URLError/ValueError) so resolve_track
+        # falls back to yt-dlp instead of letting the exception escape.
+        with patch("media_core.urllib.request.urlopen", side_effect=http.client.IncompleteRead(b"")), \
+             patch("media_core.yt_dlp.YoutubeDL") as fake_ydl_class:
+            fake_ydl = MagicMock()
+            fake_ydl.__enter__.return_value = fake_ydl
+            fake_ydl.__exit__.return_value = False
+            fake_ydl.extract_info.return_value = {
+                "title": "Artist - Track",
+                "uploader": "Artist",
+                "thumbnail": "https://example.com/cover.jpg",
+                "duration": 120,
+            }
+            fake_ydl_class.return_value = fake_ydl
+            result = media_core.resolve_track("https://youtu.be/httpexc")
+        self.assertEqual(result["title"], "Track")
+        self.assertEqual(result["artist"], "Artist")
+        fake_ydl.extract_info.assert_called_once()
+
+    def test_extract_info_returns_none_without_raising(self):
+        # extract_info can return None without raising on some flat/playlist
+        # extraction paths; resolve_track must degrade to the all-None result
+        # instead of crashing on info.get(...).
+        with patch("media_core.urllib.request.urlopen", side_effect=urllib.error.URLError("no network")), \
+             patch("media_core.yt_dlp.YoutubeDL") as fake_ydl_class:
+            fake_ydl = MagicMock()
+            fake_ydl.__enter__.return_value = fake_ydl
+            fake_ydl.__exit__.return_value = False
+            fake_ydl.extract_info.return_value = None
+            fake_ydl_class.return_value = fake_ydl
+            result = media_core.resolve_track("https://youtu.be/none-info")
+        self.assertIsNone(result["title"])
+        self.assertIsNone(result["artist"])
+        self.assertIsNone(result["raw_title"])
+        self.assertIsNone(result["cover_url"])
+        self.assertIsNone(result["duration"])
 
     def test_never_raises_when_everything_fails(self):
         with patch("media_core.urllib.request.urlopen", side_effect=urllib.error.URLError("no network")), \
