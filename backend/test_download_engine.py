@@ -173,6 +173,25 @@ class AttemptDownloadTest(unittest.TestCase):
         self.assertEqual(len(attempts), 3)
         self.assertEqual(info["title"], "Track")
 
+    def test_retries_clean_up_leftover_files_between_attempts(self):
+        attempts = []
+
+        def extract_info(self, source, download=True):
+            attempts.append(1)
+            out_dir = Path(self.options["outtmpl"].rsplit("/", 1)[0])
+            if len(attempts) < 3:
+                (out_dir / f"partial-{len(attempts)}.part").write_bytes(b"junk")
+                raise yt_dlp.utils.DownloadError("Sign in to confirm you're not a bot")
+            (out_dir / "audio.mp3").write_bytes(b"fake")
+            return {"title": "Track", "duration": 10}
+
+        FakeYoutubeDL.extract_info = extract_info
+        with patch("download_engine.yt_dlp.YoutubeDL", FakeYoutubeDL), patch("download_engine.time.sleep"):
+            attempt_download(self.job_dir, "https://youtu.be/x", "320", FakeSettings(), __import__("time").monotonic())
+        remaining = list(self.job_dir.iterdir())
+        self.assertEqual(len(remaining), 1)
+        self.assertEqual(remaining[0].name, "audio.mp3")
+
 
 class DownloadMultiSourceTest(unittest.TestCase):
     def setUp(self):
@@ -214,6 +233,34 @@ class DownloadMultiSourceTest(unittest.TestCase):
              patch("download_engine.attempt_download", return_value={"title": "Track", "duration": 10}):
             download_multi_source(self.job_dir, "job-1", "https://youtu.be/native", None, None, None, "320", FakeSettings(), __import__("time").monotonic())
         find_match.assert_called_once_with(None, None, None)
+
+    def test_proxy_only_reaches_native_attempt_not_soundcloud(self):
+        calls = []
+
+        def record_attempt(job_dir, url, quality, settings, started, *, proxy=None):
+            calls.append({"url": url, "proxy": proxy})
+            return {"title": "Track", "duration": 10}
+
+        with patch("download_engine.find_soundcloud_match", return_value="https://soundcloud.com/x/y"), \
+             patch("download_engine.attempt_download", side_effect=record_attempt):
+            download_multi_source(self.job_dir, "job-1", "https://youtu.be/native", "Artist", "Title", 245, "320", FakeSettings(), __import__("time").monotonic(), proxy="http://proxy:8080")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["url"], "https://soundcloud.com/x/y")
+        self.assertIsNone(calls[0]["proxy"])  # soundcloud attempt never gets the proxy
+
+    def test_proxy_reaches_native_attempt_when_soundcloud_has_no_match(self):
+        calls = []
+
+        def record_attempt(job_dir, url, quality, settings, started, *, proxy=None):
+            calls.append({"url": url, "proxy": proxy})
+            return {"title": "Track", "duration": 10}
+
+        with patch("download_engine.find_soundcloud_match", return_value=None), \
+             patch("download_engine.attempt_download", side_effect=record_attempt):
+            download_multi_source(self.job_dir, "job-1", "https://youtu.be/native", None, None, None, "320", FakeSettings(), __import__("time").monotonic(), proxy="http://proxy:8080")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["url"], "https://youtu.be/native")
+        self.assertEqual(calls[0]["proxy"], "http://proxy:8080")
 
 
 if __name__ == "__main__":
