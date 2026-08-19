@@ -15,6 +15,12 @@ RUN test -n "$PUBLIC_API_URL" \
     && npm run build \
     && grep -R --fixed-strings --quiet "$PUBLIC_API_URL" dist
 
+# Official, upstream-maintained image for the free PO token HTTP server
+# (bgutil-ytdlp-pot-provider) - node + compiled server + its own node_modules,
+# built for this exact node runtime. We only copy files out of it below;
+# nothing from this stage runs directly.
+FROM brainicism/bgutil-ytdlp-pot-provider:latest AS bgutil
+
 FROM python:3.12-slim AS api
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -29,6 +35,14 @@ RUN apt-get update \
     && useradd --system --gid drops --home-dir /app drops \
     && mkdir -p /app /data \
     && chown -R drops:drops /app /data
+
+# Node runtime + the bgutil HTTP server itself (free PO token provider,
+# helps yt-dlp dodge YouTube's bot-check - see run_web.py, which starts this
+# as a background process, and media_core.py, which wires yt-dlp to it once
+# it's confirmed up). Copied whole from the upstream image rather than built
+# here, so the node binary and its node_modules are guaranteed to match.
+COPY --from=bgutil /usr/local/bin/node /usr/local/bin/node
+COPY --from=bgutil --chown=drops:drops /app /opt/bgutil-server
 
 WORKDIR /app
 
@@ -57,7 +71,7 @@ USER drops
 EXPOSE 8000
 VOLUME ["/data"]
 
-HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=3 \
     CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('PORT', '8000') + '/health', timeout=3).read()"
 
 CMD ["python", "backend/run_web.py"]

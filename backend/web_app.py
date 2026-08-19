@@ -85,7 +85,15 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
     async def lifespan(_: FastAPI):
         discogs.log_startup_status()
         if os.environ.get("DROPS_YTDLP_COOKIES", "").strip():
-            logger.info("yt-dlp startup: cookiefile %s", "trovato" if ytdlp_cookiefile() else "configurato ma illeggibile, ignorato")
+            cookiefile = ytdlp_cookiefile()
+            if cookiefile:
+                # Age is a proxy for freshness, not proof of validity - YouTube
+                # sessions can expire well before this looks old. A cookiefile
+                # older than a couple of weeks is worth re-exporting.
+                age_days = (time.time() - os.path.getmtime(cookiefile)) / 86400
+                logger.info("yt-dlp startup: cookiefile trovato (eta' %.1f giorni)", age_days)
+            else:
+                logger.info("yt-dlp startup: cookiefile configurato ma illeggibile, ignorato")
         else:
             logger.info("yt-dlp startup: DROPS_YTDLP_COOKIES non configurato, download senza cookie")
         store.interrupt_active_jobs(settings.artifact_ttl_seconds)

@@ -72,14 +72,40 @@ class PotProviderExtractorArgsTest(unittest.TestCase):
         with patch("media_core.importlib.metadata.distribution", return_value=object()), \
              tempfile.TemporaryDirectory() as empty_parent:
             missing = os.path.join(empty_parent, "no-such-script-dir")
-            with patch.dict(os.environ, {"DROPS_YTDLP_BGUTIL_SCRIPT": missing}):
+            with patch.dict(os.environ, {"DROPS_YTDLP_BGUTIL_SCRIPT": missing, "DROPS_YTDLP_BGUTIL_HTTP_BASE_URL": ""}):
                 args = ytdlp_extractor_args()
         self.assertNotIn("youtubepot-bgutilscript", args)
+        self.assertNotIn("youtubepot-bgutilhttp", args)
 
     def test_included_when_package_and_script_dir_present(self):
         with patch("media_core.importlib.metadata.distribution", return_value=object()), \
              tempfile.TemporaryDirectory() as script_dir:
-            with patch.dict(os.environ, {"DROPS_YTDLP_BGUTIL_SCRIPT": script_dir}):
+            with patch.dict(os.environ, {"DROPS_YTDLP_BGUTIL_SCRIPT": script_dir, "DROPS_YTDLP_BGUTIL_HTTP_BASE_URL": ""}):
+                args = ytdlp_extractor_args()
+        self.assertEqual(args["youtubepot-bgutilscript"], {"server_home": script_dir})
+
+    def test_http_server_used_when_base_url_configured(self):
+        with patch("media_core.importlib.metadata.distribution", return_value=object()), \
+             patch.dict(os.environ, {"DROPS_YTDLP_BGUTIL_HTTP_BASE_URL": "http://127.0.0.1:4416"}):
+            args = ytdlp_extractor_args()
+        self.assertEqual(args["youtubepot-bgutilhttp"], {"base_url": "http://127.0.0.1:4416"})
+        self.assertNotIn("youtubepot-bgutilscript", args)
+
+    def test_http_server_takes_priority_over_script_mode(self):
+        with patch("media_core.importlib.metadata.distribution", return_value=object()), \
+             tempfile.TemporaryDirectory() as script_dir:
+            with patch.dict(os.environ, {
+                "DROPS_YTDLP_BGUTIL_HTTP_BASE_URL": "http://127.0.0.1:4416",
+                "DROPS_YTDLP_BGUTIL_SCRIPT": script_dir,
+            }):
+                args = ytdlp_extractor_args()
+        self.assertIn("youtubepot-bgutilhttp", args)
+        self.assertNotIn("youtubepot-bgutilscript", args)
+
+    def test_http_server_blank_falls_through_to_script_mode(self):
+        with patch("media_core.importlib.metadata.distribution", return_value=object()), \
+             tempfile.TemporaryDirectory() as script_dir:
+            with patch.dict(os.environ, {"DROPS_YTDLP_BGUTIL_HTTP_BASE_URL": "   ", "DROPS_YTDLP_BGUTIL_SCRIPT": script_dir}):
                 args = ytdlp_extractor_args()
         self.assertEqual(args["youtubepot-bgutilscript"], {"server_home": script_dir})
 
