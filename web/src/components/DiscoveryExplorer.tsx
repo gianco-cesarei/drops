@@ -271,7 +271,13 @@ export function TimelineEnvironment({ items }: { items: DiscoveryItem[] }) {
             const year = date.getFullYear()
             const dateFormatted = new Intl.DateTimeFormat('it', { month: 'short', year: 'numeric' }).format(date)
             const isLeft = idx % 2 === 0
-            const kicker = item.kicker ?? (item.tags.includes('guida') ? 'Guida' : categoryLabels[item.type])
+
+            const prevItem = idx > 0 ? visible[idx - 1] : null
+            const prevDate = prevItem ? getItemDate(prevItem) : null
+            const prevDateFormatted = prevDate ? new Intl.DateTimeFormat('it', { month: 'short', year: 'numeric' }).format(prevDate) : null
+            const isDuplicateDate = dateFormatted === prevDateFormatted
+            const locationShort = item.primaryLocation.name.split(',')[0]
+            const chipText = isDuplicateDate ? `📍 ${locationShort}` : dateFormatted
 
             return (
               <div
@@ -282,38 +288,12 @@ export function TimelineEnvironment({ items }: { items: DiscoveryItem[] }) {
                 {/* Center Badge with Event Reference Date */}
                 <div className="timeline-center-marker">
                   <div className="timeline-dot" />
-                  <span className="timeline-date-chip">{dateFormatted}</span>
+                  <span className={`timeline-date-chip ${isDuplicateDate ? 'is-duplicate' : ''}`}>{chipText}</span>
                 </div>
 
                 {/* Content Card Side */}
                 <div className="timeline-node-card-wrap">
-                  <article className="discovery-card timeline-card-compact">
-                    <a href={`/item/${item.slug}`} className="card-cover-link" tabIndex={-1} aria-hidden="true">
-                      {item.coverUrl ? (
-                        <img src={item.coverUrl} alt={item.title} className="card-cover-image" loading="lazy" />
-                      ) : (
-                        <div className={`card-cover-placeholder type-${item.type.toLowerCase()}`}>
-                          <span className="placeholder-kicker">{kicker}</span>
-                          <span className="placeholder-brand">Drops</span>
-                        </div>
-                      )}
-                    </a>
-                    <div className="card-content">
-                      <div className="card-meta">
-                        <span className="content-badge">{kicker}</span>
-                        <span>📍 {item.primaryLocation.name}</span>
-                      </div>
-                      <h2>
-                        <a href={`/item/${item.slug}`}>{item.title}</a>
-                      </h2>
-                      <p>{item.summary}</p>
-                      <div className="card-actions">
-                        <a className="card-read-btn" href={`/item/${item.slug}`}>
-                          Approfondisci →
-                        </a>
-                      </div>
-                    </div>
-                  </article>
+                  <DiscoveryCard item={item} />
                 </div>
               </div>
             )

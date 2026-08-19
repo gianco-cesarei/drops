@@ -2,6 +2,47 @@ import { DiscoveryType, PartyKind, RelationType, discoveryDatasetSchema } from '
 
 // CONTENUTO REALE pubblicato su Drops (non fixture di sviluppo)
 export const publishedContentItems = discoveryDatasetSchema.parse([
+  {
+    id: 'festival-houghton-norfolk',
+    slug: 'houghton-festival-norfolk',
+    type: DiscoveryType.Party,
+    partyKind: PartyKind.Festival,
+    kicker: 'Festival',
+    title: 'Houghton Festival: la curatela di Craig Richards e la licenza di suono permanente',
+    coverUrl: '/assets/houghton.png',
+    summary:
+      'Nato nel 2017 nel Norfolk e curato dal leggendario resident del Fabric Craig Richards, Houghton ha ridefinito il concetto di festival nel Regno Unito grazie a una licenza musicale non-stop di 24 ore e una selezione di world-class selector.',
+    publishedAt: '2026-08-20T09:00:00.000Z',
+    originalPublishedAt: '2026-08-06T00:00:00.000Z',
+    primaryLocation: { kind: 'geographic', name: 'Norfolk, Regno Unito', countryCode: 'GB', latitude: 52.8252, longitude: 0.6653 },
+    mapEligible: true,
+    tags: ['festival', 'norfolk', 'houghton', 'craig-richards', 'uk', 'selectors', 'club-culture'],
+    sources: [
+      { url: 'https://www.houghtonfestival.co.uk', label: 'Sito Ufficiale Houghton Festival', kind: 'official' },
+      { url: 'https://ra.co/events/1852084', label: 'Resident Advisor Houghton Festival', kind: 'reference' },
+    ],
+    relations: [
+      { id: 'radar-timedance-td10', type: RelationType.Release, label: 'Timedance', reason: 'Connessioni con la bass music e l’avanguardia britannica' },
+    ],
+    body: [
+      {
+        html: `<p class="lead">Nato nel 2017 nello splendido scenario rurale di Houghton Hall nel Norfolk, il festival curato da <b>Craig Richards</b> si è imposto in pochi anni come uno dei punti di riferimento mondiali per gli amanti del clubbing raffinato, grazie a una licenza musicale di 24 ore senza sosta e a un impianto Funktion-One tarato su misura.</p>`,
+      },
+      {
+        heading: 'La licenza non-stop e la filosofia del suono',
+        html: `<p>A differenza della quasi totalità dei festival nel Regno Unito, costretti a rigorosi coprifuoco notturni, Houghton beneficia di una licenza speciale che permette la programmazione ininterrotta di musica giorno e notte. Questo consente dei DJ di esprimersi in set lunghi e distesi, ricreando la vera atmosfera clubbing all'aperto, supportata da una cura maniacale per il sound design in ciascuno dei palchi immersi nel bosco.</p>`,
+      },
+      {
+        heading: 'La direzione artistica di Craig Richards',
+        html: `<p>La curatela firmata dal leggendario resident del Fabric di Londra garantisce una proposta artistica priva di concessioni al mainstream. Spaziando tra techno d'autore, electro di Detroit, minimal house, ambient e jazz, la lineup di <a href="https://www.houghtonfestival.co.uk" target="_blank" rel="noopener">Houghton Festival</a> predilige la coerenza stilistica e la competenza tecnica dei selector, rendendolo un vero paradiso per i crate digger.</p>`,
+      },
+      {
+        heading: "Una galleria d'arte a cielo aperto",
+        html: `<p>Oltre alla musica, Houghton integra installazioni d'arte contemporanea sparse nel parco storico, workshop di benessere e un'offerta gastronomica curata, mantenendo un'atmosfera intima e focalizzata sulla comunità, vietando l'uso dei telefoni sulle piste da ballo per preservare l'esperienza analogica.</p>`,
+      },
+    ],
+  },
+
   // ==========================================
   // SEZIONE A: ARTISTI & RADAR SIGNALS
   // ==========================================
@@ -15,6 +56,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Il secondo album della compositrice e polistrumentista lisbonese XEXA esce su Príncipe Discos, allargando l'estetica della label verso ambient, pop radiante e ritmi afro-diasporici decostruiti.",
     publishedAt: '2026-08-18T14:00:00.000Z',
+    originalPublishedAt: '2025-09-26T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Lisbona, Portogallo', countryCode: 'PT', latitude: 38.7223, longitude: -9.1393 },
     mapEligible: true,
     tags: ['radar', 'artista emergente', 'lisbona', 'principe', 'kizomba', 'ambient', 'violoncello', 'leftfield-pop'],
@@ -62,6 +104,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "La compilation celebrativa curata da Batu raccoglie 23 tracce esclusive che fotografano l'evoluzione del sound di Bristol fra techno ibrida, bass culture e sound design chirurgico.",
     publishedAt: '2026-08-17T16:00:00.000Z',
+    originalPublishedAt: '2025-10-10T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Bristol, Regno Unito', countryCode: 'GB', latitude: 51.4545, longitude: -2.5879 },
     mapEligible: true,
     tags: ['radar', 'release', 'bristol', 'timedance', 'batu', 'techno', 'bass', 'soundsystem', 'compilation'],
@@ -102,6 +145,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "L'emittente indipendente di Accra sospende la diretta quotidiana per burnout e insostenibilità economica. Una vicenda che interroga l'ecosistema globale su chi finanzia la scoperta musicale.",
     publishedAt: '2026-08-16T12:00:00.000Z',
+    originalPublishedAt: '2026-04-08T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Accra, Ghana', countryCode: 'GH', latitude: 5.6037, longitude: -0.1870 },
     mapEligible: true,
     tags: ['radar', 'notizia', 'accra', 'community-radio', 'archivio', 'sostenibilità', 'infrastrutture'],
@@ -146,6 +190,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Fondata nel 1999 da Simon Dunmore e oggi guidata da Wez Saunders, Defected ha trasformato la vocal e club house in un ecosistema globale tra residenze a Ibiza, radio show storici e sublabel di culto come DFTD e Glitterbox.",
     publishedAt: '2026-08-19T11:00:00.000Z',
+    originalPublishedAt: '1999-01-01T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Londra, Regno Unito', countryCode: 'GB', latitude: 51.5074, longitude: -0.1278 },
     mapEligible: true,
     tags: ['etichetta', 'defected', 'house-music', 'glitterbox', 'dftd', 'ibiza', 'london', 'club-culture'],
@@ -189,6 +234,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Fondata a Berlino nel 2005 da Steffen Berkhahn (Dixon) e Kristian Beyer & Frank Wiedemann (Âme), Innervisions ha ridefinito la house epica, ipnotica e drammatica, unendo release centellinate e l'esperienza immersiva di Lost In A Moment.",
     publishedAt: '2026-08-19T10:30:00.000Z',
+    originalPublishedAt: '2005-01-01T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Berlino, Germania', countryCode: 'DE', latitude: 52.5200, longitude: 13.4050 },
     mapEligible: true,
     tags: ['etichetta', 'innervisions', 'dixon', 'ame', 'melodic-house', 'berlino', 'lost-in-a-moment', 'secret-weapons'],
@@ -236,6 +282,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Nata nel 1989 come spin-off dance di Beggars Banquet da Tim Palmer, Nick Halkes e Richard Russell, XL Recordings ha tracciato la traiettoria più straordinaria della musica indipendente: dai rave banger di The Prodigy a Burial, The xx, Radiohead, Overmono e Joy Orbison.",
     publishedAt: '2026-08-19T10:00:00.000Z',
+    originalPublishedAt: '1989-01-01T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Londra, Regno Unito', countryCode: 'GB', latitude: 51.5138, longitude: -0.2084 },
     mapEligible: true,
     tags: ['etichetta', 'xl-recordings', 'richard-russell', 'rave', 'uk-bass', 'overmono', 'joy-orbison', 'londra'],
@@ -279,6 +326,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Dalle origini bleep & bass a Sheffield nel 1989 con Steve Beckett e Rob Mitchell fino alla serie leggendaria 'Artificial Intelligence', Warp ha dato una casa ad Aphex Twin, Boards of Canada, Autechre, Nightmares on Wax, Flying Lotus e Oneohtrix Point Never.",
     publishedAt: '2026-08-19T09:30:00.000Z',
+    originalPublishedAt: '1989-10-01T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Sheffield, Regno Unito', countryCode: 'GB', latitude: 53.3811, longitude: -1.4701 },
     mapEligible: true,
     tags: ['etichetta', 'warp', 'sheffield', 'aphex-twin', 'boards-of-canada', 'autechre', 'idm', 'bleep-techno'],
@@ -316,6 +364,44 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
   // SEZIONE C: REPORT FESTIVAL E SCENE 2026
   // ==========================================
   {
+    id: 'festival-omana-kalamitsi',
+    slug: 'omana-festival-kalamitsi',
+    type: DiscoveryType.Party,
+    partyKind: PartyKind.Festival,
+    kicker: 'Festival',
+    title: 'Omana Festival: diggin e intimità clubbing sulle spiagge greche',
+    coverUrl: '/assets/omana.png',
+    summary:
+      'Nel golfo di Kalamitsi, Omana Festival si propone come un rifugio incontaminato e ultra-selezionato tra ambient, deep minimal e ritmi rallentati in riva all’Egeo.',
+    publishedAt: '2026-08-19T20:00:00.000Z',
+    originalPublishedAt: '2026-09-10T00:00:00.000Z',
+    primaryLocation: { kind: 'geographic', name: 'Chalkidiki, Grecia', countryCode: 'GR', latitude: 40.0167, longitude: 23.9833 },
+    mapEligible: true,
+    tags: ['festival', 'grecia', 'omana', 'kalamitsi', 'deep-minimal', 'ambient', 'beach-clubbing'],
+    sources: [
+      { url: 'https://omana-festival.de', label: 'Sito Ufficiale Omana Festival', kind: 'official' },
+      { url: 'https://ra.co/events/1852467', label: 'Resident Advisor Omana Festival', kind: 'reference' },
+    ],
+    relations: [
+      { id: 'festival-dekmantel-amsterdam-2026', type: RelationType.Party, label: 'Dekmantel Festival', reason: 'Selector e attitudine musicale affine nell’elettronica colta' },
+      { id: 'radar-mostra-barcellona-2026', type: RelationType.Party, label: 'MOSTRA Barcelona', reason: 'Condivisione della filosofia dell’ascolto attento, formati intimi e sound design profondo' },
+    ],
+    body: [
+      {
+        html: `<p class="lead">Immerso nella splendida e isolata baia di Kalamitsi, nella penisola di Sithonia, <b>Omana Festival</b> si distingue nel panorama europeo come un raduno boutique a capienza strettamente limitata, dove la club culture si fonde con il benessere e il rispetto profondo della natura.</p>`,
+      },
+      {
+        heading: 'Un rifugio tra spiaggia e pineta',
+        html: `<p>La manifestazione prende vita all'interno del Thalatta Kalamitsi Village Camp, sfruttando la scenografia naturale per allestire palchi sulla spiaggia sabbiosa e tra i boschi di pini marittimi. Omana rifiuta le logiche dei grandi numeri per offrire un’esperienza accogliente e rilassata, con un programma che accompagna gli ospiti per un’intera settimana tra sessioni di yoga al mattino, bagni nell'Egeo e DJ set distesi dal pomeriggio alla notte.</p>`,
+      },
+      {
+        heading: 'Ricerca sonora, deep minimal e ambient',
+        html: `<p>La curatela musicale è orientata alle sonorità più raffinate del panorama underground: deep minimal, house ipnotica, techno d'ascolto e downtempo. I DJ hanno la possibilità di esprimersi in set estesi di svariate ore, ideali per sviluppare una narrazione sonora complessa e coerente con lo spirito rigenerativo del festival, impreziosito da palchi dedicati all'ambient sperimentale.</p>`,
+      },
+    ],
+  },
+
+  {
     id: 'festival-dekmantel-amsterdam-2026',
     slug: 'dekmantel-festival-amsterdam-2026',
     type: DiscoveryType.Party,
@@ -326,6 +412,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Dal Main Stage immerso nella foresta all'UFO stage dedicato alla techno ipnotica e al greenhouse tropicale, Dekmantel 2026 ribadisce il suo ruolo di barometro globale del DJing colto e della club culture d'eccellenza.",
     publishedAt: '2026-08-19T09:00:00.000Z',
+    originalPublishedAt: '2026-08-01T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Amsterdam, Paesi Bassi', countryCode: 'NL', latitude: 52.3150, longitude: 4.8350 },
     mapEligible: true,
     tags: ['festival', 'amsterdam', 'dekmantel', 'amsterdamse-bos', 'selectors', 'ufo-stage', 'greenhouse', 'club-culture'],
@@ -370,6 +457,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "La trentatreesima edizione di Sónar trasforma Barcellona nella capitale mondiale dell'innovazione sonora: il connubio tra Sónar de Día a Fira Montjuïc, la maratona notturna di Sónar de Noche e i talk su intelligenza artificiale e sound design.",
     publishedAt: '2026-08-18T18:00:00.000Z',
+    originalPublishedAt: '2026-06-18T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Barcellona, Spagna', countryCode: 'ES', latitude: 41.3733, longitude: 2.1488 },
     mapEligible: true,
     tags: ['festival', 'barcellona', 'sonar', 'sonar-plus-d', 'musica-avanzata', 'fira-montjuic', 'digital-arts'],
@@ -415,6 +503,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Oltre i grandi palchi pop e rock, il Parc del Fòrum custodisce un cuore pulsante di club culture: dalle maratone non-stop di Boiler Room al palco The Warehouse, dove l'elettronica da club più radicale incontra un pubblico transgenerazionale.",
     publishedAt: '2026-08-18T16:00:00.000Z',
+    originalPublishedAt: '2026-06-03T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Barcellona, Spagna', countryCode: 'ES', latitude: 41.4116, longitude: 2.2227 },
     mapEligible: true,
     tags: ['festival', 'barcellona', 'primavera-sound', 'boiler-room', 'warehouse-stage', 'clubbing', 'parc-del-forum'],
@@ -451,6 +540,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Da Lux Frágil e Musicbox al circuito di 5A, Planeta Manas e Rádio Quântica: mappa completa dell'ecosistema notturno lisbonese, laboratorio europeo di batida, house atlantica e club culture comunitaria.",
     publishedAt: '2026-08-18T12:00:00.000Z',
+    originalPublishedAt: '2026-05-01T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Lisbona, Portogallo', countryCode: 'PT', latitude: 38.7169, longitude: -9.1399 },
     mapEligible: true,
     tags: ['guida', 'lisbona', 'clubbing', 'lux-fragil', 'musicbox', 'radio-quantica', 'principe', 'afro-house', 'batida'],
@@ -498,6 +588,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Dal Tunnel Club al Plastic, dal Tempio del Futuro Perduto all'eredità di Dude Club e Macao, fino all'asse con Terraforma e Jazz:Re:Found: anatomia della scena milanese tra sound design, clubbing consapevole e collezionismo su vinile.",
     publishedAt: '2026-08-17T18:00:00.000Z',
+    originalPublishedAt: '2026-03-01T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Milano, Italia', countryCode: 'IT', latitude: 45.4642, longitude: 9.1900 },
     mapEligible: true,
     tags: ['guida', 'milano', 'clubbing', 'tunnel-club', 'plastic', 'tempio-del-futuro-perduto', 'terraforma', 'vinyl-stores'],
@@ -548,6 +639,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Il festival berlinese dedicato alle musiche avventurose esplora l'ascolto immersivo con Blawan e rinsalda le connessioni translocali con Accra e l'ecosistema di Oroko Radio.",
     publishedAt: '2026-08-15T18:00:00.000Z',
+    originalPublishedAt: '2026-01-23T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Berlino, Germania', countryCode: 'DE', latitude: 52.5200, longitude: 13.4050 },
     mapEligible: true,
     tags: ['festival', 'berlino', 'ctm', 'spatial-audio', 'club-culture', 'experimental', 'sound-art'],
@@ -590,6 +682,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Audio Visual Arts Festival torna a Belfast imponendo una proporzione chiara: oltre tre quarti degli artisti da Irlanda e UK, con 12 debutti assoluti nella capitale nordirlandese.",
     publishedAt: '2026-08-14T15:00:00.000Z',
+    originalPublishedAt: '2026-05-29T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Belfast, Regno Unito', countryCode: 'GB', latitude: 54.5973, longitude: -5.9301 },
     mapEligible: true,
     tags: ['festival', 'belfast', 'ava', 'local-scene', 'ireland', 'visual-arts', 'clubbing'],
@@ -631,6 +724,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Tra La Nave di Gijón e gli spazi museali asturiani, il Laboratorio di Elettronica Visiva unisce post-clubbing, turntablism sperimentale e performance con intelligenza artificiale.",
     publishedAt: '2026-08-13T14:00:00.000Z',
+    originalPublishedAt: '2026-04-30T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Gijón, Spagna', countryCode: 'ES', latitude: 43.5322, longitude: -5.6611 },
     mapEligible: true,
     tags: ['festival', 'gijon', 'lev', 'audiovisual', 'turntablism', 'post-club', 'digital-arts'],
@@ -673,6 +767,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Contro la gigantografia dei macro-festival estivi, MOSTRA propone a Barcellona un'esperienza a capienza limitata dedicata a deep techno, ascolto attento e sostenibilità urbana.",
     publishedAt: '2026-08-12T11:00:00.000Z',
+    originalPublishedAt: '2026-03-12T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Barcellona, Spagna', countryCode: 'ES', latitude: 41.3874, longitude: 2.1686 },
     mapEligible: true,
     tags: ['festival', 'barcellona', 'mostra', 'deep-techno', 'ambient', 'sostenibilità', 'small-format'],
@@ -716,6 +811,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "La maratona di 4 giorni a Jinja fonde l'energia del cinema d'azione underground ugandese di Wakaliwood con 7 palchi di suoni panafricani e diaspora globale.",
     publishedAt: '2026-08-11T12:00:00.000Z',
+    originalPublishedAt: '2026-11-19T00:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Jinja, Uganda', countryCode: 'UG', latitude: 0.4479, longitude: 33.2026 },
     mapEligible: true,
     tags: ['festival', 'uganda', 'jinja', 'nyege-nyege', 'wakaliwood', 'singeli', 'afro-club'],
@@ -760,6 +856,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Come funziona il Programma Musicale online (mioBorderò), le differenze fiscali e giuridiche tra esecuzione e registrazione fonografica, come gestire unreleased, dubplate e bootleg, e le regole per suonare tra Italia, Spagna e Portogallo.",
     publishedAt: '2026-08-19T12:00:00.000Z',
+    originalPublishedAt: '2026-02-15T00:00:00.000Z',
     primaryLocation: { kind: 'online', name: 'Guida Drops DJ Specialist' },
     mapEligible: false,
     tags: ['guida', 'djing', 'bordero', 'siae', 'spa', 'diritto-autore', 'miobordero', 'royalties', 'clubbing'],
@@ -813,6 +910,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Dalla formattazione corretta (FAT32 vs exFAT) all'analisi accurata del grid ritmico, gestione di Memory Cue vs Hot Cue, playlist intelligenti, color coding e strategie di ridondanza per non avere mai blackout in console.",
     publishedAt: '2026-08-19T08:00:00.000Z',
+    originalPublishedAt: '2026-02-28T00:00:00.000Z',
     primaryLocation: { kind: 'online', name: 'Guida Drops DJ Specialist' },
     mapEligible: false,
     tags: ['guida', 'rekordbox', 'cdj-3000', 'pioneer-dj', 'alphatheta', 'usb-setup', 'dj-workflow', 'cue-points'],
@@ -861,6 +959,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "Dalla traccia finita all'ascolto: la mappa degli strumenti essenziali, in breve. Taglio scena elettronica, con note pop dove il gioco cambia.",
     publishedAt: '2026-08-18T09:00:00.000Z',
+    originalPublishedAt: '2026-03-10T00:00:00.000Z',
     primaryLocation: { kind: 'online', name: 'Guida Drops' },
     mapEligible: false,
     tags: ['guida', 'strumenti', 'pubblicazione', 'distribuzione'],
@@ -922,6 +1021,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       'Il negozio dei DJ: come funziona la classifica di genere, perché scegliere bene la categorizzazione, e come ci arrivi davvero tramite distributori approvati e label.',
     publishedAt: '2026-08-17T10:00:00.000Z',
+    originalPublishedAt: '2026-03-20T00:00:00.000Z',
     primaryLocation: { kind: 'online', name: 'Guida Drops' },
     mapEligible: false,
     tags: ['guida', 'beatport', 'distribuzione', 'djing', 'classifiche'],
@@ -976,6 +1076,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       'Due codici invisibili decidono se vieni pagato e riconosciuto. Cosa sono, chi te li dà, e gli errori tipici da evitare tra registrazioni e release.',
     publishedAt: '2026-08-16T10:00:00.000Z',
+    originalPublishedAt: '2026-04-15T00:00:00.000Z',
     primaryLocation: { kind: 'online', name: 'Guida Drops' },
     mapEligible: false,
     tags: ['guida', 'codici', 'royalty', 'metadati', 'isrc', 'upc'],
@@ -1027,6 +1128,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       'Dal master dedicato alla pressing plant: come funziona la stampa del disco fisico, quanto aspetti davvero e come finanziarlo con i pre-order.',
     publishedAt: '2026-08-14T10:00:00.000Z',
+    originalPublishedAt: '2026-05-15T00:00:00.000Z',
     primaryLocation: { kind: 'online', name: 'Guida Drops' },
     mapEligible: false,
     tags: ['guida', 'vinile', 'produzione', 'mastering', 'bandcamp'],
@@ -1079,6 +1181,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     summary:
       "L'archivio aperto e collaborativo dietro centinaia di app: cos'è un MBID e perché metadati puliti significano venire riconosciuti ovunque da umani e algoritmi.",
     publishedAt: '2026-08-12T10:00:00.000Z',
+    originalPublishedAt: '2026-05-20T00:00:00.000Z',
     primaryLocation: { kind: 'online', name: 'Guida Drops' },
     mapEligible: false,
     tags: ['guida', 'musicbrainz', 'metadati', 'listenbrainz', 'mbid'],

@@ -3,8 +3,8 @@ import { publishedContentItems } from './content.data'
 import { DiscoveryType, PartyKind } from '../domain/discovery'
 
 describe('contenuti editoriali pubblicati', () => {
-  it('contiene tutti i 24 contenuti editoriali (radar, release, festival 2026, scene, etichette e guide DJ)', () => {
-    expect(publishedContentItems.length).toBe(24)
+  it('contiene tutti i 26 contenuti editoriali (radar, release, festival 2026, scene, etichette e guide DJ)', () => {
+    expect(publishedContentItems.length).toBe(26)
   })
 
   it('tutti i contenuti hanno slug unici e id univoci', () => {
@@ -34,11 +34,11 @@ describe('contenuti editoriali pubblicati', () => {
     }
   })
 
-  it('ogni articolo possiede un coverUrl valido ed univoco con immagine ad alta risoluzione', () => {
+  it('ogni articolo possiede un coverUrl valido ed univoco con immagine ad alta risoluzione o locale', () => {
     const coverUrls = publishedContentItems.map((item) => item.coverUrl)
     for (const item of publishedContentItems) {
       expect(item.coverUrl).toBeTruthy()
-      expect(item.coverUrl?.startsWith('https://')).toBe(true)
+      expect(item.coverUrl?.startsWith('https://') || item.coverUrl?.startsWith('/assets/')).toBe(true)
     }
     expect(new Set(coverUrls).size).toBe(publishedContentItems.length)
   })
@@ -72,9 +72,9 @@ describe('contenuti editoriali pubblicati', () => {
     expect(oroko?.primaryLocation.name).toContain('Accra')
   })
 
-  it('verifica i festival (Dekmantel, Sónar, Primavera Sound, CTM, AVA, L.E.V., MOSTRA, Nyege Nyege)', () => {
+  it('verifica i festival (Dekmantel, Sónar, Primavera Sound, CTM, AVA, L.E.V., MOSTRA, Nyege Nyege, Houghton, Omana)', () => {
     const festivals = publishedContentItems.filter((i) => i.type === DiscoveryType.Party && i.partyKind === PartyKind.Festival)
-    expect(festivals.length).toBe(8)
+    expect(festivals.length).toBe(10)
     const slugs = festivals.map((f) => f.slug)
     expect(slugs).toContain('dekmantel-festival-amsterdam-2026')
     expect(slugs).toContain('sonar-festival-barcellona-2026')
@@ -84,6 +84,8 @@ describe('contenuti editoriali pubblicati', () => {
     expect(slugs).toContain('lev-festival-gijon-2026')
     expect(slugs).toContain('mostra-festival-barcellona-2026')
     expect(slugs).toContain('nyege-nyege-festival-jinja-2026')
+    expect(slugs).toContain('houghton-festival-norfolk')
+    expect(slugs).toContain('omana-festival-kalamitsi')
   })
 
   it('verifica le scene e guide di clubbing (Lisbona e Milano)', () => {
