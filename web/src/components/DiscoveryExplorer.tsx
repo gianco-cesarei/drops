@@ -213,6 +213,10 @@ function projectCoords(lat: number, lon: number, width: number, height: number) 
 export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
   const state = useArchiveState(false)
   const [activeCity, setActiveCity] = useState<string | null>(null)
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
 
   const places = useMemo(() => {
     return filterItems(items, state.types).filter(
@@ -246,9 +250,34 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
     return cityGroups.find((g) => g.name === activeCity) ?? null
   }, [activeCity, cityGroups])
 
-  const countries = useMemo(() => {
-    return [...new Set(places.map((item) => item.primaryLocation.kind === 'geographic' ? item.primaryLocation.countryCode : ''))].filter(Boolean)
-  }, [places])
+  // Mouse pan / drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only drag if not clicking a button/node
+    if ((e.target as HTMLElement).closest('.map-city-node')) return
+    setIsDragging(true)
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return
+    setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault()
+    const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85
+    setZoom((prev) => Math.min(3.5, Math.max(0.8, Number((prev * zoomFactor).toFixed(2)))))
+  }
+
+  const resetView = () => {
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+    setActiveCity(null)
+  }
 
   return (
     <div className="environment-layout">
@@ -286,15 +315,29 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
 
       <div className="environment-content">
         <div className="environment-toolbar">
-          <span className="shell-note">Mappa geografica europea interattiva · Clicca su un nodo per esplorare le scene locali</span>
+          <span className="shell-note">Mappa geografica europea · Trascina per esplorare, usa i pulsanti o la rotella per zoomare</span>
           <div className="map-meta-chips">
-            <span className="chip-pill">{cityGroups.length} città connesse</span>
-            <span className="chip-pill">{places.length} articoli mappati</span>
+            <div className="map-zoom-controls">
+              <button type="button" className="map-zoom-btn" onClick={() => setZoom((z) => Math.min(3.5, z + 0.3))} title="Ingrandisci">+</button>
+              <span className="map-zoom-label">{Math.round(zoom * 100)}%</span>
+              <button type="button" className="map-zoom-btn" onClick={() => setZoom((z) => Math.max(0.8, z - 0.3))} title="Riduci">−</button>
+              <button type="button" className="map-zoom-btn map-reset-btn" onClick={resetView} title="Ripristina vista">↺ Reset</button>
+            </div>
+            <span className="chip-pill">{cityGroups.length} città</span>
+            <span className="chip-pill">{places.length} articoli</span>
           </div>
         </div>
 
-        {/* Interactive Europe Map Canvas */}
-        <section className="interactive-europe-map-shell" aria-label="Mappa Europea dei Club e delle Scene">
+        {/* Interactive Europe Map Viewport Shell */}
+        <section
+          className={`interactive-europe-map-shell ${isDragging ? 'is-grabbing' : ''}`}
+          aria-label="Mappa Europea dei Club e delle Scene"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onWheel={handleWheel}
+        >
           <svg className="europe-vector-map" viewBox="0 0 900 580" preserveAspectRatio="xMidYMid meet">
             <defs>
               <pattern id="grid-pattern" width="30" height="30" patternUnits="userSpaceOnUse">
@@ -306,103 +349,116 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
               </linearGradient>
             </defs>
 
-            {/* Map Background with subtle grid */}
+            {/* Static Background */}
             <rect width="900" height="580" fill="url(#map-gradient)" rx="16" />
             <rect width="900" height="580" fill="url(#grid-pattern)" rx="16" />
 
-            {/* Stylized Continental Outlines of Europe */}
-            <g className="map-landmass-layer" fill="rgba(34, 197, 94, 0.04)" stroke="rgba(34, 197, 94, 0.22)" strokeWidth="1.2" strokeLinejoin="round">
-              {/* Iberian Peninsula (Portugal & Spain) */}
-              <path d="M 120 380 L 150 360 L 220 370 L 250 420 L 240 480 L 190 500 L 140 480 L 115 440 Z" />
-              {/* France & Benelux */}
-              <path d="M 230 365 L 290 310 L 350 300 L 370 340 L 340 410 L 260 415 L 230 370 Z" />
-              {/* British Isles (UK & Ireland) */}
-              <path d="M 230 240 L 260 210 L 290 220 L 270 290 L 240 280 Z" />
-              <path d="M 190 230 L 220 230 L 210 270 L 180 260 Z" />
-              {/* Central Europe & Germany */}
-              <path d="M 360 290 L 440 270 L 470 310 L 430 380 L 360 370 Z" />
-              {/* Italy */}
-              <path d="M 370 390 L 430 390 L 470 450 L 510 500 L 490 520 L 450 470 L 410 440 Z" />
-              {/* Scandinavia */}
-              <path d="M 380 180 L 430 110 L 480 90 L 510 160 L 440 250 Z" />
-              {/* Eastern Europe & Balkans */}
-              <path d="M 475 290 L 640 260 L 700 350 L 630 460 L 530 450 L 475 370 Z" />
-            </g>
+            {/* Zoomable / Pannable Landmass & City Layer */}
+            <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`} style={{ transformOrigin: '450px 290px', transition: isDragging ? 'none' : 'transform 0.15s ease-out' }}>
+              {/* Stylized Continental Outlines of Europe */}
+              <g className="map-landmass-layer" fill="rgba(34, 197, 94, 0.05)" stroke="rgba(34, 197, 94, 0.28)" strokeWidth="1.3" strokeLinejoin="round">
+                {/* Iberian Peninsula (Portugal & Spain) */}
+                <path d="M 120 380 L 150 360 L 220 370 L 250 420 L 240 480 L 190 500 L 140 480 L 115 440 Z" />
+                {/* France & Benelux */}
+                <path d="M 230 365 L 290 310 L 350 300 L 370 340 L 340 410 L 260 415 L 230 370 Z" />
+                {/* British Isles (UK & Ireland) */}
+                <path d="M 230 240 L 260 210 L 290 220 L 270 290 L 240 280 Z" />
+                <path d="M 190 230 L 220 230 L 210 270 L 180 260 Z" />
+                {/* Central Europe & Germany */}
+                <path d="M 360 290 L 440 270 L 470 310 L 430 380 L 360 370 Z" />
+                {/* Italy */}
+                <path d="M 370 390 L 430 390 L 470 450 L 510 500 L 490 520 L 450 470 L 410 440 Z" />
+                {/* Scandinavia */}
+                <path d="M 380 180 L 430 110 L 480 90 L 510 160 L 440 250 Z" />
+                {/* Eastern Europe & Balkans */}
+                <path d="M 475 290 L 640 260 L 700 350 L 630 460 L 530 450 L 475 370 Z" />
+              </g>
 
-            {/* City Hotspots & Geolocation Markers */}
-            {cityGroups.map((g) => {
-              const { x, y } = projectCoords(g.lat, g.lon, 900, 580)
-              const isSelected = activeCity === g.name
+              {/* City Hotspots & Geolocation Markers */}
+              {cityGroups.map((g) => {
+                const { x, y } = projectCoords(g.lat, g.lon, 900, 580)
+                const isSelected = activeCity === g.name
 
-              return (
-                <g
-                  key={g.name}
-                  className={`map-city-node ${isSelected ? 'is-active' : ''}`}
-                  onClick={() => setActiveCity(isSelected ? null : g.name)}
-                  cursor="pointer"
-                  tabIndex={0}
-                  role="button"
-                  aria-label={`Visualizza contenuti per ${g.name}`}
-                  onKeyDown={(e) => { if (e.key === 'Enter') setActiveCity(isSelected ? null : g.name) }}
-                >
-                  {/* Outer Pulsing Ping */}
-                  <circle cx={x} cy={y} r={isSelected ? 22 : 14} className="map-marker-ping" />
-                  {/* Middle Glow */}
-                  <circle cx={x} cy={y} r={isSelected ? 12 : 8} className="map-marker-core" />
-                  {/* Pin Dot */}
-                  <circle cx={x} cy={y} r={isSelected ? 5 : 3.5} className="map-marker-dot" />
-
-                  {/* City Label */}
-                  <text
-                    x={x}
-                    y={y - 14}
-                    textAnchor="middle"
-                    className="map-city-text"
+                return (
+                  <g
+                    key={g.name}
+                    className={`map-city-node ${isSelected ? 'is-active' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setActiveCity(isSelected ? null : g.name)
+                    }}
+                    cursor="pointer"
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Visualizza contenuti per ${g.name}`}
+                    onKeyDown={(e) => { if (e.key === 'Enter') setActiveCity(isSelected ? null : g.name) }}
                   >
-                    {g.name.split(',')[0]} ({g.items.length})
-                  </text>
-                </g>
-              )
-            })}
+                    {/* Outer Pulsing Ping */}
+                    <circle cx={x} cy={y} r={isSelected ? 22 : 14} className="map-marker-ping" />
+                    {/* Middle Glow */}
+                    <circle cx={x} cy={y} r={isSelected ? 12 : 8} className="map-marker-core" />
+                    {/* Pin Dot */}
+                    <circle cx={x} cy={y} r={isSelected ? 5 : 3.5} className="map-marker-dot" />
+
+                    {/* City Label */}
+                    <text
+                      x={x}
+                      y={y - 14}
+                      textAnchor="middle"
+                      className="map-city-text"
+                    >
+                      {g.name.split(',')[0]} ({g.items.length})
+                    </text>
+                  </g>
+                )
+              })}
+            </g>
           </svg>
-        </section>
 
-        {/* Selected City Drawer / Detail Header */}
-        {selectedGroup && (
-          <div className="map-active-city-panel">
-            <div className="city-panel-head">
-              <div>
-                <span className="eyebrow">Scena Locale Selezionata</span>
-                <h3 className="city-panel-title">📍 {selectedGroup.name}</h3>
+          {/* FLOATING OVERLAY DIALOG FOR SELECTED CITY (IN SOVRAPPRESSIONE) */}
+          {selectedGroup && (
+            <div className="map-floating-overlay" role="dialog" aria-modal="false" aria-label={`Dettagli per ${selectedGroup.name}`}>
+              <div className="overlay-header">
+                <div className="overlay-title-wrap">
+                  <span className="eyebrow">Scena Locale Selezionata</span>
+                  <h3 className="overlay-city-title">📍 {selectedGroup.name}</h3>
+                </div>
+                <button
+                  type="button"
+                  className="overlay-close-btn"
+                  onClick={() => setActiveCity(null)}
+                  aria-label="Chiudi sovrimpressione"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                type="button"
-                className="city-panel-close"
-                onClick={() => setActiveCity(null)}
-                aria-label="Chiudi selezione"
-              >
-                ✕ Mostra tutta l'Europa
-              </button>
-            </div>
-            <div className="discovery-grid map-content-grid">
-              {selectedGroup.items.map((item) => (
-                <DiscoveryCard key={item.id} item={item} />
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* Default Grid showing all mapped items if no city selected */}
-        {!selectedGroup && (
-          <div className="map-all-items-wrap">
-            <h3 className="section-subhead">Tutte le uscite e le storie mappate</h3>
-            <div className="discovery-grid map-content-grid">
-              {places.map((item) => (
-                <DiscoveryCard key={item.id} item={item} />
-              ))}
+              <div className="overlay-content-list">
+                {selectedGroup.items.map((item) => (
+                  <div key={item.id} className="overlay-article-row">
+                    <a href={`/item/${item.slug}`} className="overlay-thumb-link">
+                      {item.coverUrl ? (
+                        <img src={item.coverUrl} alt="" className="overlay-thumb-img" />
+                      ) : (
+                        <div className="overlay-thumb-fallback">♪</div>
+                      )}
+                    </a>
+                    <div className="overlay-article-info">
+                      <span className="overlay-kicker">{item.kicker ?? categoryLabels[item.type]}</span>
+                      <h4 className="overlay-title">
+                        <a href={`/item/${item.slug}`}>{item.title}</a>
+                      </h4>
+                      <p className="overlay-summary">{item.summary}</p>
+                      <a href={`/item/${item.slug}`} className="overlay-read-link">
+                        Leggi scheda →
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </section>
       </div>
     </div>
   )
