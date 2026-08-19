@@ -218,24 +218,86 @@ footer { padding: 20px 0; color: var(--color-text-muted); font-size: 11px; text-
 .map-meta-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .chip-pill { padding: 4px 10px; border-radius: 999px; background: var(--color-surface); border: 1px solid var(--color-border); font-size: 11.5px; font-weight: 700; color: var(--color-text-muted); font-family: var(--font-mono); }
 
-.interactive-europe-map-shell { position: relative; width: 100%; border: 1px solid var(--color-border); border-radius: 20px; overflow: hidden; background: #f6f7f2; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); margin-bottom: 28px; }
+.interactive-europe-map-shell { position: relative; width: 100%; border: 1px solid var(--color-border); border-radius: 20px; overflow: hidden; background: #60c5de; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); margin-bottom: 28px; }
 .leaflet-shell-wrap { z-index: 1; }
-.leaflet-map-canvas { width: 100%; height: 560px; background: #f6f7f2; }
+.leaflet-map-canvas { width: 100%; height: 580px; background: #60c5de; }
 
-/* Custom Leaflet Map Pins (Real Earth Level) */
+/* Filter Leaflet tiles to match Google Maps palette (bright vibrant cyan sea and lush green land) */
+.leaflet-map-canvas .leaflet-tile-pane {
+  filter: hue-rotate(18deg) saturate(1.45) contrast(1.08) brightness(1.02);
+}
+
+/* Custom Google Maps style Circular Pins */
 .leaflet-city-marker-wrap { background: transparent !important; border: 0 !important; }
-.leaflet-custom-city-pin { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer; text-align: center; }
-.leaflet-custom-city-pin.is-empty { opacity: 0.55; cursor: default; }
+.leaflet-custom-city-pin { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer; text-align: center; }
+.leaflet-custom-city-pin.is-empty { opacity: 0.7; cursor: default; }
 
-.leaflet-custom-city-pin .city-circle { border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: transform .15s ease; }
-.leaflet-custom-city-pin.is-empty .city-circle { background: #94a395; border: 1px solid #ffffff; }
+.leaflet-custom-city-pin .city-pin-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.28), 0 0 0 2px #ffffff;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
+}
 
-.leaflet-custom-city-pin.is-active .city-circle { background: #16a34a; border: 2px solid #ffffff; box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.25), 0 2px 6px rgba(0,0,0,0.15); }
-.leaflet-custom-city-pin.is-active:hover .city-circle { transform: scale(1.2); background: #15803d; }
+.leaflet-custom-city-pin.is-empty .city-pin-badge {
+  background: #ffffff;
+  border: 2px solid #8ba492;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+.leaflet-custom-city-pin.is-empty .city-pin-badge::after {
+  content: '';
+  width: 5px;
+  height: 5px;
+  background: #5d7565;
+  border-radius: 50%;
+}
 
-.leaflet-custom-city-pin .city-num { color: #ffffff; font-size: 9.5px; font-weight: 900; font-family: system-ui, sans-serif; line-height: 1; }
-.leaflet-custom-city-pin .city-text { font-family: system-ui, -apple-system, sans-serif; font-size: 10px; font-weight: 700; color: #1f2937; white-space: nowrap; text-shadow: 0 1px 3px #ffffff, 0 -1px 3px #ffffff, 1px 0 3px #ffffff, -1px 0 3px #ffffff; }
-.leaflet-custom-city-pin.is-active .city-text { font-weight: 800; color: #14532d; font-size: 10.5px; }
+.leaflet-custom-city-pin.is-active .city-pin-badge {
+  background: #10b981;
+  border: 2px solid #ffffff;
+}
+.leaflet-custom-city-pin.is-active:hover .city-pin-badge {
+  transform: scale(1.22);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.45), 0 0 0 3px #ffffff;
+}
+
+.leaflet-custom-city-pin .city-pin-icon {
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leaflet-custom-city-pin .city-num {
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  font-family: system-ui, -apple-system, sans-serif;
+  line-height: 1;
+}
+
+.leaflet-custom-city-pin .city-text {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  color: #111827;
+  white-space: nowrap;
+  padding: 1px 6px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.leaflet-custom-city-pin.is-active .city-text {
+  color: #065f46;
+  font-weight: 900;
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(255, 255, 255, 0.98);
+}
 
 /* FLOATING OVERLAY IN SOVRAPPRESSIONE */
 .map-floating-overlay { position: absolute; top: 16px; right: 16px; bottom: 16px; width: min(380px, calc(100% - 32px)); z-index: 10; display: flex; flex-direction: column; border-radius: 16px; border: 1px solid rgba(22, 163, 74, 0.35); background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 12px 36px rgba(0,0,0,.15); overflow: hidden; animation: overlayPop .2s ease-out; }

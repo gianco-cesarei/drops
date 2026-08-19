@@ -480,12 +480,12 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
         const hasItems = count > 0
         const cityName = city.name.split(',')[0].trim()
 
-        const radius = !hasItems ? 4 : count === 1 ? 8 : count === 2 ? 11 : Math.min(18, 12 + count * 2)
+        const size = !hasItems ? 12 : count === 1 ? 26 : count === 2 ? 30 : Math.min(38, 32 + count * 2)
 
         const markerHtml = `
           <div class="leaflet-custom-city-pin ${hasItems ? 'is-active' : 'is-empty'}" data-city="${city.name}">
-            <div class="city-circle" style="width:${radius * 2}px;height:${radius * 2}px;">
-              ${count >= 2 ? `<span class="city-num">${count}</span>` : ''}
+            <div class="city-pin-badge" style="width:${size}px;height:${size}px;">
+              ${hasItems ? (count >= 2 ? `<span class="city-num">${count}</span>` : `<span class="city-pin-icon">🎧</span>`) : ''}
             </div>
             <span class="city-text">${cityName}</span>
           </div>
@@ -494,8 +494,8 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
         const customIcon = L.divIcon({
           className: 'leaflet-city-marker-wrap',
           html: markerHtml,
-          iconSize: [80, 40],
-          iconAnchor: [40, 20],
+          iconSize: [100, 50],
+          iconAnchor: [50, 25],
         })
 
         const marker = L.marker([city.lat, city.lon], { icon: customIcon }).addTo(leafletMap)
