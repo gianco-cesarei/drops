@@ -4,7 +4,7 @@ import { categoryLabels, DiscoveryType } from '../domain/discovery'
 import type { DiscoveryItem } from '../domain/discovery'
 import { parseArchiveQuery, serializeArchiveQuery } from '../lib/discovery-query'
 import { MinusIcon, PanIcon, PlusIcon, SearchIcon } from './icons'
-import { usePrototypeState, getArticleStatus } from '../data/brainStore'
+import { usePrototypeState, getArticleStatus, getFeaturedId } from '../data/brainStore'
 
 const sorted = (items: DiscoveryItem[]) => [...items].sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
 
@@ -131,7 +131,15 @@ export function DiscoveryEnvironment({ items }: { items: DiscoveryItem[] }) {
     return items.filter((item) => getArticleStatus(item.id, protoState.contentStatus) === 'Published')
   }, [items, protoState.contentStatus])
 
-  const visible = useMemo(() => filterItems(publishedItems, state.types, state.query), [publishedItems, state.query, state.types])
+  const visible = useMemo(() => {
+    const filtered = filterItems(publishedItems, state.types, state.query)
+    const featId = getFeaturedId(protoState)
+    const featItem = filtered.find((item) => item.id === featId)
+    if (featItem) {
+      return [featItem, ...filtered.filter((item) => item.id !== featId)]
+    }
+    return filtered
+  }, [publishedItems, state.query, state.types, protoState])
 
   const handleQueryChange = (val: string) => {
     setDraft(val)
@@ -180,7 +188,7 @@ export function DiscoveryEnvironment({ items }: { items: DiscoveryItem[] }) {
           </div>
         ) : (
           <div className="discovery-grid">
-            {visible.map((item, idx) => <DiscoveryCard key={item.id} item={item} isFeatured={idx === 0} />)}
+            {visible.map((item) => <DiscoveryCard key={item.id} item={item} isFeatured={item.id === getFeaturedId(protoState)} />)}
           </div>
         )}
       </div>

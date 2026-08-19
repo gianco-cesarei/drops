@@ -6,7 +6,7 @@ import { postLoginRoute } from './lib/routes'
 import { contentFields, contentStages, radarDevelopmentFixtures, radarLockedFixtures } from './data/private.fixture'
 import type { RadarFixture } from './data/private.fixture'
 import BrainGraph from './components/BrainGraph'
-import { linkRadarToBrain, resetPrototypeState, setRadarStatus, usePrototypeState, getArticleStatus, publishArticle, draftArticle } from './data/brainStore'
+import { linkRadarToBrain, resetPrototypeState, setRadarStatus, usePrototypeState, getArticleStatus, publishArticle, draftArticle, getFeaturedId, setFeaturedArticle } from './data/brainStore'
 import type { RadarStatus } from './data/brainStore'
 import { publishedContentItems } from './data/content.data'
 
@@ -810,21 +810,38 @@ function Content() {
             {published.length === 0 ? (
               <p style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>Nessun articolo pubblicato.</p>
             ) : (
-              published.map(item => (
-                <div key={item.id} style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ minWidth: 0, marginRight: '12px' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>{item.type}</div>
-                    <div style={{ fontSize: '13px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+              published.map(item => {
+                const isFeatured = item.id === getFeaturedId(state)
+                return (
+                  <div key={item.id} style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ minWidth: 0, marginRight: '12px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 'bold', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {item.type}
+                        {isFeatured && <span style={{ background: 'var(--color-accent-strong)', color: '#000', fontSize: '9px', padding: '1px 5px', borderRadius: '4px', fontWeight: 'bold' }}>Raccomandato</span>}
+                      </div>
+                      <div style={{ fontSize: '13px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {!isFeatured && (
+                        <button
+                          type="button"
+                          style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent-strong)', border: '1px solid var(--color-accent-strong)', padding: '5px 11px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                          onClick={() => setState(setFeaturedArticle(item.id))}
+                        >
+                          Metti in evidenza
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        style={{ background: 'transparent', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', padding: '5px 11px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                        onClick={() => setState(draftArticle(item.id))}
+                      >
+                        Nascondi
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    style={{ background: 'transparent', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', padding: '5px 11px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
-                    onClick={() => setState(draftArticle(item.id))}
-                  >
-                    Nascondi
-                  </button>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </article>

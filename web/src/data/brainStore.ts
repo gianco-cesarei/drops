@@ -17,13 +17,14 @@ export type PrototypeState = {
   radarStatus: Record<string, RadarStatus>
   unlockedIds: string[]
   contentStatus: Record<string, 'Draft' | 'Published'>
+  featuredId: string | null
 }
 
 const STORAGE_KEY = 'drops:dev-prototype:radar-brain:v1'
 const isBrowser = () => typeof window !== 'undefined'
 
 function emptyState(): PrototypeState {
-  return { extraNodes: [], extraLinks: [], radarStatus: {}, unlockedIds: [], contentStatus: {} }
+  return { extraNodes: [], extraLinks: [], radarStatus: {}, unlockedIds: [], contentStatus: {}, featuredId: null }
 }
 
 export function loadPrototypeState(): PrototypeState {
@@ -72,6 +73,7 @@ export function linkRadarToBrain(fixture: RadarFixture): PrototypeState {
     radarStatus: { ...state.radarStatus, [fixture.id]: 'linked' },
     unlockedIds: [...new Set([...state.unlockedIds, ...fixture.unlocks])],
     contentStatus: state.contentStatus,
+    featuredId: state.featuredId,
   }
   return persist(next)
 }
@@ -99,6 +101,16 @@ export function publishArticle(id: string): PrototypeState {
 export function draftArticle(id: string): PrototypeState {
   const state = loadPrototypeState()
   const next = { ...state, contentStatus: { ...state.contentStatus, [id]: 'Draft' as const } }
+  return persist(next)
+}
+
+export function getFeaturedId(state: PrototypeState): string {
+  return state.featuredId ?? 'festival-houghton-norfolk'
+}
+
+export function setFeaturedArticle(id: string): PrototypeState {
+  const state = loadPrototypeState()
+  const next = { ...state, featuredId: id }
   return persist(next)
 }
 
