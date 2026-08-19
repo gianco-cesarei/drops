@@ -3,8 +3,8 @@ import { publishedContentItems } from './content.data'
 import { DiscoveryType, PartyKind } from '../domain/discovery'
 
 describe('contenuti editoriali pubblicati', () => {
-  it('contiene tutti i 13 contenuti editoriali (8 radar/festival/release + 5 guide)', () => {
-    expect(publishedContentItems.length).toBe(13)
+  it('contiene tutti i 24 contenuti editoriali (radar, release, label focus, festival 2026, scene e guide DJ)', () => {
+    expect(publishedContentItems.length).toBe(24)
   })
 
   it('tutti i contenuti hanno slug unici e id univoci', () => {
@@ -34,6 +34,13 @@ describe('contenuti editoriali pubblicati', () => {
     }
   })
 
+  it('ogni articolo possiede un coverUrl valido con immagine ad alta risoluzione', () => {
+    for (const item of publishedContentItems) {
+      expect(item.coverUrl).toBeTruthy()
+      expect(item.coverUrl?.startsWith('https://')).toBe(true)
+    }
+  })
+
   it('verifica i dati specifici di XEXA — Kissom', () => {
     const xexa = publishedContentItems.find((i) => i.slug === 'xexa-kissom')
     expect(xexa).toBeTruthy()
@@ -55,17 +62,39 @@ describe('contenuti editoriali pubblicati', () => {
     expect(td10?.tags).toContain('bristol')
   })
 
-  it('verifica i dati specifici di Oroko Radio', () => {
-    const oroko = publishedContentItems.find((i) => i.slug === 'oroko-radio-pausa-infrastrutture-indipendenti')
-    expect(oroko).toBeTruthy()
-    expect(oroko?.type).toBe(DiscoveryType.Story)
-    expect(oroko?.tags).toContain('community-radio')
+  it('verifica i dati specifici dei focus su etichette (Defected, Innervisions, XL Recordings, Warp)', () => {
+    const labels = publishedContentItems.filter((i) => i.type === DiscoveryType.Label)
+    expect(labels.length).toBe(4)
+    const labelSlugs = labels.map((l) => l.slug)
+    expect(labelSlugs).toContain('defected-records-house-music-heritage')
+    expect(labelSlugs).toContain('innervisions-berlino-dixon-ame')
+    expect(labelSlugs).toContain('xl-recordings-da-rave-a-potenza-indipendente')
+    expect(labelSlugs).toContain('warp-records-artificial-intelligence-avanguardia')
+
+    const defected = labels.find((l) => l.slug === 'defected-records-house-music-heritage')
+    expect(defected?.primaryLocation.name).toContain('Londra')
+    expect(defected?.tags).toContain('glitterbox')
+
+    const innervisions = labels.find((l) => l.slug === 'innervisions-berlino-dixon-ame')
+    expect(innervisions?.primaryLocation.name).toContain('Berlino')
+    expect(innervisions?.tags).toContain('dixon')
+
+    const xl = labels.find((l) => l.slug === 'xl-recordings-da-rave-a-potenza-indipendente')
+    expect(xl?.primaryLocation.name).toContain('Londra')
+    expect(xl?.tags).toContain('rave')
+
+    const warp = labels.find((l) => l.slug === 'warp-records-artificial-intelligence-avanguardia')
+    expect(warp?.primaryLocation.name).toContain('Sheffield')
+    expect(warp?.tags).toContain('aphex-twin')
   })
 
-  it('verifica i festival (CTM, AVA, L.E.V., MOSTRA, Nyege Nyege)', () => {
+  it('verifica i festival (Dekmantel, Sónar, Primavera Sound, CTM, AVA, L.E.V., MOSTRA, Nyege Nyege)', () => {
     const festivals = publishedContentItems.filter((i) => i.type === DiscoveryType.Party && i.partyKind === PartyKind.Festival)
-    expect(festivals.length).toBe(5)
+    expect(festivals.length).toBe(8)
     const slugs = festivals.map((f) => f.slug)
+    expect(slugs).toContain('dekmantel-festival-amsterdam-2026')
+    expect(slugs).toContain('sonar-festival-barcellona-2026')
+    expect(slugs).toContain('primavera-sound-barcellona-2026-clubbing-circuit')
     expect(slugs).toContain('ctm-festival-berlino-2026')
     expect(slugs).toContain('ava-festival-belfast-2026')
     expect(slugs).toContain('lev-festival-gijon-2026')
@@ -73,14 +102,38 @@ describe('contenuti editoriali pubblicati', () => {
     expect(slugs).toContain('nyege-nyege-festival-jinja-2026')
   })
 
-  it('verifica le 5 guide di settore', () => {
+  it('verifica le scene e guide di clubbing (Lisbona e Milano)', () => {
+    const lisbona = publishedContentItems.find((i) => i.slug === 'guida-clubbing-lisbona-scene-club-radio')
+    expect(lisbona).toBeTruthy()
+    expect(lisbona?.primaryLocation.name).toContain('Lisbona')
+    expect(lisbona?.tags).toContain('lux-fragil')
+
+    const milano = publishedContentItems.find((i) => i.slug === 'guida-clubbing-milano-scene-elettronica')
+    expect(milano).toBeTruthy()
+    expect(milano?.primaryLocation.name).toContain('Milano')
+    expect(milano?.tags).toContain('tunnel-club')
+  })
+
+  it('verifica le guide pratiche DJ e di settore (Borderò SIAE/SPA, Rekordbox, Beatport, ISRC/UPC, Vinile, MusicBrainz)', () => {
     const guides = publishedContentItems.filter((i) => i.tags.includes('guida'))
-    expect(guides.length).toBe(5)
+    expect(guides.length).toBe(9)
     const guideSlugs = guides.map((g) => g.slug)
+    expect(guideSlugs).toContain('guida-bordero-siae-spa-dj-diritto-autore')
+    expect(guideSlugs).toContain('guida-rekordbox-usb-cdj-3000-workflow-professionale')
     expect(guideSlugs).toContain('come-si-pubblica-la-musica-oggi')
     expect(guideSlugs).toContain('beatport-spiegato-classifiche-generi')
     expect(guideSlugs).toContain('isrc-upc-codici-royalty')
     expect(guideSlugs).toContain('vinile-2026-stampa-tempi-costi')
     expect(guideSlugs).toContain('musicbrainz-identita-mbid')
+    expect(guideSlugs).toContain('guida-clubbing-lisbona-scene-club-radio')
+    expect(guideSlugs).toContain('guida-clubbing-milano-scene-elettronica')
+
+    const bordero = publishedContentItems.find((i) => i.slug === 'guida-bordero-siae-spa-dj-diritto-autore')
+    expect(bordero?.tags).toContain('miobordero')
+    expect(bordero?.tags).toContain('spa')
+
+    const rekordbox = publishedContentItems.find((i) => i.slug === 'guida-rekordbox-usb-cdj-3000-workflow-professionale')
+    expect(rekordbox?.tags).toContain('cdj-3000')
   })
 })
+

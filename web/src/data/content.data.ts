@@ -3,7 +3,7 @@ import { DiscoveryType, PartyKind, RelationType, discoveryDatasetSchema } from '
 // CONTENUTO REALE pubblicato su Drops (non fixture di sviluppo)
 export const publishedContentItems = discoveryDatasetSchema.parse([
   // ==========================================
-  // SEZIONE A: ARTISTA EMERGENTE & RADAR SIGNALS
+  // SEZIONE A: ARTISTI EMERGENTI & RADAR SIGNALS
   // ==========================================
   {
     id: 'radar-xexa-kissom',
@@ -11,6 +11,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Release,
     kicker: 'Artista Emergente',
     title: 'XEXA — Kissom: violoncello, intimità pop e kizomba decostruita',
+    coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=80',
     summary:
       "Il secondo album della compositrice e polistrumentista lisbonese XEXA esce su Príncipe Discos, allargando l'estetica della label verso ambient, pop radiante e ritmi afro-diasporici decostruiti.",
     publishedAt: '2026-08-18T14:00:00.000Z',
@@ -26,7 +27,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
       { url: 'https://www.instagram.com/xexa____/', label: 'Profilo Ufficiale XEXA', kind: 'official' },
     ],
     relations: [
-      { id: 'dev-set-lisbon', type: RelationType.CityScene, label: 'Scena Elettronica Lisbona', reason: 'Ecosistema Príncipe e diaspora afro-portoghese' },
+      { id: 'guide-lisbona-clubbing-scene', type: RelationType.Story, label: 'Scena Clubbing Lisbona', reason: 'Ecosistema Príncipe e diaspora afro-portoghese' },
     ],
     body: [
       {
@@ -57,6 +58,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Release,
     kicker: 'Release',
     title: 'TD10: dieci anni di futurismo club per la Timedance di Bristol',
+    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
     summary:
       "La compilation celebrativa curata da Batu raccoglie 23 tracce esclusive che fotografano l'evoluzione del sound di Bristol fra techno ibrida, bass culture e sound design chirurgico.",
     publishedAt: '2026-08-17T16:00:00.000Z',
@@ -71,7 +73,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
       { url: 'https://www.discogs.com/label/827660-Timedance', label: 'Discogs (Catalogo Timedance)', kind: 'reference' },
     ],
     relations: [
-      { id: 'dev-artist-london', type: RelationType.CityScene, label: 'Scena UK Bass & Sound System', reason: 'Asse Bristol-Londra nel club futurism' },
+      { id: 'label-xl-recordings', type: RelationType.Label, label: 'XL Recordings & UK Bass Heritage', reason: 'Radici e collegamenti sonori con il Bristol Sound' },
     ],
     body: [
       {
@@ -98,6 +100,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Story,
     kicker: 'Notizia',
     title: 'Oroko Radio entra in pausa: la fragilità delle web-radio comunitarie',
+    coverUrl: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80',
     summary:
       "L'emittente indipendente di Accra sospende la diretta quotidiana per burnout e insostenibilità economica. Una vicenda che interroga l'ecosistema globale su chi finanzia la scoperta musicale.",
     publishedAt: '2026-08-16T12:00:00.000Z',
@@ -131,6 +134,408 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     ],
   },
 
+  // ==========================================
+  // SEZIONE B: FOCUS SU ETICHETTE DISCOGRAFICHE
+  // ==========================================
+  {
+    id: 'label-defected-records',
+    slug: 'defected-records-house-music-heritage',
+    type: DiscoveryType.Label,
+    kicker: 'Etichetta',
+    title: 'Defected Records: anatomia di un impero della House Music globale',
+    coverUrl: 'https://images.unsplash.com/photo-1571266028243-3716f02d2d2e?auto=format&fit=crop&w=1200&q=80',
+    summary:
+      "Fondata nel 1999 da Simon Dunmore e oggi guidata da Wez Saunders, Defected ha trasformato la vocal e club house in un ecosistema globale tra residenze a Ibiza, radio show storici e sublabel di culto come DFTD e Glitterbox.",
+    publishedAt: '2026-08-19T11:00:00.000Z',
+    primaryLocation: { kind: 'geographic', name: 'Londra, Regno Unito', countryCode: 'GB', latitude: 51.5074, longitude: -0.1278 },
+    mapEligible: true,
+    tags: ['etichetta', 'defected', 'house-music', 'glitterbox', 'dftd', 'ibiza', 'london', 'club-culture'],
+    sources: [
+      { url: 'https://defected.com', label: 'Sito Ufficiale Defected', kind: 'official' },
+      { url: 'https://defected.bandcamp.com', label: 'Defected Bandcamp Store', kind: 'original' },
+      { url: 'https://open.spotify.com/user/defectedrecords', label: 'Spotify Curated Profile', kind: 'listen' },
+      { url: 'https://www.discogs.com/label/744-Defected', label: 'Discogs (Catalogo Defected)', kind: 'reference' },
+      { url: 'https://soundcloud.com/defectedrecords', label: 'SoundCloud Radio Stream', kind: 'listen' },
+    ],
+    relations: [
+      { id: 'guide-bordero-siae-spa-dj', type: RelationType.Story, label: 'Diritti d’Autore nei Club', reason: 'Gestione royalty per le hit mondiali nei DJ set estivi' },
+      { id: 'guide-beatport-spiegato', type: RelationType.Story, label: 'Beatport Chart Dynamics', reason: 'Strategia di vertice nelle classifiche House e Tech House' },
+    ],
+    body: [
+      {
+        html: `<p class="lead">Fondata a Londra nel 1999 dal visionario <b>Simon Dunmore</b> e oggi proiettata nel futuro sotto la guida del CEO <b>Wez Saunders</b>, <b>Defected Records</b> rappresenta il pilastro assoluto e la memoria vivente della <i>House Music</i> su scala planetaria.</p>`,
+      },
+      {
+        heading: "Dalle origini a Soho alla conquista di Ibiza",
+        html: `<p>Nata in un piccolo ufficio nel cuore di Soho con l'intento di preservare l'anima soul, gospel e vocal della house americana trapiantandola nei club britannici, Defected ha debuttato con la storica hit <i>I Can't Get No Sleep</i> di Masters At Work feat. India. Da allora, l'etichetta ha costruito un ponte ininterrotto con l'isola di Ibiza, trasformando le proprie residency — dall'El Divino e Pacha fino al leggendario appuntamento settimanale all'Eden di San Antonio e all'Ushuaïa — in un rituale di massa per clubber di ogni generazione.</p>`,
+      },
+      {
+        heading: "L'arcipelago delle sublabel: Glitterbox, DFTD e The Remedy Project",
+        html: `<p>La forza di Defected risiede nella sua capacità di segmentare l'esperienza del dancefloor attraverso divisioni specializzate:</p><ul><li><b>Glitterbox:</b> l'esaltazione della disco-house, del funk anni '70 e '80 e della cultura queer originaria di New York e Chicago, con feste inclusive ed estetiche teatrali sfavillanti.</li><li><b>DFTD:</b> lo sbocco dedicato alla club-techno e alla minimal tech-house più cruda e sotterranea, pensata per i club più scuri e intimi.</li><li><b>The Remedy Project & Stay True Sounds:</b> imprint curati da figure come Melé e Kid Fonque per esplorare tribal rhythms, afro-house e deep house sudafricana.</li><li><b>D-Vine Sounds & Big Love:</b> boutique label fondate da Sam Divine e Seamus Haji per mantenere vivo il groove puro.</li></ul>`,
+      },
+      {
+        heading: "Infrastruttura digitale e collezionismo",
+        html: `<p>Defected non è solo un catalogo di oltre 1.000 release: è una media company autonoma con un radio show settimanale syndication trasmesso in oltre 60 paesi, festival proprietari in Croazia, Malta e Londra, e una divisione vinili che continua a stampare edizioni limitate e cofanetti da collezione rimasterizzati con la massima cura audiofila.</p>`,
+      },
+    ],
+  },
+
+  {
+    id: 'label-innervisions-berlin',
+    slug: 'innervisions-berlino-dixon-ame',
+    type: DiscoveryType.Label,
+    kicker: 'Etichetta',
+    title: 'Innervisions: l’estetica melodica e il rigore concettuale di Dixon & Âme',
+    coverUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80',
+    summary:
+      "Fondata a Berlino nel 2005 da Steffen Berkhahn (Dixon) e Kristian Beyer & Frank Wiedemann (Âme), Innervisions ha ridefinito la house epica, ipnotica e drammatica, unendo release centellinate e l'esperienza immersiva di Lost In A Moment.",
+    publishedAt: '2026-08-19T10:30:00.000Z',
+    primaryLocation: { kind: 'geographic', name: 'Berlino, Germania', countryCode: 'DE', latitude: 52.5200, longitude: 13.4050 },
+    mapEligible: true,
+    tags: ['etichetta', 'innervisions', 'dixon', 'ame', 'melodic-house', 'berlino', 'lost-in-a-moment', 'secret-weapons'],
+    sources: [
+      { url: 'https://www.innervisions.com', label: 'Innervisions Official Hub', kind: 'official' },
+      { url: 'https://innervisions.bandcamp.com', label: 'Innervisions Bandcamp Store', kind: 'original' },
+      { url: 'https://open.spotify.com/user/innervisionsofficial', label: 'Spotify Innervisions', kind: 'listen' },
+      { url: 'https://www.discogs.com/label/42791-Innervisions', label: 'Discogs (Catalogo Completo)', kind: 'reference' },
+      { url: 'https://ra.co/labels/834', label: 'Resident Advisor Label Profile', kind: 'reference' },
+    ],
+    relations: [
+      { id: 'festival-dekmantel-amsterdam-2026', type: RelationType.Party, label: 'Dekmantel Connection', reason: 'Presenza cardine nei Main Stage e UFO stage' },
+      { id: 'radar-ctm-festival-2026', type: RelationType.Party, label: 'Ecosistema Elettronico Berlinese', reason: 'Radici e sviluppo nel contesto d’avanguardia tedesco' },
+    ],
+    body: [
+      {
+        html: `<p class="lead">Nata nel 2005 a Berlino dalla visione congiunta di <b>Dixon (Steffen Berkhahn)</b> e del duo <b>Âme (Kristian Beyer & Frank Wiedemann)</b>, <b>Innervisions</b> ha riscritto le coordinate della musica elettronica contemporanea, forgiando un suono emozionale, drammaturgico e senza compromessi.</p>`,
+      },
+      {
+        heading: "La genesi sonora: oltre la minimal berlinese",
+        html: `<p>All'apice del dominio del minimalismo sonoro a Berlino, Innervisions ha osato reintrodurre tensione armonica, melodie stratificate, vocal eterei e costruzioni sinfoniche. Tracce manifesto come <i>Rej</i> di Âme, <i>En Route</i> di Marcus Worgull e gli indimenticabili remix di Dixon hanno dimostrato che il dancefloor può essere un luogo di profonda catarsi emotiva ed eleganza senza tempo.</p>`,
+      },
+      {
+        heading: "La saga 'Secret Weapons' e la severità curatoriale",
+        html: `<p>L'approccio dell'etichetta è leggendario per la sua estrema selettività: poche release all'anno, testate per mesi in segreto durante i tour mondiali dei fondatori prima di vedere la luce. La celebre serie di compilation <i>Secret Weapons</i> è diventata il trampolino di lancio per talenti come Henrik Schwarz, Agoria, Âme, Denis Horvat, Trikk e Jimi Jules, definendo anno dopo anno gli standard timbrici del DJing internazionale.</p>`,
+      },
+      {
+        heading: "Lost In A Moment: la decostruzione del club tradizionale",
+        html: `<p>Con il format itinerante <b>Lost In A Moment</b>, Innervisions ha abbandonato le pareti buie dei club convenzionali per creare esperienze diurne in siti carichi di valore storico, paesaggistico e architettonico: da isole deserte in Croazia a castelli medievali e fortezze costiere, eliminando qualsiasi divisione VIP e ripristinando l'ascolto collettivo all'aria aperta.</p>`,
+      },
+      {
+        heading: "Muting The Noise e la cultura della manifattura",
+        html: `<p>Attraverso la propria casa di distribuzione e negozio <i>Muting The Noise</i>, Innervisions ha sempre trattato il vinile non come semplice supporto, ma come oggetto d'arte: copertine serigrafate, packaging tattili e una dedizione meticolosa alla masterizzazione analogica che ne fanno uno dei cataloghi più ricercati dai collezionisti.</p>`,
+      },
+    ],
+  },
+
+  {
+    id: 'label-xl-recordings',
+    slug: 'xl-recordings-da-rave-a-potenza-indipendente',
+    type: DiscoveryType.Label,
+    kicker: 'Etichetta',
+    title: 'XL Recordings: dall’hardcore rave britannico alla rivoluzione discografica indipendente',
+    coverUrl: 'https://images.unsplash.com/photo-1539185441755-769473a23570?auto=format&fit=crop&w=1200&q=80',
+    summary:
+      "Nata nel 1989 come spin-off dance di Beggars Banquet da Tim Palmer, Nick Halkes e Richard Russell, XL Recordings ha tracciato la traiettoria più straordinaria della musica indipendente: dai rave banger di The Prodigy a Burial, The xx, Radiohead, Overmono e Joy Orbison.",
+    publishedAt: '2026-08-19T10:00:00.000Z',
+    primaryLocation: { kind: 'geographic', name: 'Londra, Regno Unito', countryCode: 'GB', latitude: 51.5138, longitude: -0.2084 },
+    mapEligible: true,
+    tags: ['etichetta', 'xl-recordings', 'richard-russell', 'rave', 'uk-bass', 'overmono', 'joy-orbison', 'londra'],
+    sources: [
+      { url: 'https://xlrecordings.com', label: 'XL Recordings Official Portal', kind: 'official' },
+      { url: 'https://xlrecordings.bandcamp.com', label: 'XL Recordings Bandcamp Store', kind: 'original' },
+      { url: 'https://open.spotify.com/user/xlrecordings', label: 'Spotify XL Releases', kind: 'listen' },
+      { url: 'https://www.discogs.com/label/150-XL-Recordings', label: 'Discogs (Catalogo XL)', kind: 'reference' },
+      { url: 'https://beggars.com', label: 'Beggars Group Archive', kind: 'reference' },
+    ],
+    relations: [
+      { id: 'radar-timedance-td10', type: RelationType.Release, label: 'Bristol & UK Bass Evolution', reason: 'Collaborazioni e osmosi estetica con Joy Orbison e Overmono' },
+      { id: 'label-warp-records', type: RelationType.Label, label: 'Avanguardie Britanniche Indipendenti', reason: 'I due poli della discografia d’autore inglese' },
+    ],
+    body: [
+      {
+        html: `<p class="lead">Poche entità nella storia della musica registrata hanno incarnato la libertà creativa e la capacità di plasmare il canone contemporaneo come <b>XL Recordings</b>. Dalla polvere dei rave illegali britannici del 1989 agli stadi e ai vertici delle classifiche globali, XL è il modello definitivo di etichetta discografica indipendente.</p>`,
+      },
+      {
+        heading: "1989–1995: L'esplosione breakbeat hardcore e The Prodigy",
+        html: `<p>Fondata come costola elettronica del Beggars Group da Tim Palmer, Nick Halkes e un giovanissimo <b>Richard Russell</b>, XL cattura immediatamente l'energia tellurica del movimento rave con inni come <i>Charly</i> ed <i>Everybody in the Place</i> dei The Prodigy, SL2 (<i>On a Ragga Tip</i>) e Liquid. Quella matrice breakbeat, viscerale e orgogliosamente popolare rimarrà per sempre il DNA ritmico della label.</p>`,
+      },
+      {
+        heading: "La filosofia di Richard Russell: meno uscite, totale dedizione",
+        html: `<p>Assunta la guida solitaria dell'etichetta, Richard Russell impone una regola editoriale controintuitiva: pubblicare non più di cinque o sei album all'anno. Questo approccio sartoriale consente a XL di investire risorse e tempo smisurati in ciascun progetto, diventando la casa naturale per capolavori epocali come <i>In Rainbows</i> e i lavori solisti di Thom Yorke, <i>The xx</i>, Dizzee Rascal (il caposaldo del grime <i>Boy in da Corner</i>), King Krule, FKA twigs e Adele.</p>`,
+      },
+      {
+        heading: "Il ritorno al clubbing del futuro: Overmono, Joy Orbison e Two Shell",
+        html: `<p>Nel panorama clubbing attuale, XL Recordings è tornata ad essere il barometro supremo del suono da club britannico. Con la firma dei fratelli <b>Overmono</b> (il cui album <i>Good Lies</i> ha unito UK garage, trance nostalgia e bass culture), le pietre miliari di <b>Joy Orbison</b> (<i>flight fm</i>, <i>still slipping vol.1</i>) e gli enigmatici rilasci di Two Shell, la label dimostra che il clubbing sperimentale può comunicare con milioni di ascoltatori senza cedere alla mediocrità commerciale.</p>`,
+      },
+    ],
+  },
+
+  {
+    id: 'label-warp-records',
+    slug: 'warp-records-artificial-intelligence-avanguardia',
+    type: DiscoveryType.Label,
+    kicker: 'Etichetta',
+    title: 'Warp Records: l’invenzione dell’ascolto sintetico e l’avanguardia sonora permanente',
+    coverUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=1200&q=80',
+    summary:
+      "Dalle origini bleep & bass a Sheffield nel 1989 con Steve Beckett e Rob Mitchell fino alla serie leggendaria 'Artificial Intelligence', Warp ha dato una casa ad Aphex Twin, Boards of Canada, Autechre, Nightmares on Wax, Flying Lotus e Oneohtrix Point Never.",
+    publishedAt: '2026-08-19T09:30:00.000Z',
+    primaryLocation: { kind: 'geographic', name: 'Sheffield, Regno Unito', countryCode: 'GB', latitude: 53.3811, longitude: -1.4701 },
+    mapEligible: true,
+    tags: ['etichetta', 'warp', 'sheffield', 'aphex-twin', 'boards-of-canada', 'autechre', 'idm', 'bleep-techno'],
+    sources: [
+      { url: 'https://warp.net', label: 'Warp.net Official Universe', kind: 'official' },
+      { url: 'https://warprecords.bandcamp.com', label: 'Warp Bandcamp Catalogue', kind: 'original' },
+      { url: 'https://bleep.com', label: 'Bleep.com Music Store', kind: 'reference' },
+      { url: 'https://open.spotify.com/user/warprecords', label: 'Spotify Warp Curated', kind: 'listen' },
+      { url: 'https://www.discogs.com/label/23528-Warp-Records', label: 'Discogs (Archivio Warp Records)', kind: 'reference' },
+    ],
+    relations: [
+      { id: 'label-xl-recordings', type: RelationType.Label, label: 'XL Recordings', reason: 'Poli cardine della cultura discografica autonoma britannica' },
+      { id: 'radar-lev-festival-gijon-2026', type: RelationType.Party, label: 'Ricerca Audiovisiva ed Elettronica', reason: 'Affinità estetica tra IDM e festival audiovisivi contemporanei' },
+    ],
+    body: [
+      {
+        html: `<p class="lead">Fondata nel 1989 nel retro del negozio di dischi FON a Sheffield da <b>Steve Beckett</b> e il compianto <b>Rob Mitchell</b>, <b>Warp Records</b> non è semplicemente un'etichetta discografica: è l'istituzione che ha ridefinito la natura stessa della musica elettronica, inventando l'ascolto per la mente (<i>electronic listening music</i>) e spingendo la ricerca sonora oltre ogni limite conosciuto.</p>`,
+      },
+      {
+        heading: "Sheffield 1989: Bleep & Bass come identità industriale",
+        html: `<p>Il viaggio di Warp inizia con il suono metallico e industriale dello Yorkshire: la <i>Bleep Techno</i>. Uscite pionieristiche come <i>Track With No Name</i> di Forgemasters (WAP1), LFO (il cui singolo omonimo bruciò i diffusori dei club nel 1990) e Nightmares on Wax inventarono un linguaggio percussivo basato su sub-frequenze telluriche e impulsi sinusoidali purissimi, sintetizzando l'angoscia e la speranza della classe operaia inglese post-thatcheriana.</p>`,
+      },
+      {
+        heading: "La rivoluzione 'Artificial Intelligence' e la nascita dell'IDM",
+        html: `<p>Nel 1992, con la leggendaria compilation <i>Artificial Intelligence</i> e lo slogan iconico <i>'Electronic Listening Music from Warp'</i>, la label compie la sua mossa più audace: dimostrare che la musica elettronica non serviva solo per ballare nei warehouse, ma poteva essere fruita seduti in poltrona come la grande musica colta o il jazz d'avanguardia. Da questo manifesto nascono le carriere immortali di <b>Polygon Window / Aphex Twin (Richard D. James)</b>, <b>Autechre</b>, <b>B12</b> e The Black Dog.</p>`,
+      },
+      {
+        heading: "I maestri della nostalgia e dell'astrazione: Boards of Canada e Flying Lotus",
+        html: `<p>Negli anni successivi, Warp ha continuato ad espandere i propri confini: dal calore analogico, vellutato e nostalgico dei <b>Boards of Canada</b> (<i>Music Has the Right to Children</i>, <i>Geogaddi</i>) al jazz cibernetico losangelino di <b>Flying Lotus</b> (<i>Cosmogramma</i>), fino al modernismo sintetico di Oneohtrix Point Never, Squarepusher, Battles, Kelela e Yves Tumor. Una traiettoria inesauribile che dimostra come Warp rimanga il faro guida dell'avanguardia globale.</p>`,
+      },
+    ],
+  },
+
+  // ==========================================
+  // SEZIONE C: REPORT FESTIVAL E SCENE 2026
+  // ==========================================
+  {
+    id: 'festival-dekmantel-amsterdam-2026',
+    slug: 'dekmantel-festival-amsterdam-2026',
+    type: DiscoveryType.Party,
+    partyKind: PartyKind.Festival,
+    kicker: 'Festival',
+    title: 'Dekmantel Festival Amsterdam 2026: il tempio dei selector nell’Amsterdamse Bos',
+    coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
+    summary:
+      "Dal Main Stage immerso nella foresta all'UFO stage dedicato alla techno ipnotica e al greenhouse tropicale, Dekmantel 2026 ribadisce il suo ruolo di barometro globale del DJing colto e della club culture d'eccellenza.",
+    publishedAt: '2026-08-19T09:00:00.000Z',
+    primaryLocation: { kind: 'geographic', name: 'Amsterdam, Paesi Bassi', countryCode: 'NL', latitude: 52.3150, longitude: 4.8350 },
+    mapEligible: true,
+    tags: ['festival', 'amsterdam', 'dekmantel', 'amsterdamse-bos', 'selectors', 'ufo-stage', 'greenhouse', 'club-culture'],
+    sources: [
+      { url: 'https://www.dekmantelfestival.com', label: 'Dekmantel Official Hub & Program', kind: 'official' },
+      { url: 'https://dekmantel.bandcamp.com', label: 'Dekmantel Records Store', kind: 'listen' },
+      { url: 'https://ra.co/events/dekmantel-2026', label: 'Resident Advisor Dekmantel Guide', kind: 'reference' },
+      { url: 'https://soundcloud.com/dkmntl', label: 'Dekmantel Podcast & Live Archive', kind: 'listen' },
+    ],
+    relations: [
+      { id: 'label-innervisions-berlin', type: RelationType.Label, label: 'Innervisions & Dixon', reason: 'Showcase storici e performance indimenticabili' },
+      { id: 'radar-timedance-td10', type: RelationType.Release, label: 'UK & Bristol Connection', reason: 'Batu e Timedance costantemente ospitati sui palchi UFO' },
+    ],
+    body: [
+      {
+        html: `<p class="lead">Dal 29 luglio al 2 agosto 2026, <b>Dekmantel Festival</b> celebra la sua dodicesima edizione nell'incantevole cornice dell'<b>Amsterdamse Bos</b>, confermandosi l'appuntamento più influente e rispettato per la comunità internazionale dei DJ, dei crate digger e degli amanti del clubbing consapevole.</p>`,
+      },
+      {
+        heading: "L'Amsterdamse Bos come cattedrale acustica naturale",
+        html: `<p>La magia di Dekmantel risiede nella sua perfetta integrazione con l'ambiente naturale: palchi in legno mimetizzati tra gli alberi secolari, un'acustica tarata con precisione millimetrica e un'atmosfera priva di fronzoli commerciali dove la musica rimane l'unico centro di gravità.</p>`,
+      },
+      {
+        heading: "I palchi iconici: Greenhouse, UFO e Selectors Stage",
+        html: `<p>Ogni stage di Dekmantel incarna una specifica sfumatura della club culture:</p><ul><li><b>Greenhouse:</b> una vera e propria serra in vetro dove si alternano house calda, funk analogico, percussioni latine e live act mozzafiato circondati da piante tropicali.</li><li><b>UFO & UFO II:</b> i due hangar dedicati all'oscurità, alla techno ipnotica, all'electro di Detroit, all'EBM e alla bass music futurista ad altissima pressione sonora.</li><li><b>Selectors Stage:</b> il palco sacro dei digger, dove leggende del vinile come Hunee, Antal, Palms Trax e Motor City Drum Ensemble tessono set eclettici lunghi ore.</li><li><b>The Loop & Radar:</b> spazi dedicati all'esplorazione modulare, ai live sperimentali e alle collaborazioni inedite.</li></ul>`,
+      },
+      {
+        heading: "Dekmantel come ecosistema culturale",
+        html: `<p>Oltre alle giornate nel bosco, il festival include il programma d'apertura nei musei e lungo i canali dell'IJ (Muziekgebouw, Shelter, Eye Filmmuseum), tavole rotonde e workshop che dimostrano come un evento di massa possa mantenere intatta la propria etica underground.</p>`,
+      },
+    ],
+  },
+
+  {
+    id: 'festival-sonar-barcellona-2026',
+    slug: 'sonar-festival-barcellona-2026',
+    type: DiscoveryType.Party,
+    partyKind: PartyKind.Festival,
+    kicker: 'Festival',
+    title: 'Sónar Barcellona 2026: musica avanzata, creatività digitale e l’ecosistema Sónar+D',
+    coverUrl: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80',
+    summary:
+      "La trentatreesima edizione di Sónar trasforma Barcellona nella capitale mondiale dell'innovazione sonora: il connubio tra Sónar de Día a Fira Montjuïc, la maratona notturna di Sónar de Noche e i talk su intelligenza artificiale e sound design.",
+    publishedAt: '2026-08-18T18:00:00.000Z',
+    primaryLocation: { kind: 'geographic', name: 'Barcellona, Spagna', countryCode: 'ES', latitude: 41.3733, longitude: 2.1488 },
+    mapEligible: true,
+    tags: ['festival', 'barcellona', 'sonar', 'sonar-plus-d', 'musica-avanzata', 'fira-montjuic', 'digital-arts'],
+    sources: [
+      { url: 'https://sonar.es', label: 'Sónar Festival Official Website', kind: 'official' },
+      { url: 'https://sonarplusd.com', label: 'Sónar+D Innovation Congress', kind: 'reference' },
+      { url: 'https://ra.co/events/sonar-2026', label: 'Resident Advisor Sónar Hub', kind: 'reference' },
+      { url: 'https://open.spotify.com/user/sonarfestival', label: 'Spotify Sónar Official Playlist', kind: 'listen' },
+    ],
+    relations: [
+      { id: 'radar-mostra-barcellona-2026', type: RelationType.Party, label: 'Scena Elettronica di Barcellona', reason: 'MOSTRA come contromodello underground nella stessa città' },
+      { id: 'radar-lev-festival-gijon-2026', type: RelationType.Party, label: 'Circuito Spagnolo di Arte Digitale', reason: 'Ponti tra innovazione tecnologica e performance AV' },
+    ],
+    body: [
+      {
+        html: `<p class="lead">Fondata nel 1994, la rassegna <b>Sónar Barcellona (Festival de Música Avanzada y Arte Multimedia)</b> celebra nel 2026 trentatré anni di attività ininterrotta, confermandosi il punto di raccordo globale tra creatività artistica, avanguardia tecnologica e clubbing di massa.</p>`,
+      },
+      {
+        heading: "La duplice anima: Sónar de Día e Sónar de Noche",
+        html: `<p>La struttura di Sónar è unica nel suo genere: di giorno, tra gli spazi aperti e i padiglioni di <b>Fira Montjuïc</b>, il festival celebra il live set d'autore, i suoni ibridi e le performance immersive; di notte, l'immenso complesso industriale di <b>Fira Gran Via</b> si trasforma in una delle più grandi cattedrali del clubbing mondiale con stage monumentali come SonarClub e SonarPub.</p>`,
+      },
+      {
+        heading: "Sónar+D: il cervello tecnologico e l'AI generativa",
+        html: `<p>Elemento distintivo imprescindibile è <b>Sónar+D</b>, il congresso internazionale per professionisti dell'arte digitale, programmatori, scienziati e designer. Nel 2026, i panel e i laboratori esplorano l'intersezione tra algoritmi di intelligenza artificiale per la composizione generativa, spazializzazione audio 3D e nuove economie di tutela per i produttori indipendenti.</p>`,
+      },
+      {
+        heading: "L'impatto sulla città e la settimana OFF-Sónar",
+        html: `<p>L'influenza di Sónar va ben oltre i confini del festival ufficiale: durante la settimana di giugno, Barcellona diventa l'epicentro mondiale della notte, con centinaia di label showcase, party su terrazze e raduni underground (OFF-Sónar al Poble Espanyol) che richiamano appassionati da ogni continente.</p>`,
+      },
+    ],
+  },
+
+  {
+    id: 'festival-primavera-sound-clubbing-2026',
+    slug: 'primavera-sound-barcellona-2026-clubbing-circuit',
+    type: DiscoveryType.Party,
+    partyKind: PartyKind.Festival,
+    kicker: 'Festival',
+    title: 'Primavera Sound 2026: l’anima underground dentro il colosso di Barcellona',
+    coverUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=1200&q=80',
+    summary:
+      "Oltre i grandi palchi pop e rock, il Parc del Fòrum custodisce un cuore pulsante di club culture: dalle maratone non-stop di Boiler Room al palco The Warehouse, dove l'elettronica da club più radicale incontra un pubblico transgenerazionale.",
+    publishedAt: '2026-08-18T16:00:00.000Z',
+    primaryLocation: { kind: 'geographic', name: 'Barcellona, Spagna', countryCode: 'ES', latitude: 41.4116, longitude: 2.2227 },
+    mapEligible: true,
+    tags: ['festival', 'barcellona', 'primavera-sound', 'boiler-room', 'warehouse-stage', 'clubbing', 'parc-del-forum'],
+    sources: [
+      { url: 'https://www.primaverasound.com', label: 'Primavera Sound Official Portal', kind: 'official' },
+      { url: 'https://boilerroom.tv/session/primavera-sound-2026', label: 'Boiler Room x Primavera Archive', kind: 'listen' },
+      { url: 'https://ra.co/events/primavera-sound-2026', label: 'Resident Advisor Event Page', kind: 'reference' },
+    ],
+    relations: [
+      { id: 'festival-sonar-barcellona-2026', type: RelationType.Party, label: 'Sónar Festival Connection', reason: 'I due giganti dell’estate musicale barcellonese' },
+      { id: 'radar-mostra-barcellona-2026', type: RelationType.Party, label: 'Resistenza Locale', reason: 'Confronto di scala con gli eventi underground cittadini' },
+    ],
+    body: [
+      {
+        html: `<p class="lead">Nonostante <b>Primavera Sound</b> sia celebrato a livello globale per le sue grandiose lineup eclettiche, l'edizione 2026 consolida l'area del <b>Parc del Fòrum</b> affacciata sul Mediterraneo come uno dei distretti di clubbing e musica elettronica più stimolanti d'Europa.</p>`,
+      },
+      {
+        heading: "The Warehouse e il palco Boiler Room a 360 gradi",
+        html: `<p>L'allestimento dedicato alla club culture si articola attorno a punti nevralgici ad altissima intensità:</p><ul><li><b>Boiler Room Stage:</b> la celebre arena circolare dove la barriera tra DJ e pubblico è azzerata, trasmettendo in streaming globale le selezioni dei talenti più esplosivi di hard drum, jersey club, deconstructed club e baile funk.</li><li><b>The Warehouse:</b> una tensostruttura industriale pensata come un vero e proprio club di Berlino o Londra, con laser minimalisti e un impianto audio L-Acoustics dedicato a techno martellante, electro e breakbeat.</li><li><b>Dice & Cupra Stages:</b> spazi che dalle tre di notte alle sei del mattino ospitano i b2b più esclusivi della scena contemporanea.</li></ul>`,
+      },
+      {
+        heading: "Curatela trasversale e ponti di genere",
+        html: `<p>Il punto di forza dell'elettronica a Primavera Sound è la totale assenza di snobismo di genere: selector di culto come DJ Nobu, Avalon Emerson, Sherelle, VTSS e Joy Orbison suonano a pochi metri dai grandi act dal vivo, attirando un pubblico eterogeneo che scopre la cultura della notte in tutta la sua potenza sociale.</p>`,
+      },
+    ],
+  },
+
+  {
+    id: 'guide-lisbona-clubbing-scene',
+    slug: 'guida-clubbing-lisbona-scene-club-radio',
+    type: DiscoveryType.Story,
+    kicker: 'Scena & Guida',
+    title: 'Guida al Clubbing di Lisbona: club iconici, web radio e l’asse sonoro afro-lusofono',
+    coverUrl: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80',
+    summary:
+      "Da Lux Frágil e Musicbox al circuito di 5A, Planeta Manas e Rádio Quântica: mappa completa dell'ecosistema notturno lisbonese, laboratorio europeo di batida, house atlantica e club culture comunitaria.",
+    publishedAt: '2026-08-18T12:00:00.000Z',
+    primaryLocation: { kind: 'geographic', name: 'Lisbona, Portogallo', countryCode: 'PT', latitude: 38.7169, longitude: -9.1399 },
+    mapEligible: true,
+    tags: ['guida', 'lisbona', 'clubbing', 'lux-fragil', 'musicbox', 'radio-quantica', 'principe', 'afro-house', 'batida'],
+    sources: [
+      { url: 'https://luxfragil.com', label: 'Lux Frágil Official Site', kind: 'official' },
+      { url: 'https://musicboxlisboa.com', label: 'Musicbox Lisboa', kind: 'official' },
+      { url: 'https://radioquantica.com', label: 'Rádio Quântica Archive', kind: 'listen' },
+      { url: 'https://ra.co/guide/pt/lisbon', label: 'Resident Advisor Lisbon City Guide', kind: 'reference' },
+      { url: 'https://flur.pt', label: 'Flur Discos Record Store', kind: 'reference' },
+    ],
+    relations: [
+      { id: 'radar-xexa-kissom', type: RelationType.Release, label: 'XEXA — Kissom', reason: 'Nuova voce della scena sperimentale lisbonese' },
+      { id: 'guide-bordero-siae-spa-dj', type: RelationType.Story, label: 'Regole SPA Portogallo per DJ', reason: 'Guida legale per suonare nei club in Portogallo' },
+    ],
+    body: [
+      {
+        html: `<p class="lead">Lisbona è oggi una delle capitali più vibranti ed elettrizzanti per la musica elettronica globale. Crocevia naturale tra Europa, Africa e Sud America, la capitale portoghese offre un tessuto di clubbing autentico, caldo e politicamente consapevole.</p>`,
+      },
+      {
+        heading: "Le istituzioni regine: Lux Frágil e Musicbox",
+        html: `<p>Nessuna guida alla notte lisbonese può prescindere da <b>Lux Frágil</b>, situato a Santa Apolónia sul fiume Tago. Fondato da Manuel Reis nel 1998, Lux unisce un sound system Funktion-One impeccabile, una programmazione che ospita i migliori selector del mondo e una terrazza all'alba che è parte integrante del mito cittadino. A Cais do Sodré, <b>Musicbox</b> è il punto di riferimento quotidiano per live act trasversali, serate bass music e clubbing intimo e sudato.</p>`,
+      },
+      {
+        heading: "Spazi comunitari, DIY e club d'ascolto: 5A, Outra Cena e Planeta Manas",
+        html: `<p>Negli ultimi anni la scena si è arricchita di spazi dedicati a comunità specifiche e sound design ricercato:</p><ul><li><b>5A Club:</b> micro-club nel cuore del Bairro Alto, noto per il suo impianto artigianale, luci rosse e selezioni viniliche deep, microhouse e minimal fino a tarda mattina.</li><li><b>Planeta Manas:</b> spazio culturale autogestito e queer-safe hub dove convergono performance transfemministe, deconstructed club e ritmi ibridi diasporici.</li><li><b>Outra Cena:</b> warehouse a Marvila dedicato alla techno scura e ai suoni rave senza concessioni commerciali.</li></ul>`,
+      },
+      {
+        heading: "La linfa vitale: Rádio Quântica e l'eredità di Príncipe Discos",
+        html: `<p>La vera rivoluzione musicale lisbonese è avvenuta grazie all'ibridazione della club culture europea con i ritmi dei sobborghi e delle ex colonie (Angola, Capo Verde, Mozambico): il kuduro, la batida, il funaná e il tarraxo documentati da <b>Príncipe Discos</b>. A fungere da megafono per questa comunità è <b>Rádio Quântica</b>, web radio indipendente fondata da Violet e Photonz che da oltre un decennio dà voce alle periferie e all'attivismo artistico.</p>`,
+      },
+      {
+        heading: "Crate Digging: Flur e i record store imperdibili",
+        html: `<p>Per chi cerca vinili rari, <b>Flur Discos</b> (adiacente a Lux Frágil) è una delle botteghe di dischi più raffinate d'Europa, affiancata da <i>Carpet & Snares Records</i> a Espaço Chiado (fondata da Jorge Caiado) e <i>Collect</i> a Cais do Sodré.</p>`,
+      },
+    ],
+  },
+
+  {
+    id: 'guide-milano-clubbing-scene',
+    slug: 'guida-clubbing-milano-scene-elettronica',
+    type: DiscoveryType.Story,
+    kicker: 'Scena & Guida',
+    title: 'Guida al Clubbing di Milano: underground, club storici, spazi ibridi e festival del Nord Italia',
+    coverUrl: 'https://images.unsplash.com/photo-1513584684374-8bab748fbf90?auto=format&fit=crop&w=1200&q=80',
+    summary:
+      "Dal Tunnel Club al Plastic, dal Tempio del Futuro Perduto all'eredità di Dude Club e Macao, fino all'asse con Terraforma e Jazz:Re:Found: anatomia della scena milanese tra sound design, clubbing consapevole e collezionismo su vinile.",
+    publishedAt: '2026-08-17T18:00:00.000Z',
+    primaryLocation: { kind: 'geographic', name: 'Milano, Italia', countryCode: 'IT', latitude: 45.4642, longitude: 9.1900 },
+    mapEligible: true,
+    tags: ['guida', 'milano', 'clubbing', 'tunnel-club', 'plastic', 'tempio-del-futuro-perduto', 'terraforma', 'vinyl-stores'],
+    sources: [
+      { url: 'https://www.tunnel-club.it', label: 'Tunnel Club Milano Official', kind: 'official' },
+      { url: 'https://tempiodelfuturo.art', label: 'Tempio del Futuro Perduto', kind: 'official' },
+      { url: 'https://ra.co/guide/it/milan', label: 'Resident Advisor Milan Club Guide', kind: 'reference' },
+      { url: 'https://serendeepity.net', label: 'Serendeepity Record Store Milano', kind: 'reference' },
+      { url: 'https://www.terraformafestival.com', label: 'Terraforma Festival Archive', kind: 'reference' },
+    ],
+    relations: [
+      { id: 'guide-bordero-siae-spa-dj', type: RelationType.Story, label: 'Borderò SIAE & Normative Italiane', reason: 'Guida operativa per suonare nei locali milanesi e italiani' },
+    ],
+    body: [
+      {
+        html: `<p class="lead">Milano rappresenta da decenni il laboratorio più dinamico ed esigente per la musica elettronica e il clubbing in Italia: una metropoli capace di conciliare la nightlife patinata del design e della moda con una tenace cultura underground dedita al sound design e alla ricerca vinilica.</p>`,
+      },
+      {
+        heading: "I club leggendari: Tunnel, Plastic e Apollo",
+        html: `<p>La spina dorsale della notte milanese poggia su spazi con un'identità granitica:</p><ul><li><b>Tunnel Club:</b> incastonato sotto i binari della Stazione Centrale in Via Sammartini, da oltre trent'anni è il tempio della techno, dell'electro e della club music più avanguardista (con serate resident come <i>Take It Easy</i> e format innovativi).</li><li><b>Plastic Club (Killer Plastic):</b> icona senza tempo della libertà queer, della house e della disco d'autore, punto di incontro per artisti, designer e amanti della notte autentica.</li><li><b>Apollo Milano:</b> raffinato club sui Navigli diviso tra cocktail bar e club room, ideale per selezioni house sofisticate, nu-disco ed eclettismo contemporaneo.</li></ul>`,
+      },
+      {
+        heading: "Spazi ibridi e rigenerazione: Il Tempio del Futuro Perduto",
+        html: `<p>In Via Luigi Nono, il <b>Tempio del Futuro Perduto</b> rappresenta un modello unico in Europa: uno spazio culturale multidisciplinare recuperato dall'abbandono, fondato su etica no-phone, sostenibilità, book-crossing e maratone musicali dove la techno ipnotica, la drum & bass e la musica ambient dialogano con installazioni artistiche diurne.</p>`,
+      },
+      {
+        heading: "L'asse con i festival di culto: Terraforma e Jazz:Re:Found",
+        html: `<p>Milano è anche l'epicentro organizzativo dei festival più visionari d'Italia: <b>Terraforma</b> (a Villa Arconati, punto di riferimento per l'ecologia del suono e l'architettura effimera) e <b>Jazz:Re:Found</b> (nel Monferrato, ponte sublime tra jazz, broken beat, soul ed elettronica da club).</p>`,
+      },
+      {
+        heading: "I negozi di dischi essenziali per i DJ",
+        html: `<p>A Milano il vinile è una religione. Tappa obbligatoria per ogni selector è <b>Serendeepity</b> in Corso di Porta Ticinese (curato con dedizione enciclopedica su house, techno, jazz e sperimentale), affiancato da <i>Volume</i> all'Isola, <i>Sound Metaphors Milano</i> e <i>Mariposa Dischi</i>.</p>`,
+      },
+    ],
+  },
+
+  // ==========================================
+  // SEZIONE D: REPORT FESTIVAL RADAR (CTM, AVA, LEV, MOSTRA, NYEGE NYEGE)
+  // ==========================================
   {
     id: 'radar-ctm-festival-2026',
     slug: 'ctm-festival-berlino-2026',
@@ -138,6 +543,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     partyKind: PartyKind.Festival,
     kicker: 'Festival',
     title: 'CTM 2026 Berlino: audio spaziale, nuove composizioni e reti translocali',
+    coverUrl: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?auto=format&fit=crop&w=1200&q=80',
     summary:
       "Il festival berlinese dedicato alle musiche avventurose esplora l'ascolto immersivo con Blawan e rinsalda le connessioni translocali con Accra e l'ecosistema di Oroko Radio.",
     publishedAt: '2026-08-15T18:00:00.000Z',
@@ -151,6 +557,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     ],
     relations: [
       { id: 'radar-oroko-radio-hiatus', type: RelationType.Story, label: 'Oroko Radio Connection', reason: 'Programma congiunto e talk sulla circolazione musicale' },
+      { id: 'label-innervisions-berlin', type: RelationType.Label, label: 'Scena di Berlino', reason: 'Poli complementari della notte e della ricerca sonora tedesca' },
     ],
     body: [
       {
@@ -178,6 +585,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     partyKind: PartyKind.Festival,
     kicker: 'Festival',
     title: 'AVA Belfast 2026: il 75% della lineup radicato nella scena locale',
+    coverUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=80',
     summary:
       "Audio Visual Arts Festival torna a Belfast imponendo una proporzione chiara: oltre tre quarti degli artisti da Irlanda e UK, con 12 debutti assoluti nella capitale nordirlandese.",
     publishedAt: '2026-08-14T15:00:00.000Z',
@@ -190,7 +598,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
       { url: 'https://avafestival.com/conference/', label: 'AVA Conference & Talk', kind: 'reference' },
     ],
     relations: [
-      { id: 'dev-artist-london', type: RelationType.CityScene, label: 'Scena UK & Irlanda', reason: 'Rappresentanza territoriale e sviluppo talenti' },
+      { id: 'label-xl-recordings', type: RelationType.Label, label: 'Scena UK & Irlanda', reason: 'Rappresentanza territoriale e sviluppo talenti' },
     ],
     body: [
       {
@@ -218,6 +626,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     partyKind: PartyKind.Festival,
     kicker: 'Festival',
     title: 'L.E.V. Gijón 2026: il club inteso come dispositivo audiovisivo',
+    coverUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80',
     summary:
       "Tra La Nave di Gijón e gli spazi museali asturiani, il Laboratorio di Elettronica Visiva unisce post-clubbing, turntablism sperimentale e performance con intelligenza artificiale.",
     publishedAt: '2026-08-13T14:00:00.000Z',
@@ -231,6 +640,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     ],
     relations: [
       { id: 'radar-mostra-barcellona-2026', type: RelationType.Party, label: 'Circuito Spagnolo d’Avanguardia', reason: 'Festival indipendenti tra Asturie e Catalogna' },
+      { id: 'festival-sonar-barcellona-2026', type: RelationType.Party, label: 'Sónar+D Art Link', reason: 'Intersezione tra arti digitali e musica avanzata' },
     ],
     body: [
       {
@@ -258,6 +668,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     partyKind: PartyKind.Festival,
     kicker: 'Festival',
     title: 'MOSTRA Barcellona 2026: il piccolo formato come resistenza culturale',
+    coverUrl: 'https://images.unsplash.com/photo-1516873240891-4bf014598ab4?auto=format&fit=crop&w=1200&q=80',
     summary:
       "Contro la gigantografia dei macro-festival estivi, MOSTRA propone a Barcellona un'esperienza a capienza limitata dedicata a deep techno, ascolto attento e sostenibilità urbana.",
     publishedAt: '2026-08-12T11:00:00.000Z',
@@ -271,6 +682,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     ],
     relations: [
       { id: 'radar-lev-festival-gijon-2026', type: RelationType.Party, label: 'Festival d’Avanguardia in Spagna', reason: 'Approccio etico e indipendente al clubbing' },
+      { id: 'festival-sonar-barcellona-2026', type: RelationType.Party, label: 'Sónar Barcellona', reason: 'Prospettive a confronto tra scala intima e macro-festival' },
     ],
     body: [
       {
@@ -298,6 +710,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     partyKind: PartyKind.Festival,
     kicker: 'Festival',
     title: "Nyege Nyege 2026: l'edizione Wakaliwood sulle rive del Nilo",
+    coverUrl: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1200&q=80',
     summary:
       "La maratona di 4 giorni a Jinja fonde l'energia del cinema d'azione underground ugandese di Wakaliwood con 7 palchi di suoni panafricani e diaspora globale.",
     publishedAt: '2026-08-11T12:00:00.000Z',
@@ -333,7 +746,107 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
   },
 
   // ==========================================
-  // SEZIONE B: LE 5 GUIDE DI SETTORE
+  // SEZIONE E: GUIDE PRATICHE DJ & SETTORE
+  // ==========================================
+  {
+    id: 'guide-bordero-siae-spa-dj',
+    slug: 'guida-bordero-siae-spa-dj-diritto-autore',
+    type: DiscoveryType.Story,
+    kicker: 'Guida Pratica DJ',
+    title: 'Guida pratica al Borderò per DJ: compilazione digitale SIAE, SPA e tutela del diritto d’autore',
+    coverUrl: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1200&q=80',
+    summary:
+      "Come funziona il Programma Musicale online (mioBorderò), le differenze fiscali e giuridiche tra esecuzione e registrazione fonografica, come gestire unreleased, dubplate e bootleg, e le regole per suonare tra Italia, Spagna e Portogallo.",
+    publishedAt: '2026-08-19T12:00:00.000Z',
+    primaryLocation: { kind: 'online', name: 'Guida Drops DJ Specialist' },
+    mapEligible: false,
+    tags: ['guida', 'djing', 'bordero', 'siae', 'spa', 'diritto-autore', 'miobordero', 'royalties', 'clubbing'],
+    sources: [
+      { url: 'https://www.siae.it/it/servizi-online/miobordero/', label: 'SIAE (Portale Ufficiale mioBorderò)', kind: 'official' },
+      { url: 'https://www.spautores.pt', label: 'SPA (Sociedade Portuguesa de Autores)', kind: 'official' },
+      { url: 'https://www.sgae.es', label: 'SGAE (Sociedad General de Autores y Editores Spagna)', kind: 'reference' },
+      { url: 'https://www.cisac.org', label: 'CISAC (Confederazione Internazionale Società Autori)', kind: 'reference' },
+    ],
+    relations: [
+      { id: 'guide-come-si-pubblica-la-musica', type: RelationType.Story, label: 'Come si pubblica la musica', reason: 'Flussi economici di composizione e registrazione' },
+      { id: 'guide-isrc-upc', type: RelationType.Story, label: 'ISRC & UPC', reason: 'Codici standard per il riconoscimento delle tracce' },
+      { id: 'guide-milano-clubbing-scene', type: RelationType.Story, label: 'Scena Clubbing Milano', reason: 'Applicazione del borderò nei locali e festival italiani' },
+      { id: 'guide-lisbona-clubbing-scene', type: RelationType.Story, label: 'Scena Clubbing Lisbona', reason: 'Adempimenti legali e licenze SPA per serate in Portogallo' },
+    ],
+    body: [
+      {
+        html: `<p class="lead">Il <b>Programma Musicale</b> (comunemente chiamato <i>Borderò</i>) è lo strumento giuridico e contabile attraverso il quale i diritti di pubblica esecuzione raccolti nei locali vengono ripartiti ai compositori e agli autori delle tracce suonate durante un DJ set. Capire come compilarlo correttamente non è solo un obbligo di legge, ma un atto di rispetto verso chi produce la musica che fa ballare la pista.</p>`,
+      },
+      {
+        heading: "01 · Diritto d'Autore vs Diritto Connesso: dove vanno i soldi?",
+        html: `<p>È fondamentale chiarire una distinzione cardinale:</p><ul><li><b>Diritto d'Autore (SIAE in Italia, SPA in Portogallo, SGAE in Spagna):</b> tutela chi ha <i>composto la melodia e il testo</i> della traccia. I proventi del borderò vanno interamente a questo fondo.</li><li><b>Diritto Connesso (SCF, Soundreef, NuovoIMAIE):</b> tutela il <i>produttore fonografico</i> (chi ha pagato la registrazione) e gli <i>artisti interpreti/esecutori</i>. Questo flusso viene liquidato attraverso licenze forfettarie del locale e piattaforme di streaming, non dal borderò tradizionale.</li></ul>`,
+      },
+      {
+        heading: "02 · Come compilare il borderò digitale (mioBorderò SIAE)",
+        html: `<p>Dal 2018 la versione cartacea (il vecchio foglio rosso) è stata quasi integralmente soppressa in favore del portale telematico <b>mioBorderò</b> (accessibile anche via app mobile):</p><ol><li><b>Assegnazione da parte dell'Organizzatore:</b> il gestore del locale o promoter dell'evento crea il permesso telematico e invia l'invito digitale al profilo del DJ (tramite codice fiscale o email verificata).</li><li><b>Accettazione del DJ:</b> il DJ accede alla propria area riservata prima o subito dopo l'esibizione e accetta il Programma Musicale.</li><li><b>Compilazione della scaletta (Tracklist):</b> si inseriscono i titoli esatti e i compositori (cognome dell'autore). È possibile salvare <i>Playlist preferite</i> per richiamare velocemente i blocchi di tracce suonate regolarmente.</li><li><b>Riconsegna telematica:</b> entro 48–72 ore dalla fine dell'evento, il DJ appone la firma digitale e riconsegna il borderò al gestore, che procederà alla chiusura contabile.</li></ol>`,
+      },
+      {
+        heading: "03 · Cosa fare con unreleased, dubplate, edit e bootleg?",
+        html: `<p>Uno dei dubbi più frequenti tra i DJ underground riguarda la musica non ancora pubblicata:</p><ul><li><b>Tracce inedite di amici/colleghi:</b> se il brano è già depositato in SIAE o in un'altra collecting society (es. PRS, GEMA, SACEM), inserisci titolo provvisorio e cognome dell'autore originale: quando la traccia sarà registrata ufficialmente, i crediti retroattivi verranno agganciati.</li><li><b>Bootleg e Re-edit non ufficiali:</b> indica sempre gli autori della canzone campionata originale. Il borderò tutela l'opera originaria di cui hai utilizzato le melodie o le armonie.</li><li><b>Tue produzioni inedite non depositate:</b> se non sei iscritto a una società di gestione collettiva, la SIAE accantonerà i fondi in un capitolo di 'musica non identificata'. Per monetizzare i tuoi DJ set con la tua musica, iscriviti come autore/compositore.</li></ul>`,
+      },
+      {
+        heading: "04 · Suonare all'estero: la SPA in Portogallo e il circuito CISAC",
+        html: `<p>Se suoni a Lisbona o a Porto, il locale opererà sotto la <b>SPA (Sociedade Portuguesa de Autores)</b>; in Spagna sotto la <b>SGAE</b>. Grazie ai trattati internazionali di reciprocità <b>CISAC</b>, le società estere raccolgono i borderò locali e riversano le quote spettanti alla SIAE (o alla PRO a cui sei iscritto). Assicurati sempre che il promoter portoghese o spagnolo ti fornisca il foglio di ripartizione locale (<i>folha de execução musical</i>) per non perdere i proventi internazionali.</p>`,
+      },
+      {
+        heading: "05 · Responsabilità: DJ vs Organizzatore",
+        html: `<p>La legge è chiara: il responsabile del pagamento del permesso per la musica d'ambiente e da ballo è <b>esclusivamente l'organizzatore dell'evento o il gestore della sala</b>. La responsabilità del DJ è unicamente quella di attestare con veridicità e correttezza le opere effettivamente eseguite.</p>`,
+      },
+    ],
+  },
+
+  {
+    id: 'guide-rekordbox-usb-cdj3000-workflow',
+    slug: 'guida-rekordbox-usb-cdj-3000-workflow-professionale',
+    type: DiscoveryType.Story,
+    kicker: 'Guida Pratica DJ',
+    title: 'Workflow Rekordbox & USB per CDJ-3000: formattazione, metadati, cue points e backup di emergenza',
+    coverUrl: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=1200&q=80',
+    summary:
+      "Dalla formattazione corretta (FAT32 vs exFAT) all'analisi accurata del grid ritmico, gestione di Memory Cue vs Hot Cue, playlist intelligenti, color coding e strategie di ridondanza per non avere mai blackout in console.",
+    publishedAt: '2026-08-19T08:00:00.000Z',
+    primaryLocation: { kind: 'online', name: 'Guida Drops DJ Specialist' },
+    mapEligible: false,
+    tags: ['guida', 'rekordbox', 'cdj-3000', 'pioneer-dj', 'alphatheta', 'usb-setup', 'dj-workflow', 'cue-points'],
+    sources: [
+      { url: 'https://rekordbox.com', label: 'Rekordbox Official Software Portal', kind: 'official' },
+      { url: 'https://alphatheta.com', label: 'AlphaTheta / Pioneer DJ Hardware Support', kind: 'reference' },
+      { url: 'https://djtechtools.com', label: 'DJ TechTools Technical Guides', kind: 'reference' },
+    ],
+    relations: [
+      { id: 'guide-beatport-spiegato', type: RelationType.Story, label: 'Beatport spiegato', reason: 'Acquisto file lossless e standardizzazione metadati' },
+      { id: 'guide-bordero-siae-spa-dj', type: RelationType.Story, label: 'Guida Borderò DJ', reason: 'Completamento della preparazione professionale per i live' },
+    ],
+    body: [
+      {
+        html: `<p class="lead">Nel DJing contemporaneo la preparazione della libreria su <b>Rekordbox</b> e la corretta configurazione delle memorie USB sono decisive quanto la selezione musicale. Una chiavetta mal configurata può causare freeze dei lettori, waveform non sincronizzate o crash a metà set.</p>`,
+      },
+      {
+        heading: "01 · Scelta dell'hardware e File System (FAT32 vs Device Lock)",
+        html: `<p>Anche se i nuovi <b>CDJ-3000</b> supportano memorie in formato <i>exFAT</i> e <i>FAT32</i>, se suoni regolarmente in club che dispongono ancora di CDJ-2000NXS2 o XDJ-1000MK2 lo standard universale ed obbligatorio rimane <b>FAT32 (con schema partizione MBR - Master Boot Record)</b>. Investi sempre in pendrive USB 3.2 o SSD portatili ad alta velocità di lettura continua (es. SanDisk Extreme PRO o Corsair Flash Voyager GTX).</p>`,
+      },
+      {
+        heading: "02 · Analisi ritmica: Dynamic vs Normal Beatgrid",
+        html: `<p>Quando importi nuove tracce:</p><ul><li><b>Elettronica/Techno/House:</b> usa sempre la modalità <i>Normal</i>. L'analisi dinamica rischia di creare micro-variazioni innaturali di BPM su tracce prodotte con drum machine a tempo fisso.</li><li><b>Disco '70, Funk, Jazz, Afrobeat registrato live:</b> attiva la modalità <i>Dynamic</i> per seguire le naturali fluttuazioni ritmiche del batterista in carne ed ossa, regolando manualmente i marker di battuta sui break salienti.</li></ul>`,
+      },
+      {
+        heading: "03 · Memory Cue vs Hot Cue: come strutturare la traccia",
+        html: `<p>Comprendere la differenza tra i due sistemi è la chiave per mixare con fluidità:</p><ul><li><b>Memory Cue (Colorati):</b> punti di riferimento visivi sulla waveform (primo kick, inizio break, out-tro) che non interrompono la riproduzione ma permettono il salto immediato tramite i tasti Cue e Loop del CDJ.</li><li><b>Hot Cue (A-H):</b> trigger istantanei per campionare, fare tone play, lanciare drop a sorpresa o saltare istantaneamente sezioni noiose della traccia.</li></ul>`,
+      },
+      {
+        heading: "04 · La regola del triplo backup (Protocollo No-Panic)",
+        html: `<p>La regola d'oro di ogni DJ professionista:</p><ol><li><b>USB Master 1:</b> la chiavetta primaria collegata al Deck 1 (e condivisa via cavo Pro DJ Link di rete LAN a tutti i 4 lettori).</li><li><b>USB Clone 2:</b> chiavetta gemella identica, sincronizzata con l'Export Sync Manager di Rekordbox, pronta all'inserimento immediato nel Deck 2 in caso di avaria LAN.</li><li><b>USB Backup 3 (o SD Card):</b> copia di emergenza conservata nella borsa delle cuffie con le sole playlist essenziali.</li></ol>`,
+      },
+    ],
+  },
+
+  // ==========================================
+  // SEZIONE F: GUIDE DI SETTORE ORIGINARIE
   // ==========================================
   {
     id: 'guide-come-si-pubblica-la-musica',
@@ -341,6 +854,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Story,
     kicker: 'Guida',
     title: 'Come si pubblica la musica oggi',
+    coverUrl: 'https://images.unsplash.com/photo-1598653222000-6b7b7a552625?auto=format&fit=crop&w=1200&q=80',
     summary:
       "Dalla traccia finita all'ascolto: la mappa degli strumenti essenziali, in breve. Taglio scena elettronica, con note pop dove il gioco cambia.",
     publishedAt: '2026-08-18T09:00:00.000Z',
@@ -357,6 +871,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     relations: [
       { id: 'guide-beatport-spiegato', type: RelationType.Story, label: 'Beatport spiegato', reason: 'Focus sui negozi digitali per DJ' },
       { id: 'guide-isrc-upc', type: RelationType.Story, label: 'ISRC & UPC', reason: 'Approfondimento sui codici identificativi' },
+      { id: 'guide-bordero-siae-spa-dj', type: RelationType.Story, label: 'Borderò SIAE & SPA', reason: 'Guida pratica alla compilazione del programma musicale' },
     ],
     body: [
       {
@@ -399,6 +914,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Story,
     kicker: 'Guida',
     title: 'Beatport spiegato: classifiche, generi e visibilità',
+    coverUrl: 'https://images.unsplash.com/photo-1571266028243-3716f02d2d2e?auto=format&fit=crop&w=1200&q=80',
     summary:
       'Il negozio dei DJ: come funziona la classifica di genere, perché scegliere bene la categorizzazione, e come ci arrivi davvero tramite distributori approvati e label.',
     publishedAt: '2026-08-17T10:00:00.000Z',
@@ -413,6 +929,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     ],
     relations: [
       { id: 'guide-come-si-pubblica-la-musica', type: RelationType.Story, label: 'Come si pubblica la musica', reason: 'Guida generale alla pubblicazione' },
+      { id: 'guide-rekordbox-usb-cdj3000-workflow', type: RelationType.Story, label: 'Workflow Rekordbox & USB', reason: 'Importazione delle tracce acquistate su Beatport' },
     ],
     body: [
       {
@@ -451,6 +968,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Story,
     kicker: 'Guida',
     title: 'ISRC & UPC: i codici che tutelano le tue royalty',
+    coverUrl: 'https://images.unsplash.com/photo-1461360370896-922624d12aa1?auto=format&fit=crop&w=1200&q=80',
     summary:
       'Due codici invisibili decidono se vieni pagato e riconosciuto. Cosa sono, chi te li dà, e gli errori tipici da evitare tra registrazioni e release.',
     publishedAt: '2026-08-16T10:00:00.000Z',
@@ -465,6 +983,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     ],
     relations: [
       { id: 'guide-musicbrainz-identita', type: RelationType.Story, label: 'MusicBrainz & Identità', reason: 'Metadati aperti e identificatori stabili' },
+      { id: 'guide-bordero-siae-spa-dj', type: RelationType.Story, label: 'Borderò SIAE & SPA', reason: 'Collegamento tra identificatori e rendicontazione dei set' },
     ],
     body: [
       {
@@ -499,6 +1018,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Story,
     kicker: 'Guida',
     title: 'Vinile nel 2026: come si stampa, tempi e costi reali',
+    coverUrl: 'https://images.unsplash.com/photo-1539185441755-769473a23570?auto=format&fit=crop&w=1200&q=80',
     summary:
       'Dal master dedicato alla pressing plant: come funziona la stampa del disco fisico, quanto aspetti davvero e come finanziarlo con i pre-order.',
     publishedAt: '2026-08-14T10:00:00.000Z',
@@ -550,6 +1070,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Story,
     kicker: 'Guida',
     title: 'MusicBrainz & identità: il riconoscimento dei metadati musicali',
+    coverUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
     summary:
       "L'archivio aperto e collaborativo dietro centinaia di app: cos'è un MBID e perché metadati puliti significano venire riconosciuti ovunque da umani e algoritmi.",
     publishedAt: '2026-08-12T10:00:00.000Z',
@@ -591,3 +1112,4 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     ],
   },
 ])
+
