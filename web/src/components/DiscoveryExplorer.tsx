@@ -380,11 +380,59 @@ const EUROPEAN_CITIES_BASE = [
   { name: 'Tbilisi, Georgia', countryCode: 'GE', lat: 41.7151, lon: 44.8271 },
 ]
 
+const COUNTRY_TRANSLATIONS: Record<string, string> = {
+  'Germany': 'Germania',
+  'France': 'Francia',
+  'Italy': 'Italia',
+  'Spain': 'Spagna',
+  'Portugal': 'Portogallo',
+  'United Kingdom': 'Regno Unito',
+  'Ireland': 'Irlanda',
+  'Belgium': 'Belgio',
+  'Netherlands': 'Paesi Bassi',
+  'Switzerland': 'Svizzera',
+  'Austria': 'Austria',
+  'Denmark': 'Danimarca',
+  'Norway': 'Norvegia',
+  'Sweden': 'Svezia',
+  'Finland': 'Finlandia',
+  'Poland': 'Polonia',
+  'Czech Republic': 'Repubblica Ceca',
+  'Slovakia': 'Slovacchia',
+  'Hungary': 'Ungheria',
+  'Romania': 'Romania',
+  'Greece': 'Grecia',
+  'Bulgaria': 'Bulgaria',
+  'Albania': 'Albania',
+  'Croatia': 'Croazia',
+  'Slovenia': 'Slovenia',
+  'Bosnia and Herzegovina': 'Bosnia ed Erzegovina',
+  'Serbia': 'Serbia',
+  'Montenegro': 'Montenegro',
+  'Macedonia': 'Macedonia',
+  'Ukraine': 'Ucraina',
+  'Belarus': 'Bielorussia',
+  'Lithuania': 'Lituania',
+  'Latvia': 'Lettonia',
+  'Estonia': 'Estonia',
+  'Moldova': 'Moldavia',
+  'Turkey': 'Turchia',
+  'Georgia': 'Georgia',
+}
+
 export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
   const state = useArchiveState(false)
   const [activeCity, setActiveCity] = useState<string | null>(null)
-  const mapContainerRef = useState<HTMLDivElement | null>(null)
   const [mapElement, setMapElement] = useState<HTMLDivElement | null>(null)
+  const [geoJsonData, setGeoJsonData] = useState<any>(null)
+
+  // Load GeoJSON data on mount
+  useEffect(() => {
+    fetch('/europe.geojson')
+      .then((res) => res.json())
+      .then((data) => setGeoJsonData(data))
+      .catch((err) => console.error('Failed to load Europe GeoJSON:', err))
+  }, [])
 
   const places = useMemo(() => {
     return filterItems(items, state.types).filter(
@@ -444,7 +492,7 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
   // Initialize Leaflet real geographic map on mount
   useEffect(() => {
     const el = document.getElementById('europe-leaflet-map')
-    if (!el || typeof window === 'undefined') return
+    if (!el || !geoJsonData || typeof window === 'undefined') return
 
     let leafletMap: any = null
 
@@ -458,24 +506,47 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
 
       // Center on Central Europe (Milan/Zurich/Munich latitude) with maxBounds on Europe
       leafletMap = L.map(el, {
-        center: [48.5, 12.0],
-        zoom: 4.5,
-        minZoom: 3.5,
-        maxZoom: 9,
+        center: [52.0, 10.0],
+        zoom: 4.0,
+        minZoom: 3.0,
+        maxZoom: 7.0,
         zoomControl: true,
         maxBounds: [
-          [32.0, -25.0], // South-West Europe/Canaries
-          [72.0, 45.0],  // North-East Scandinavia/Ural
+          [28.0, -30.0], // South-West limit
+          [75.0, 45.0],  // North-East limit
         ],
         maxBoundsViscosity: 0.9,
       })
 
-      // Real Geographic World Map with Country Borders & Cities (Light / Cream Carto Positron Tiles)
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap',
-        subdomains: 'abcd',
-        maxZoom: 19,
+      // Add solid styled GeoJSON country vector polygons (Lush pastel green land and clean dark borders)
+      L.geoJSON(geoJsonData, {
+        style: {
+          fillColor: '#cbe6d8',
+          fillOpacity: 1.0,
+          color: '#5b856f',
+          weight: 1.5,
+        }
       }).addTo(leafletMap)
+
+      // Add Country labels (Apple Maps style) at their pre-calculated centroids
+      geoJsonData.features.forEach((feature: any) => {
+        const props = feature.properties
+        if (props && props.LAT !== undefined && props.LON !== undefined) {
+          const lat = parseFloat(props.LAT)
+          const lon = parseFloat(props.LON)
+          const nameEn = props.NAME
+          const nameIt = COUNTRY_TRANSLATIONS[nameEn] || nameEn
+
+          const labelIcon = L.divIcon({
+            className: 'country-label-marker-wrap',
+            html: `<div class="country-label-text">${nameIt}</div>`,
+            iconSize: [120, 30],
+            iconAnchor: [60, 15],
+          })
+
+          L.marker([lat, lon], { icon: labelIcon, interactive: false }).addTo(leafletMap)
+        }
+      })
 
       // Add City Markers directly onto the map
       allCities.forEach((city) => {
@@ -516,7 +587,7 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
         leafletMap.remove()
       }
     }
-  }, [allCities])
+  }, [allCities, geoJsonData])
 
   return (
     <div className="environment-layout">

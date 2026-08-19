@@ -423,13 +423,25 @@ footer { padding: 20px 0; color: var(--color-text-muted); font-size: 11px; text-
 .map-meta-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .chip-pill { padding: 4px 10px; border-radius: 999px; background: var(--color-surface); border: 1px solid var(--color-border); font-size: 11.5px; font-weight: 700; color: var(--color-text-muted); font-family: var(--font-mono); }
 
-.interactive-europe-map-shell { position: relative; width: 100%; border: 1px solid var(--color-border); border-radius: 20px; overflow: hidden; background: #60c5de; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); margin-bottom: 28px; }
+.interactive-europe-map-shell { position: relative; width: 100%; border: 1px solid var(--color-border); border-radius: 20px; overflow: hidden; background: #5fc2d9; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); margin-bottom: 28px; }
 .leaflet-shell-wrap { z-index: 1; }
-.leaflet-map-canvas { width: 100%; height: 580px; background: #60c5de; }
+.leaflet-map-canvas { width: 100%; height: 580px; background: #5fc2d9 !important; }
 
-/* Filter Leaflet tiles to match Google Maps palette (bright vibrant cyan sea and lush green land) */
-.leaflet-map-canvas .leaflet-tile-pane {
-  filter: hue-rotate(18deg) saturate(1.45) contrast(1.08) brightness(1.02);
+/* Custom Country Labels */
+.country-label-marker-wrap {
+  background: transparent !important;
+  border: 0 !important;
+  pointer-events: none !important;
+}
+.country-label-text {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #1e3629;
+  text-shadow: 0 1.5px 3px #ffffff, 0 -1.5px 3px #ffffff, 1.5px 0 3px #ffffff, -1.5px 0 3px #ffffff;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* Custom Google Maps style Circular Pins */

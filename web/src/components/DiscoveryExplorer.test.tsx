@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { developmentDiscoveryItems } from '../data/discovery.fixture'
 import { DiscoveryEnvironment, MapEnvironment, TimelineEnvironment } from './DiscoveryExplorer'
 
@@ -26,6 +26,10 @@ describe('ambienti archivio autonomi', () => {
   })
 
   it('Map usa coordinate europee e selezione interattiva per città', async () => {
+    const jsonResponse = (val: any) => ({ json: () => Promise.resolve(val), ok: true })
+    const stub = vi.fn().mockResolvedValue(jsonResponse({ type: 'FeatureCollection', features: [] }))
+    vi.stubGlobal('fetch', stub)
+
     history.replaceState({}, '', '/map')
     render(<MapEnvironment items={developmentDiscoveryItems} />)
     expect(screen.queryByRole('search')).not.toBeInTheDocument()
