@@ -28,7 +28,7 @@ DOWNLOAD_ABORT_MESSAGES = {
     "Media duration limit exceeded",
 }
 
-SOUNDCLOUD_SEARCH_COUNT = 10
+SOUNDCLOUD_SEARCH_COUNT = 5
 DURATION_TOLERANCE_SECONDS = 15
 DURATION_CLOSE_TOLERANCE_SECONDS = 5
 SIMILARITY_THRESHOLD = 0.5
@@ -59,6 +59,7 @@ def score_candidate(
     artist: str | None,
     title: str | None,
     entry: dict[str, Any],
+    *,
     catalog_no: str | None = None,
 ) -> float:
     candidate_title = str(entry.get("title") or "")
@@ -239,7 +240,8 @@ def attempt_download(job_dir: Path, url: str, quality: str, settings, started: f
         "quiet": True, "no_warnings": True, "noplaylist": True,
         "max_filesize": settings.max_file_bytes,
         "match_filter": duration_filter,
-        "socket_timeout": 30,
+        "socket_timeout": 15,
+        "concurrent_fragment_downloads": 4,
         "progress_hooks": [progress],
         "extractor_args": ytdlp_extractor_args(),
     }
