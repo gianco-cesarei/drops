@@ -556,23 +556,42 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
 
             {/* Zoomable / Pannable Landmass & City Layer */}
             <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`} style={{ transformOrigin: '450px 290px', transition: isDragging ? 'none' : 'transform 0.22s ease-out' }}>
-              {/* Detailed Stylized European Landmass Outlines */}
-              <g className="map-landmass-layer" fill="#e7ebdf" stroke="#b0bba7" strokeWidth="1.2" strokeLinejoin="round">
-                {/* Iberian Peninsula (Portugal & Spain) */}
-                <path d="M 120 380 L 150 360 L 220 370 L 250 420 L 240 480 L 190 500 L 140 480 L 115 440 Z" />
-                {/* France & Benelux */}
-                <path d="M 230 365 L 290 310 L 350 300 L 370 340 L 340 410 L 260 415 L 230 370 Z" />
-                {/* British Isles (UK & Ireland) */}
-                <path d="M 230 240 L 260 210 L 290 220 L 270 290 L 240 280 Z" />
-                <path d="M 190 230 L 220 230 L 210 270 L 180 260 Z" />
-                {/* Central Europe & Germany */}
-                <path d="M 360 290 L 440 270 L 470 310 L 430 380 L 360 370 Z" />
-                {/* Italy */}
-                <path d="M 370 390 L 430 390 L 470 450 L 510 500 L 490 520 L 450 470 L 410 440 Z" />
-                {/* Scandinavia */}
-                <path d="M 380 180 L 430 110 L 480 90 L 510 160 L 440 250 Z" />
-                {/* Eastern Europe & Balkans */}
-                <path d="M 475 290 L 640 260 L 700 350 L 630 460 L 530 450 L 475 370 Z" />
+              {/* High-Fidelity Geographic European Landmass with Clean Outlines */}
+              <g className="map-landmass-layer" fill="#e8ebe1" stroke="#9ba896" strokeWidth="1.2" strokeLinejoin="round">
+                {/* Portugal */}
+                <path d="M 125 390 L 142 385 L 140 440 L 152 465 L 140 472 L 120 460 L 122 410 Z" />
+                {/* Spain */}
+                <path d="M 142 385 L 235 365 L 265 372 L 270 415 L 245 450 L 220 480 L 180 482 L 152 465 L 140 440 Z" />
+                {/* France */}
+                <path d="M 235 365 L 285 305 L 320 295 L 350 300 L 375 320 L 360 365 L 335 410 L 285 420 L 265 372 Z" />
+                {/* United Kingdom & Scotland */}
+                <path d="M 235 240 L 260 195 L 280 200 L 295 240 L 305 275 L 285 295 L 255 295 L 240 270 Z" />
+                {/* Ireland */}
+                <path d="M 195 225 L 225 220 L 225 255 L 205 270 L 185 255 Z" />
+                {/* Belgium & Netherlands (Benelux) */}
+                <path d="M 320 295 L 345 275 L 360 270 L 365 295 L 345 305 Z" />
+                {/* Germany */}
+                <path d="M 365 295 L 435 275 L 450 305 L 440 360 L 385 365 L 370 320 Z" />
+                {/* Denmark */}
+                <path d="M 405 240 L 420 215 L 430 220 L 425 245 L 410 245 Z" />
+                {/* Norway & Sweden (Scandinavia) */}
+                <path d="M 425 180 L 445 110 L 490 85 L 530 115 L 505 220 L 460 245 L 435 210 Z" />
+                {/* Finland */}
+                <path d="M 530 115 L 585 105 L 600 170 L 560 205 L 525 190 Z" />
+                {/* Poland */}
+                <path d="M 450 305 L 545 285 L 560 330 L 485 350 L 440 335 Z" />
+                {/* Switzerland & Austria (Alpine Region) */}
+                <path d="M 370 365 L 465 355 L 475 385 L 380 395 Z" />
+                {/* Italy (Peninsula, Sicily & Sardinia) */}
+                <path d="M 375 395 L 435 390 L 475 440 L 520 480 L 535 500 L 515 515 L 475 470 L 440 450 L 415 435 L 375 400 Z" />
+                <path d="M 460 520 L 495 515 L 480 535 Z" />
+                <path d="M 390 440 L 405 440 L 400 470 L 385 465 Z" />
+                {/* Czechia, Slovakia, Hungary */}
+                <path d="M 450 335 L 540 330 L 535 385 L 465 380 Z" />
+                {/* Romania, Balkans & Greece */}
+                <path d="M 480 390 L 610 365 L 640 415 L 580 470 L 545 495 L 525 450 L 480 410 Z" />
+                {/* Baltic & Eastern Reach */}
+                <path d="M 545 285 L 680 250 L 710 340 L 610 365 L 560 330 Z" />
               </g>
 
               {/* ALL European Cities - Same Level on Ground */}

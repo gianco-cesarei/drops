@@ -28,6 +28,18 @@ export default function PublicHeader({ pathname = '/' }: { pathname?: string }) 
     return () => document.removeEventListener('keydown', closeOnEscape)
   }, [menuOpen])
 
+  const [currentPath, setCurrentPath] = useState(pathname)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCurrentPath(window.location.pathname)
+    }
+  }, [])
+
+  const normalized = currentPath.replace(/\/+$/, '') || '/'
+  const isGrid = normalized === '/'
+  const isTimeline = normalized.startsWith('/timeline')
+  const isMap = normalized.startsWith('/map')
+
   const accountHref = authenticated ? publicNavigation.download : publicNavigation.login
   const accountLabel = authenticated ? 'Area privata' : 'Login'
   const accountLink = <a className="public-auth-link" href={accountHref} aria-busy={checking}>{accountLabel}</a>
@@ -38,7 +50,11 @@ export default function PublicHeader({ pathname = '/' }: { pathname?: string }) 
       <a className="public-logo" href="/" aria-label="Drops home">Drops<span>.</span></a>
       <div className="nav-side nav-right">{accountLink}<a href={publicNavigation.download}>Download</a></div>
     </nav>
-    <nav className="environment-nav" role="navigation" aria-label="Ambienti di esplorazione"><a className={pathname === '/' ? 'active' : undefined} href="/">Grid</a><a className={pathname === '/timeline' ? 'active' : undefined} href="/timeline">Timeline</a><a className={pathname === '/map' ? 'active' : undefined} href="/map">Map</a></nav>
+    <nav className="environment-nav" role="navigation" aria-label="Ambienti di esplorazione">
+      <a className={isGrid ? 'active' : undefined} href="/">Grid</a>
+      <a className={isTimeline ? 'active' : undefined} href="/timeline">Timeline</a>
+      <a className={isMap ? 'active' : undefined} href="/map">Map</a>
+    </nav>
     <nav className="mobile-nav" aria-label="Navigazione mobile">
       <button className="mobile-menu-button" type="button" aria-expanded={menuOpen} aria-controls="mobile-menu" onClick={() => setMenuOpen((open) => !open)}>Menu</button>
       <a className="public-logo" href="/" aria-label="Drops home">Drops<span>.</span></a>
