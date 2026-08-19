@@ -288,7 +288,7 @@ def download_multi_source(
     duration: int | None, quality: str, settings, started: float, *, proxy: str | None = None,
     raw_title: str | None = None, catalog_no: str | None = None,
 ) -> tuple[dict[str, Any], str]:
-    """SoundCloud first (only if it's a confident match), native source (YouTube) always last."""
+    """SoundCloud first (only if it's a confident match), native source (or YouTube search) last."""
     match_url = find_soundcloud_match(artist, title, duration, raw_title=raw_title, catalog_no=catalog_no)
     if match_url:
         try:
@@ -300,7 +300,30 @@ def download_multi_source(
             _clear_job_dir(job_dir)
     else:
         logger.info("download fallback job_id=%s motivo=nessun_match_soundcloud", job_id)
+
+    # If native_url is a search URL (e.g. soundcloud search) or generic query, use ytsearch fallback
+    is_search_url = "/search" in native_url or "scsearch" in native_url or "search_query" in native_url
+    query_str = f"{artist or ''} {title or raw_title or ''}".strip()
+    if is_search_url and query_str:
+        yt_query_url = f"ytsearch1:{query_str}"
+        try:
+            info = attempt_download(job_dir, yt_query_url, quality, settings, started, proxy=proxy)
+            logger.info("download source scelta job_id=%s source=youtube (via ytsearch)", job_id)
+            return info, "youtube"
+        except Exception as exc:
+            logger.info("download fallback ytsearch fallito job_id=%s detail=%r", job_id, str(exc)[:200])
+            _clear_job_dir(job_dir)
+
     label = _native_source_label(native_url)
-    info = attempt_download(job_dir, native_url, quality, settings, started, proxy=proxy)
-    logger.info("download source scelta job_id=%s source=%s", job_id, label)
-    return info, label
+    try:
+        info = attempt_download(job_dir, native_url, quality, settings, started, proxy=proxy)
+        logger.info("download source scelta job_id=%s source=%s", job_id, label)
+        return info, label
+    except Exception as exc:
+        if query_str and not is_search_url:
+            logger.info("download fallback attempting ytsearch after native fail job_id=%s", job_id)
+            _clear_job_dir(job_dir)
+            info = attempt_download(job_dir, f"ytsearch1:{query_str}", quality, settings, started, proxy=proxy)
+            logger.info("download source scelta job_id=%s source=youtube", job_id)
+            return info, "youtube"
+        raise exc
