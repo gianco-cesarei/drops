@@ -236,7 +236,13 @@ def attempt_download(job_dir: Path, url: str, quality: str, settings, started: f
         return None
 
     options = {
-        "format": "bestaudio/best",
+        # Prefer a native MP3 stream (SoundCloud serves http_mp3/hls_mp3) so
+        # FFmpegExtractAudio remuxes with -c copy instead of re-encoding. On
+        # Render's 0.1-vCPU free tier a full AAC->MP3 transcode of one track
+        # costs ~50s; copying the already-MP3 stream is near-instant and avoids
+        # a second lossy pass. Falls back to bestaudio (e.g. YouTube = Opus/AAC),
+        # which still re-encodes because no MP3 source exists there.
+        "format": "bestaudio[acodec=mp3][protocol^=http]/bestaudio[acodec=mp3]/bestaudio/best",
         "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": AUDIO_QUALITY[quality]}],
         "outtmpl": str(job_dir / "source.%(ext)s"),
         "quiet": True, "no_warnings": True, "noplaylist": True,
