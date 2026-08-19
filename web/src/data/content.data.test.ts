@@ -3,8 +3,8 @@ import { publishedContentItems } from './content.data'
 import { DiscoveryType, PartyKind } from '../domain/discovery'
 
 describe('contenuti editoriali pubblicati', () => {
-  it('contiene tutti i 20 contenuti editoriali (radar, release, festival 2026, scene e guide DJ)', () => {
-    expect(publishedContentItems.length).toBe(20)
+  it('contiene tutti i 24 contenuti editoriali (radar, release, festival 2026, scene, etichette e guide DJ)', () => {
+    expect(publishedContentItems.length).toBe(24)
   })
 
   it('tutti i contenuti hanno slug unici e id univoci', () => {
@@ -118,6 +118,16 @@ describe('contenuti editoriali pubblicati', () => {
 
     const rekordbox = publishedContentItems.find((i) => i.slug === 'guida-rekordbox-usb-cdj-3000-workflow-professionale')
     expect(rekordbox?.tags).toContain('cdj-3000')
+  })
+
+  it('verifica le etichette discografiche (Defected, Innervisions, XL, Warp)', () => {
+    const labels = publishedContentItems.filter((i) => i.type === DiscoveryType.Label)
+    expect(labels.length).toBe(4)
+    const slugs = labels.map((l) => l.slug)
+    expect(slugs).toContain('defected-records-house-music-heritage')
+    expect(slugs).toContain('innervisions-berlino-dixon-ame')
+    expect(slugs).toContain('xl-recordings-da-rave-a-potenza-indipendente')
+    expect(slugs).toContain('warp-records-artificial-intelligence-avanguardia')
   })
 })
 

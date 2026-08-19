@@ -33,7 +33,10 @@ export const DISCOVERY_CATEGORIES: DiscoveryCategoryConfig[] = [
     key: 'radar',
     label: 'Radar & Artisti',
     types: [DiscoveryType.Artist, DiscoveryType.Release],
-    matches: (item) => item.type === DiscoveryType.Artist || item.type === DiscoveryType.Release,
+    matches: (item) =>
+      item.type === DiscoveryType.Artist ||
+      item.type === DiscoveryType.Release ||
+      (item.type === DiscoveryType.Story && item.kicker === 'Radar'),
   },
   {
     key: 'festival',
@@ -45,7 +48,7 @@ export const DISCOVERY_CATEGORIES: DiscoveryCategoryConfig[] = [
     key: 'guide',
     label: 'Guide & Scene',
     types: [DiscoveryType.Story],
-    matches: (item) => item.type === DiscoveryType.Story,
+    matches: (item) => item.type === DiscoveryType.Story && item.kicker !== 'Radar',
   },
 ]
 
@@ -104,14 +107,18 @@ function Categories({
   )
 }
 
-const filterItems = (items: DiscoveryItem[], types: DiscoveryType[], query = '') =>
-  sorted(items)
-    .filter((item) => !types.length || types.includes(item.type))
+const filterItems = (items: DiscoveryItem[], types: DiscoveryType[], query = '') => {
+  const activeCats = DISCOVERY_CATEGORIES.filter((cat) =>
+    cat.types.some((t) => types.includes(t))
+  )
+  return sorted(items)
+    .filter((item) => !types.length || activeCats.some((cat) => cat.matches(item)))
     .filter((item) => {
       if (!query) return true
       const haystack = [item.title, item.summary, item.primaryLocation.name, ...item.tags, item.kicker ?? ''].join(' ').toLowerCase()
       return haystack.includes(query.toLowerCase())
     })
+}
 
 export function DiscoveryEnvironment({ items }: { items: DiscoveryItem[] }) {
   const state = useArchiveState(true)
