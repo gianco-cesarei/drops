@@ -2,6 +2,7 @@ import logging
 import os
 import secrets
 import shutil
+import threading
 import time
 import json
 import uuid
@@ -239,6 +240,7 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
         raw_title = row["raw_title"] if row else None
 
         catalog_no = None
+        enrichment = None
         if artist and title:
             store.update_job(job_id, status="enriching")
             try:
@@ -278,53 +280,74 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
             artifact = job_dir / filename
             if source_file != artifact:
                 source_file.replace(artifact)
-            bpm_result = None
-            try:
-                bpm_result = analyze_bpm(artifact, max_seconds=180)
-            except Exception as exc:
-                logger.info("bpm skip job_id=%s detail=%r", job_id, str(exc)[:200])
+            # Cover art + ID3 tags are written now (without BPM) so the file is
+            # immediately downloadable; BPM is analyzed off the critical path below.
+            cover_data = None
+            row_cover = row["cover_url"] if (row is not None and "cover_url" in row.keys()) else None
+            cover_url_to_fetch = (enrichment.get("cover_url") if enrichment else None) or row_cover
+            if cover_url_to_fetch:
+                try:
+                    req = urllib.request.Request(cover_url_to_fetch, headers={"User-Agent": "Drops/1.0"})
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        cover_data = resp.read()
+                except Exception as c_exc:
+                    logger.info("cover download skip detail=%r", str(c_exc)[:100])
+
+            genre_str = None
+            if enrichment and enrichment.get("styles"):
+                genre_str = ", ".join(enrichment["styles"][:3])
+
+            final_title = str(info.get("title") or title or "audio")[:200]
+            tag_label = enrichment.get("label") if enrichment else None
+            tag_year = enrichment.get("year") if enrichment else None
 
             try:
-                cover_data = None
-                cover_url_to_fetch = (enrichment.get("cover_url") if enrichment else None) or (row.get("cover_url") if row else None)
-                if cover_url_to_fetch:
-                    try:
-                        req = urllib.request.Request(cover_url_to_fetch, headers={"User-Agent": "Drops/1.0"})
-                        with urllib.request.urlopen(req, timeout=5) as resp:
-                            cover_data = resp.read()
-                    except Exception as c_exc:
-                        logger.info("cover download skip detail=%r", str(c_exc)[:100])
-
-                genre_str = None
-                if enrichment and enrichment.get("styles"):
-                    genre_str = ", ".join(enrichment["styles"][:3])
-
                 tag_audio_file(
                     artifact,
-                    title=str(info.get("title") or title or "audio")[:200],
+                    title=final_title,
                     artist=artist,
-                    label=enrichment.get("label") if enrichment else None,
-                    year=enrichment.get("year") if enrichment else None,
+                    label=tag_label,
+                    year=tag_year,
                     genre=genre_str,
-                    bpm=bpm_result["bpm"] if bpm_result else None,
+                    bpm=None,
                     cover_data=cover_data,
                 )
             except Exception as tag_exc:
                 logger.info("id3 tagging skip detail=%r", str(tag_exc)[:100])
 
+            # Mark ready immediately: the card lands in "scaricati" and the file is
+            # downloadable without waiting for BPM analysis.
             store.update_job(
                 job_id,
                 status="ready",
-                title=str(info.get("title") or title or "audio")[:200],
+                title=final_title,
                 filename=filename,
                 file_path=str(artifact),
                 size=artifact.stat().st_size,
                 source=source,
                 duration=int(info.get("duration") or 0) or None,
-                bpm=bpm_result["bpm"] if bpm_result else None,
-                bpm_confidence=bpm_result.get("bpm_confidence") if bpm_result else None,
                 expires_at=time.time() + settings.artifact_ttl_seconds,
             )
+
+            # BPM off the critical path: analyze in a daemon thread, then patch the
+            # job row and re-tag the file. Failure never affects the ready download.
+            def _bpm_async(path=artifact, jid=job_id, t=final_title, a=artist,
+                           lbl=tag_label, yr=tag_year, g=genre_str, cov=cover_data):
+                try:
+                    result = analyze_bpm(path, max_seconds=120)
+                except Exception as exc:
+                    logger.info("bpm skip job_id=%s detail=%r", jid, str(exc)[:200])
+                    return
+                try:
+                    store.update_job(jid, bpm=result["bpm"], bpm_confidence=result.get("bpm_confidence"))
+                except Exception as up_exc:
+                    logger.info("bpm update skip job_id=%s detail=%r", jid, str(up_exc)[:100])
+                try:
+                    tag_audio_file(path, title=t, artist=a, label=lbl, year=yr, genre=g, bpm=result["bpm"], cover_data=cov)
+                except Exception as tag_exc:
+                    logger.info("bpm retag skip job_id=%s detail=%r", jid, str(tag_exc)[:100])
+
+            threading.Thread(target=_bpm_async, name=f"bpm-{job_id}", daemon=True).start()
         except yt_dlp.utils.DownloadError as exc:
             # DownloadError carries yt-dlp's own diagnosis (e.g. YouTube's bot
             # check, geo-block, age gate) - surface it so the UI shows *why*

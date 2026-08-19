@@ -777,6 +777,7 @@ type HistoryItem = {
   coverUrl?: string
   source?: string
   bpm?: number
+  bpmPending?: boolean
   ts: number
 }
 
@@ -877,6 +878,8 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
 
   const queueRef = useRef<QueueJob[]>([])
   queueRef.current = queue
+  const historyRef = useRef<HistoryItem[]>([])
+  historyRef.current = history
   void onError
 
   useEffect(() => { saveHistory(history) }, [history])
@@ -922,7 +925,7 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
             return merged
           }))
           if (readyStatuses.has(fresh.status)) {
-            const record: HistoryItem = { id: fresh.id, title: fresh.title ?? fresh.fileName ?? 'Traccia', artist: fresh.artist, coverUrl: fresh.coverUrl, source: fresh.source, bpm: fresh.bpm, ts: Date.now() }
+            const record: HistoryItem = { id: fresh.id, title: fresh.title ?? fresh.fileName ?? 'Traccia', artist: fresh.artist, coverUrl: fresh.coverUrl, source: fresh.source, bpm: fresh.bpm, bpmPending: fresh.bpm == null, ts: Date.now() }
             window.setTimeout(() => {
               setHistory((h) => [record, ...h.filter((it) => it.id !== record.id)].slice(0, 100))
               setQueue((cur) => cur.filter((x) => x.key !== j.key))
@@ -935,6 +938,35 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
     }, 1500)
     return () => window.clearInterval(timer)
   }, [hasActive])
+
+  const hasPendingBpm = history.some((h) => h.bpmPending && h.bpm == null)
+
+  useEffect(() => {
+    if (!hasPendingBpm) return
+    let attempts = 0
+    const timer = window.setInterval(() => {
+      attempts += 1
+      const pending = historyRef.current.filter((h) => h.bpmPending && h.bpm == null)
+      if (!pending.length) { window.clearInterval(timer); return }
+      if (attempts > 20) {
+        window.clearInterval(timer)
+        setHistory((cur) => cur.map((it) => (it.bpmPending ? { ...it, bpmPending: false } : it)))
+        return
+      }
+      pending.forEach(async (h) => {
+        try {
+          const fresh = await api.getDownload(h.id)
+          if (fresh.bpm != null) {
+            const bpm = fresh.bpm
+            setHistory((cur) => cur.map((it) => (it.id === h.id ? { ...it, bpm, bpmPending: false } : it)))
+          }
+        } catch {
+          /* ignora: il tetto attempts ferma comunque il polling */
+        }
+      })
+    }, 2500)
+    return () => window.clearInterval(timer)
+  }, [hasPendingBpm])
 
   function askPlaylistSelection(data: PlaylistPreview): Promise<string[] | null> {
     return new Promise((resolve) => setPreview({ data, resolve }))
@@ -982,7 +1014,7 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
               source: created.source ?? x.source,
             } : x)))
             if (readyStatuses.has(created.status)) {
-              const record: HistoryItem = { id: created.id, title: created.title ?? created.fileName ?? 'Traccia', artist: created.artist, coverUrl: created.coverUrl, source: created.source, bpm: created.bpm, ts: Date.now() }
+              const record: HistoryItem = { id: created.id, title: created.title ?? created.fileName ?? 'Traccia', artist: created.artist, coverUrl: created.coverUrl, source: created.source, bpm: created.bpm, bpmPending: created.bpm == null, ts: Date.now() }
               window.setTimeout(() => {
                 setHistory((h) => [record, ...h.filter((it) => it.id !== record.id)].slice(0, 100))
                 setQueue((cur) => cur.filter((x) => x.key !== jobItem.key))
@@ -1036,7 +1068,7 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
           source: created.source ?? x.source,
         } : x)))
         if (readyStatuses.has(created.status)) {
-          const record: HistoryItem = { id: created.id, title: created.title ?? created.fileName ?? 'Traccia', artist: created.artist, coverUrl: created.coverUrl, source: created.source, bpm: created.bpm, ts: Date.now() }
+          const record: HistoryItem = { id: created.id, title: created.title ?? created.fileName ?? 'Traccia', artist: created.artist, coverUrl: created.coverUrl, source: created.source, bpm: created.bpm, bpmPending: created.bpm == null, ts: Date.now() }
           window.setTimeout(() => {
             setHistory((h) => [record, ...h.filter((it) => it.id !== record.id)].slice(0, 100))
             setQueue((cur) => cur.filter((x) => x.key !== freshKey))
@@ -1230,7 +1262,7 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
                 <span className="dl-file-icon">🎵</span>
                 <div className="dl-file-info">
                   <span className="dl-file-name">{item.artist ? `${item.artist} - ` : ''}{item.title}.mp3</span>
-                  {item.bpm != null && <span className="dl-file-meta">{Math.round(item.bpm)} BPM</span>}
+                  {item.bpm != null ? <span className="dl-file-meta">{Math.round(item.bpm)} BPM</span> : item.bpmPending ? <span className="dl-file-meta">… BPM</span> : null}
                 </div>
                 <span className="dl-file-status-badge">✓ salvato</span>
               </div>
@@ -1321,7 +1353,7 @@ function HistoryRow({
         <div className="dl-job-title">{item.title}</div>
         {item.artist && <div className="dl-job-detail">{item.artist}</div>}
         <div className="dl-hist-chips">
-          {item.bpm != null && <span className="track-chip track-chip-bpm">{Math.round(item.bpm)} BPM</span>}
+          {item.bpm != null ? <span className="track-chip track-chip-bpm">{Math.round(item.bpm)} BPM</span> : item.bpmPending ? <span className="track-chip track-chip-bpm calculating">… BPM</span> : null}
           {item.source && <span className="dl-hist-source">fonte: {item.source}</span>}
           {isSaved && <span className="dl-saved-chip">✓ in cartella</span>}
         </div>

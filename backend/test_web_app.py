@@ -517,6 +517,11 @@ class WebAppTest(unittest.TestCase):
         with patch("web_app.download_multi_source", side_effect=fake_multi_source), \
              patch("web_app.analyze_bpm", return_value={"bpm": 122.0, "bpm_confidence": 0.8}):
             worker(job_id, url, quality)
+            # BPM is analyzed off the critical path in a daemon thread; wait for it
+            # to finish (while analyze_bpm is still patched) before asserting BPM.
+            for thread in threading.enumerate():
+                if thread.name == f"bpm-{job_id}":
+                    thread.join(timeout=5)
 
         job = self.client.get(f"/api/v1/downloads/{job_id}")
         payload = job.json()
