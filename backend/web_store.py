@@ -3,6 +3,11 @@ import sqlite3
 import time
 from pathlib import Path
 
+# A job counts against queue capacity from the instant it's recognized until
+# it's terminal (ready/error) - "queued" no longer exists as a distinct
+# status because recognition now happens synchronously before insert.
+ACTIVE_STATUSES = ("recognized", "enriching", "downloading")
+
 
 class WebStore:
     def __init__(self, path: Path):
@@ -18,7 +23,10 @@ class WebStore:
                     id TEXT PRIMARY KEY, owner TEXT NOT NULL, status TEXT NOT NULL,
                     source_url TEXT NOT NULL, format TEXT NOT NULL, quality TEXT NOT NULL,
                     created_at REAL NOT NULL, updated_at REAL NOT NULL, expires_at REAL NOT NULL,
-                    title TEXT, filename TEXT, file_path TEXT, size INTEGER, error TEXT
+                    title TEXT, artist TEXT, cover_url TEXT, raw_title TEXT, duration INTEGER,
+                    label TEXT, year INTEGER, country TEXT, catalog_no TEXT, style TEXT, discogs_url TEXT,
+                    bpm REAL, bpm_confidence REAL, source TEXT,
+                    filename TEXT, file_path TEXT, size INTEGER, error TEXT
                 );
                 CREATE INDEX IF NOT EXISTS jobs_owner_id ON jobs(owner, id);
                 CREATE TABLE IF NOT EXISTS login_attempts (
@@ -64,18 +72,28 @@ class WebStore:
             db.execute("DELETE FROM sessions WHERE token_hash=?", (self.token_hash(token),))
 
     def create_job(self, job_id: str, owner: str, url: str, fmt: str, quality: str, ttl: int):
+        # Placeholder status for test fixtures that seed a job mid-flight;
+        # callers set the real status/fields they need via update_job.
         now = time.time()
         with self.connect() as db:
-            db.execute("INSERT INTO jobs(id,owner,status,source_url,format,quality,created_at,updated_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?)", (job_id, owner, "queued", url, fmt, quality, now, now, now + ttl))
+            db.execute("INSERT INTO jobs(id,owner,status,source_url,format,quality,created_at,updated_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?)", (job_id, owner, "downloading", url, fmt, quality, now, now, now + ttl))
 
-    def create_job_if_capacity(self, job_id: str, owner: str, url: str, fmt: str, quality: str, ttl: int, capacity: int) -> bool:
+    def create_job_if_capacity(
+        self, job_id: str, owner: str, url: str, fmt: str, quality: str, ttl: int, capacity: int, *,
+        title: str | None = None, artist: str | None = None, cover_url: str | None = None,
+        raw_title: str | None = None, duration: int | None = None,
+    ) -> bool:
         now = time.time()
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            active = db.execute("SELECT COUNT(*) FROM jobs WHERE status IN ('queued','downloading')").fetchone()[0]
+            active = db.execute(f"SELECT COUNT(*) FROM jobs WHERE status IN ({','.join('?' * len(ACTIVE_STATUSES))})", ACTIVE_STATUSES).fetchone()[0]
             if active >= capacity:
                 return False
-            db.execute("INSERT INTO jobs(id,owner,status,source_url,format,quality,created_at,updated_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?)", (job_id, owner, "queued", url, fmt, quality, now, now, now + ttl))
+            db.execute(
+                "INSERT INTO jobs(id,owner,status,source_url,format,quality,created_at,updated_at,expires_at,title,artist,cover_url,raw_title,duration) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (job_id, owner, "recognized", url, fmt, quality, now, now, now + ttl, title, artist, cover_url, raw_title, duration),
+            )
         return True
 
     def update_job(self, job_id: str, **values):
@@ -88,9 +106,14 @@ class WebStore:
         with self.connect() as db:
             return db.execute("SELECT * FROM jobs WHERE id=? AND owner=?", (job_id, owner)).fetchone()
 
+    def get_job_by_id(self, job_id: str):
+        """Owner-agnostic lookup for the trusted background worker (no HTTP request/owner in scope)."""
+        with self.connect() as db:
+            return db.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
+
     def active_count(self) -> int:
         with self.connect() as db:
-            return db.execute("SELECT COUNT(*) FROM jobs WHERE status IN ('queued','downloading')").fetchone()[0]
+            return db.execute(f"SELECT COUNT(*) FROM jobs WHERE status IN ({','.join('?' * len(ACTIVE_STATUSES))})", ACTIVE_STATUSES).fetchone()[0]
 
     def expired_artifacts(self):
         with self.connect() as db:
@@ -100,8 +123,8 @@ class WebStore:
         now = time.time()
         with self.connect() as db:
             cursor = db.execute(
-                "UPDATE jobs SET status='error', error='Download interrupted', updated_at=?, expires_at=MIN(expires_at, ?) WHERE status IN ('queued','downloading')",
-                (now, now + ttl),
+                f"UPDATE jobs SET status='error', error='Download interrupted', updated_at=?, expires_at=MIN(expires_at, ?) WHERE status IN ({','.join('?' * len(ACTIVE_STATUSES))})",
+                (now, now + ttl, *ACTIVE_STATUSES),
             )
         return cursor.rowcount
 

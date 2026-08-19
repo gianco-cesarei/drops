@@ -533,6 +533,51 @@ class WebAppTest(unittest.TestCase):
         self.assertNotEqual(ordered[0][0].split("-")[0], ordered[2][0].split("-")[0])
 
 
+class WebStoreJobLifecycleTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.store = web_app.WebStore(Path(self.temp.name) / "store.sqlite3")
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def test_create_job_if_capacity_inserts_recognized_with_metadata(self):
+        accepted = self.store.create_job_if_capacity(
+            "job-1", "owner", "https://youtu.be/x", "audio", "320", 600, 10,
+            title="Baby", artist="Four Tet", cover_url="https://x/cover.jpg",
+            raw_title="Four Tet - Baby (Official Video)", duration=245,
+        )
+        self.assertTrue(accepted)
+        row = self.store.get_job("job-1", "owner")
+        self.assertEqual(row["status"], "recognized")
+        self.assertEqual(row["title"], "Baby")
+        self.assertEqual(row["artist"], "Four Tet")
+        self.assertEqual(row["cover_url"], "https://x/cover.jpg")
+        self.assertEqual(row["raw_title"], "Four Tet - Baby (Official Video)")
+        self.assertEqual(row["duration"], 245)
+
+    def test_capacity_counts_recognized_enriching_downloading_not_ready_or_error(self):
+        self.store.create_job_if_capacity("a", "owner", "u", "audio", "320", 600, 1)
+        self.assertFalse(self.store.create_job_if_capacity("b", "owner", "u", "audio", "320", 600, 1))
+        self.store.update_job("a", status="ready")
+        self.assertTrue(self.store.create_job_if_capacity("c", "owner", "u", "audio", "320", 600, 1))
+        self.store.update_job("c", status="enriching")
+        self.assertFalse(self.store.create_job_if_capacity("d", "owner", "u", "audio", "320", 600, 1))
+
+    def test_get_job_by_id_ignores_owner(self):
+        self.store.create_job_if_capacity("job-2", "owner-a", "u", "audio", "320", 600, 10, artist="X", title="Y")
+        row = self.store.get_job_by_id("job-2")
+        self.assertEqual(row["owner"], "owner-a")
+        self.assertEqual(row["artist"], "X")
+        self.assertIsNone(self.store.get_job_by_id("missing"))
+
+    def test_new_metadata_columns_default_to_null(self):
+        self.store.create_job_if_capacity("job-3", "owner", "u", "audio", "320", 600, 10)
+        row = self.store.get_job("job-3", "owner")
+        for column in ("artist", "cover_url", "raw_title", "duration", "label", "year", "country", "catalog_no", "style", "discogs_url", "bpm", "bpm_confidence", "source"):
+            self.assertIsNone(row[column])
+
+
 class WebSettingsTest(unittest.TestCase):
     def test_documentation_has_reproducible_python_312_test_command(self):
         documentation = (Path(__file__).parent / "WEB_BACKEND.md").read_text()
