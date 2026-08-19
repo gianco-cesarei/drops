@@ -621,22 +621,6 @@ function TrackRow({
       <div className="track-main">
         <div className="track-title-row">
           <strong className="track-title" title={track.title}>{track.title}</strong>
-          <div className="track-bpm-badge">
-            {track.bpm != null ? (
-              <span className="track-chip track-chip-bpm"><b>{Math.round(track.bpm)}</b> <small>BPM</small></span>
-            ) : bpmStatus === 'queued' || bpmStatus === 'running' ? (
-              <span className="track-chip track-chip-bpm calculating">… BPM</span>
-            ) : (
-              <button
-                type="button"
-                className="track-chip-bpm-btn"
-                title="Calcola BPM rapido con download audio"
-                onClick={() => onCalculateBpm?.(track)}
-              >
-                + BPM
-              </button>
-            )}
-          </div>
         </div>
         <div className="track-meta-line">
           <span className="track-artist">{track.artists.join(', ')}</span>
@@ -648,6 +632,22 @@ function TrackRow({
         </div>
       </div>
       <div className="track-actions-bar">
+        <div className="track-bpm-badge">
+          {track.bpm != null ? (
+            <span className="track-chip track-chip-bpm"><b>{Math.round(track.bpm)}</b> <small>BPM</small></span>
+          ) : bpmStatus === 'queued' || bpmStatus === 'running' ? (
+            <span className="track-chip track-chip-bpm calculating">… BPM</span>
+          ) : (
+            <button
+              type="button"
+              className="track-chip-bpm-btn"
+              title="Calcola BPM rapido con download audio"
+              onClick={() => onCalculateBpm?.(track)}
+            >
+              + BPM
+            </button>
+          )}
+        </div>
         <time className="track-date" dateTime={track.added_at ?? undefined}>
           {formatSpotifyDate(track.added_at)}
         </time>

@@ -246,40 +246,40 @@ footer { padding: 20px 0; color: var(--color-text-muted); font-size: 11px; text-
 .track-list-sentinel { display: grid; place-items: center; padding: 20px 0; }
 .track-load-more { font-size: 12.5px; font-weight: 700; cursor: pointer; }
 
-/* Unified Spotify Track Card - High Density */
-.spotify-track-card { display: grid; grid-template-columns: auto 44px minmax(180px, 1fr) auto; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); transition: border-color .15s, box-shadow .15s; }
+/* Unified Spotify Track Card - Flexbox Layout (handles with and without checkbox gracefully) */
+.spotify-track-card { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); transition: border-color .15s, box-shadow .15s; }
 .spotify-track-card:hover { border-color: var(--color-border-strong); box-shadow: 0 2px 8px rgba(0,0,0,.04); }
 .spotify-track-card.selected { border-color: var(--color-accent-strong); background: linear-gradient(0deg, var(--color-accent-soft), var(--color-surface) 70%); }
-.bpm-checkbox { accent-color: var(--chrome-ink); width: 16px; height: 16px; cursor: pointer; }
+.bpm-checkbox { flex: none; accent-color: var(--chrome-ink); width: 16px; height: 16px; cursor: pointer; margin-right: -2px; }
 
-.spotify-track-card .track-cover { position: relative; width: 44px; height: 44px; flex: none; display: grid; place-items: center; overflow: hidden; border-radius: 7px; background: var(--color-surface-subtle); border: 1px solid var(--color-border); font-size: 15px; color: var(--color-accent-strong); }
+.spotify-track-card .track-cover { position: relative; width: 48px; height: 48px; flex: none; display: grid; place-items: center; overflow: hidden; border-radius: 8px; background: var(--color-surface-subtle); border: 1px solid var(--color-border); font-size: 16px; color: var(--color-accent-strong); }
 .spotify-track-card .track-cover img { width: 100%; height: 100%; object-fit: cover; }
 .track-cover.is-playable, .dl-job-cover.is-playable { cursor: pointer; }
-.cover-play-badge { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.48); color: #ffffff; font-size: 13px; opacity: 0; transition: opacity .15s; border-radius: inherit; }
+.cover-play-badge { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.48); color: #ffffff; font-size: 14px; opacity: 0; transition: opacity .15s; border-radius: inherit; }
 .track-cover.is-playable:hover .cover-play-badge, .track-cover.is-playable.is-playing .cover-play-badge,
 .dl-job-cover.is-playable:hover .cover-play-badge, .dl-job-cover.is-playable.is-playing .cover-play-badge { opacity: 1; }
 .track-cover.is-playing, .dl-job-cover.is-playing { border-color: var(--color-accent-strong); box-shadow: 0 0 0 2px var(--color-accent-soft); }
 
-.track-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.track-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.track-title { font-size: 14px; font-weight: 800; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -.01em; }
+.track-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.track-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+.track-title { font-size: 14.5px; font-weight: 800; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -.01em; }
 
-.track-meta-line { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 12px; color: var(--color-text-muted); min-width: 0; }
+.track-meta-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--color-text-muted); min-width: 0; }
 .track-artist { font-weight: 600; color: var(--color-text); opacity: .88; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
 .track-dot { opacity: .4; }
-.track-album-name { opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.track-album-name { opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
 
-.track-chip { display: inline-flex; align-items: center; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--color-border); font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--color-text-muted); background: var(--color-surface-subtle); white-space: nowrap; }
+.track-chip { display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 4px; border: 1px solid var(--color-border); font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; color: var(--color-text-muted); background: var(--color-surface-subtle); white-space: nowrap; }
 .track-chip-label { border-color: rgba(34,197,94,.3); color: var(--color-accent-strong); background: var(--color-accent-soft); }
 .track-chip-bpm { border-color: rgba(34,197,94,.4); color: var(--color-accent-strong); background: var(--color-accent-soft); font-weight: 800; font-family: var(--font-mono); font-size: 11px; }
 .track-chip-bpm.calculating { opacity: .7; }
-.track-chip-bpm-btn { padding: 2px 7px; border: 1px dashed var(--color-border-strong); border-radius: 4px; background: transparent; color: var(--color-text-muted); font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; cursor: pointer; }
+.track-chip-bpm-btn { padding: 2px 8px; border: 1px dashed var(--color-border-strong); border-radius: 4px; background: transparent; color: var(--color-text-muted); font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; cursor: pointer; }
 .track-chip-bpm-btn:hover { border-color: var(--color-accent-strong); color: var(--color-accent-strong); background: var(--color-accent-soft); }
 
-.track-actions-bar { display: flex; align-items: center; gap: 10px; flex: none; }
+.track-actions-bar { flex: none; display: flex; align-items: center; gap: 12px; }
 .track-date { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted); opacity: .75; }
 
-.track-dl-btn { display: inline-flex; align-items: center; justify-content: center; height: 30px; padding: 0 11px; border-radius: 6px; border: 1px solid var(--color-accent); background: var(--color-surface); color: var(--color-accent-strong); font-size: 11.5px; font-weight: 800; cursor: pointer; transition: all .15s; }
+.track-dl-btn { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 12px; border-radius: 7px; border: 1px solid var(--color-accent); background: var(--color-surface); color: var(--color-accent-strong); font-size: 12px; font-weight: 800; cursor: pointer; transition: all .15s; }
 .track-dl-btn:hover:not(:disabled) { background: var(--color-accent-soft); border-color: var(--color-accent-strong); }
 .track-dl-btn.done { border-color: var(--color-accent-strong); background: var(--color-accent-soft); color: var(--color-accent-strong); cursor: default; }
 .track-dl-btn.busy { opacity: .7; cursor: wait; }
@@ -294,8 +294,8 @@ footer { padding: 20px 0; color: var(--color-text-muted); font-size: 11px; text-
 .track-icon-dg:hover { color: #333333; border-color: rgba(51,51,51,.4); background: rgba(51,51,51,.06); }
 
 @media (max-width: 860px) {
-  .spotify-track-card { grid-template-columns: auto 40px 1fr; grid-template-rows: auto auto; gap: 8px 10px; padding: 10px; }
-  .track-actions-bar { grid-column: 2 / 4; justify-content: space-between; border-top: 1px dashed var(--color-border); padding-top: 6px; }
+  .spotify-track-card { flex-wrap: wrap; gap: 10px; padding: 12px; }
+  .track-actions-bar { width: 100%; justify-content: space-between; border-top: 1px dashed var(--color-border); padding-top: 8px; margin-top: 2px; }
 }
 
 .spotify-more { display: block; margin: 24px auto 0; padding: 11px 16px; border: 1px solid var(--color-border); }
