@@ -198,6 +198,7 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
         duration = row["duration"] if row else None
         raw_title = row["raw_title"] if row else None
 
+        catalog_no = None
         if artist and title:
             store.update_job(job_id, status="enriching")
             try:
@@ -206,11 +207,12 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
                 logger.info("discogs enrich skip job_id=%s detail=%r", job_id, str(exc)[:200])
                 enrichment = None
             if enrichment:
+                catalog_no = enrichment.get("catalog_no")
                 update = {
                     "label": enrichment.get("label"),
                     "year": enrichment.get("year"),
                     "country": enrichment.get("country"),
-                    "catalog_no": enrichment.get("catalog_no"),
+                    "catalog_no": catalog_no,
                     "style": json.dumps(enrichment.get("styles") or []),
                     "discogs_url": enrichment.get("discogs_url"),
                 }
@@ -220,7 +222,10 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
 
         try:
             store.update_job(job_id, status="downloading")
-            info, source = download_multi_source(job_dir, job_id, url, artist, title, duration, quality, settings, started, proxy=ytdlp_proxy(), raw_title=raw_title)
+            info, source = download_multi_source(
+                job_dir, job_id, url, artist, title, duration, quality, settings, started,
+                proxy=ytdlp_proxy(), raw_title=raw_title, catalog_no=catalog_no,
+            )
             if int(info.get("duration") or 0) > settings.max_duration_seconds:
                 raise yt_dlp.utils.DownloadError("Media duration limit exceeded")
             candidates = [path for path in job_dir.iterdir() if path.is_file() and not path.name.endswith((".part", ".ytdl"))]

@@ -128,17 +128,17 @@ _NOISE_BRACKET_TOKENS = (
 _NOISE_STANDALONE = ("free download", "premiere")
 _BRACKET_RE = re.compile(r"[\(\[][^\(\)\[\]]*[\)\]]")
 _SPLIT_RE = re.compile(r"\s[-–—]\s")
+_VINYL_POS_RE = re.compile(r"^(?:[a-dA-D][1-4]?|[1-4])(?:\.|\s*[-–—]|\s+)\s*")
+_CURATOR_CHANNELS = {
+    "hate", "hate lab", "moskalus", "slav", "the_substance", "the substance", "substance",
+    "boiler room", "cercle", "colors", "colorsxstudios", "houseum",
+    "gazzz696", "feel my bicep", "trommel", "meoko", "furthur",
+    "the expanse", "jiddisch", "nightclubber ro", "sweet melodies",
+}
 
 
-def _strip_noise(raw: str) -> str:
-    def _drop_if_noise(match: "re.Match[str]") -> str:
-        full = match.group(0)
-        # Square-bracket groups are, by convention on YouTube music uploads,
-        # metadata tags (record label, availability, quality) rather than
-        # part of the actual title - always drop them. Parenthesised groups
-        # are kept unless they match a known noise token (e.g. "Original Mix"
 def strip_noise(raw: str) -> str:
-    """Strip boilerplate noise like (Official Video), [Premiere], etc."""
+    """Strip boilerplate noise like (Official Video), [Premiere], vinyl positions, etc."""
     def _drop_if_noise(match: re.Match) -> str:
         full = match.group(0)
         if full.startswith("["):
@@ -151,7 +151,9 @@ def strip_noise(raw: str) -> str:
     cleaned = _BRACKET_RE.sub(_drop_if_noise, raw)
     for token in _NOISE_STANDALONE:
         cleaned = re.sub(re.escape(token), "", cleaned, flags=re.IGNORECASE)
-    return re.sub(r"\s{2,}", " ", cleaned).strip(" -–—")
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip(" -–—")
+    cleaned = _VINYL_POS_RE.sub("", cleaned).strip(" -–—")
+    return cleaned
 
 
 _strip_noise = strip_noise
@@ -162,9 +164,15 @@ def parse_artist_title(raw_title: str, fallback_artist: str | None = None) -> tu
     cleaned = strip_noise(raw_title)
     parts = _SPLIT_RE.split(cleaned, maxsplit=1)
     if len(parts) == 2 and parts[0].strip() and parts[1].strip():
-        return parts[0].strip(), parts[1].strip()
-    artist = fallback_artist.strip() if fallback_artist and fallback_artist.strip() else None
-    return artist, cleaned.strip()
+        artist = _VINYL_POS_RE.sub("", parts[0].strip()).strip()
+        title = _VINYL_POS_RE.sub("", parts[1].strip()).strip()
+        return artist, title
+    if fallback_artist:
+        fb_clean = re.sub(r"[^a-z0-9]+", " ", fallback_artist.casefold()).strip()
+        if fb_clean in _CURATOR_CHANNELS or "premiere" in fb_clean or "repost" in fb_clean:
+            return None, cleaned.strip()
+        return fallback_artist.strip(), cleaned.strip()
+    return None, cleaned.strip()
 
 
 def _oembed(endpoint: str, url: str) -> dict | None:

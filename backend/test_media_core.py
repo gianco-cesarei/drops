@@ -141,6 +141,26 @@ class ParseArtistTitleTest(unittest.TestCase):
             ("Some Channel", "Just A Title"),
         )
 
+    def test_strips_vinyl_cut_positions_from_artist_and_title(self):
+        self.assertEqual(
+            media_core.parse_artist_title("A1. Traumer - Hoodlum (Original Mix)"),
+            ("Traumer", "Hoodlum"),
+        )
+        self.assertEqual(
+            media_core.parse_artist_title("Traumer - B2. Hoodlum"),
+            ("Traumer", "Hoodlum"),
+        )
+
+    def test_drops_curator_channel_as_fallback_artist(self):
+        self.assertEqual(
+            media_core.parse_artist_title("Deep Techno Track", fallback_artist="HATE"),
+            (None, "Deep Techno Track"),
+        )
+        self.assertEqual(
+            media_core.parse_artist_title("Minimal Track", fallback_artist="Moskalus Premiere"),
+            (None, "Minimal Track"),
+        )
+
     def test_falls_back_to_none_artist_when_no_separator_and_no_uploader(self):
         self.assertEqual(media_core.parse_artist_title("Just A Title"), (None, "Just A Title"))
 

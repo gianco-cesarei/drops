@@ -50,7 +50,17 @@ def _token_overlap(query: str, target: str) -> float:
     return len(query_words & target_words) / len(query_words)
 
 
-def score_candidate(artist: str | None, title: str | None, entry: dict[str, Any]) -> float:
+def _normalize_descriptors(value: str | None) -> str:
+    norm = _normalize(value)
+    return re.sub(r"\b(rework|edit|dub|vip|version|club mix|extended mix|original mix|original)\b", "remix", norm)
+
+
+def score_candidate(
+    artist: str | None,
+    title: str | None,
+    entry: dict[str, Any],
+    catalog_no: str | None = None,
+) -> float:
     candidate_title = str(entry.get("title") or "")
     candidate_uploader = str(entry.get("uploader") or "")
     candidate_combined = f"{candidate_title} {candidate_uploader}".strip()
@@ -58,23 +68,31 @@ def score_candidate(artist: str | None, title: str | None, entry: dict[str, Any]
     title_words = set(_normalize(title).split()) if title else set()
     if title and title_words:
         t_overlap = _token_overlap(title, candidate_combined)
-        if t_overlap == 0.0:
+        t_desc_overlap = _token_overlap(_normalize_descriptors(title), _normalize_descriptors(candidate_combined))
+        effective_t_overlap = max(t_overlap, t_desc_overlap)
+        if effective_t_overlap == 0.0:
             return 0.0
-        if len(title_words) >= 2 and t_overlap < 0.6:
-            return 0.3 * t_overlap
+        if len(title_words) >= 2 and effective_t_overlap < 0.6:
+            return 0.3 * effective_t_overlap
     else:
         t_overlap = 0.0
+        effective_t_overlap = 0.0
 
     combined_query = f"{artist or ''} {title or ''}".strip()
     scores = [
         similarity(title, candidate_title),
+        similarity(_normalize_descriptors(title), _normalize_descriptors(candidate_title)),
         similarity(combined_query, candidate_title),
         _token_overlap(combined_query, candidate_combined),
-        t_overlap,
+        effective_t_overlap,
     ]
     if artist:
         scores.append((similarity(title, candidate_title) + similarity(artist, candidate_uploader)) / 2)
-        scores.append((t_overlap + _token_overlap(artist, candidate_combined)) / 2)
+        scores.append((effective_t_overlap + _token_overlap(artist, candidate_combined)) / 2)
+    if catalog_no:
+        cat_clean = _normalize(catalog_no)
+        if cat_clean and cat_clean in _normalize(candidate_combined):
+            scores.append(0.85)
     return max(scores)
 
 
@@ -83,9 +101,10 @@ def find_soundcloud_match(
     title: str | None,
     duration: int | None,
     raw_title: str | None = None,
+    catalog_no: str | None = None,
 ) -> str | None:
     """Search SoundCloud for a track matching artist+title/raw_title, gated by duration when known."""
-    if not artist and not title and not raw_title:
+    if not artist and not title and not raw_title and not catalog_no:
         return None
 
     queries: list[str] = []
@@ -94,6 +113,9 @@ def find_soundcloud_match(
         f"{artist} {title}".strip() if artist and title else None,
         title.strip() if title else None,
         strip_noise(raw_title) if raw_title else None,
+        f"{artist} {title} {catalog_no}".strip() if artist and title and catalog_no else None,
+        f"{catalog_no} {title}".strip() if catalog_no and title else None,
+        catalog_no.strip() if catalog_no else None,
     ]:
         if candidate_q:
             norm_q = _normalize(candidate_q)
@@ -115,6 +137,7 @@ def find_soundcloud_match(
 
     all_entries: dict[str, dict[str, Any]] = {}
     for query in queries:
+        query_entries: list[dict[str, Any]] = []
         try:
             with YTDLP_LOCK, yt_dlp.YoutubeDL(options) as ydl:
                 result = ydl.extract_info(f"scsearch{SOUNDCLOUD_SEARCH_COUNT}:{query}", download=False)
@@ -124,8 +147,27 @@ def find_soundcloud_match(
                 url = entry.get("webpage_url") or entry.get("url")
                 if url and url not in all_entries:
                     all_entries[url] = entry
+                    query_entries.append(entry)
         except Exception as exc:
             logger.info("soundcloud search fallita query=%r detail=%r", query, str(exc)[:200])
+
+        # Early exit on high confidence match
+        for entry in query_entries:
+            cand_duration = entry.get("duration")
+            url = entry.get("webpage_url") or entry.get("url")
+            if not url:
+                continue
+            if duration is not None:
+                if cand_duration is None or abs(cand_duration - duration) > 3:
+                    continue
+            score = score_candidate(artist, title, entry, catalog_no=catalog_no)
+            if score >= 0.85:
+                logger.info(
+                    "soundcloud early exit query=%r url=%s score=%.2f duration_diff=%s",
+                    query, url, score,
+                    f"{abs(cand_duration - duration)}s" if (duration is not None and cand_duration is not None) else "unknown",
+                )
+                return url
 
     best_url, best_score = None, 0.0
     scored_candidates = []
@@ -136,11 +178,11 @@ def find_soundcloud_match(
 
         if duration is not None:
             if cand_duration is None or abs(cand_duration - duration) > DURATION_TOLERANCE_SECONDS:
-                score = score_candidate(artist, title, entry)
+                score = score_candidate(artist, title, entry, catalog_no=catalog_no)
                 scored_candidates.append((url, cand_title, cand_duration, score, "duration_mismatch"))
                 continue
 
-        score = score_candidate(artist, title, entry)
+        score = score_candidate(artist, title, entry, catalog_no=catalog_no)
 
         # Threshold rules:
         # If duration close (within ±5s): accept score >= 0.4
@@ -244,10 +286,10 @@ def _native_source_label(url: str) -> str:
 def download_multi_source(
     job_dir: Path, job_id: str, native_url: str, artist: str | None, title: str | None,
     duration: int | None, quality: str, settings, started: float, *, proxy: str | None = None,
-    raw_title: str | None = None,
+    raw_title: str | None = None, catalog_no: str | None = None,
 ) -> tuple[dict[str, Any], str]:
     """SoundCloud first (only if it's a confident match), native source (YouTube) always last."""
-    match_url = find_soundcloud_match(artist, title, duration, raw_title=raw_title)
+    match_url = find_soundcloud_match(artist, title, duration, raw_title=raw_title, catalog_no=catalog_no)
     if match_url:
         try:
             info = attempt_download(job_dir, match_url, quality, settings, started)

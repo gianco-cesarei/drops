@@ -150,6 +150,27 @@ class FindSoundcloudMatchTest(unittest.TestCase):
         self.assertEqual(result, "https://soundcloud.com/fourtet/baby")
         self.assertEqual(fake_ydl.extract_info.call_count, 3)
 
+    def test_remix_rework_dub_synonyms_score_high(self):
+        entry = {"title": "Four Tet - Baby (Kieran Hebden Rework)", "uploader": "Four Tet"}
+        self.assertGreaterEqual(score_candidate("Four Tet", "Baby (Remix)", entry), 0.7)
+
+    def test_catalog_no_matches_and_scores_high(self):
+        entry = {"title": "Traumer - Hoodlum [DESOLAT040]", "uploader": "Desolat"}
+        self.assertGreaterEqual(score_candidate("Traumer", "Hoodlum", entry, catalog_no="DESOLAT040"), 0.85)
+
+    def test_early_exit_stops_subsequent_queries_on_high_confidence(self):
+        fake_ydl = MagicMock()
+        fake_ydl.__enter__.return_value = fake_ydl
+        fake_ydl.__exit__.return_value = False
+        fake_ydl.extract_info.return_value = {
+            "entries": [{"title": "Four Tet - Baby", "uploader": "Four Tet", "duration": 245, "webpage_url": "https://soundcloud.com/fourtet/baby"}]
+        }
+        with patch("download_engine.yt_dlp.YoutubeDL", return_value=fake_ydl):
+            result = find_soundcloud_match("Four Tet", "Baby", 245, raw_title="Different Raw Title", catalog_no="TEXT001")
+        self.assertEqual(result, "https://soundcloud.com/fourtet/baby")
+        # Stopped on first query without issuing subsequent queries
+        self.assertEqual(fake_ydl.extract_info.call_count, 1)
+
     def test_returns_none_when_best_score_below_threshold(self):
         entries = [{"title": "Not Really Related", "uploader": "someone", "duration": 245, "webpage_url": "https://soundcloud.com/x/y"}]
         fake_ydl = MagicMock()
@@ -300,7 +321,7 @@ class DownloadMultiSourceTest(unittest.TestCase):
         with patch("download_engine.find_soundcloud_match") as find_match, \
              patch("download_engine.attempt_download", return_value={"title": "Track", "duration": 10}):
             download_multi_source(self.job_dir, "job-1", "https://youtu.be/native", None, None, None, "320", FakeSettings(), __import__("time").monotonic())
-        find_match.assert_called_once_with(None, None, None, raw_title=None)
+        find_match.assert_called_once_with(None, None, None, raw_title=None, catalog_no=None)
 
     def test_proxy_only_reaches_native_attempt_not_soundcloud(self):
         calls = []
