@@ -262,12 +262,14 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
                     update["cover_url"] = enrichment["cover_url"]
                 store.update_job(job_id, **update)
 
+        t_after_enrich = time.monotonic()
         try:
             store.update_job(job_id, status="downloading")
             info, source = download_multi_source(
                 job_dir, job_id, url, artist, title, duration, quality, settings, started,
                 proxy=ytdlp_proxy(), raw_title=raw_title, catalog_no=catalog_no,
             )
+            t_after_dl = time.monotonic()
             if int(info.get("duration") or 0) > settings.max_duration_seconds:
                 raise yt_dlp.utils.DownloadError("Media duration limit exceeded")
             candidates = [path for path in job_dir.iterdir() if path.is_file() and not path.name.endswith((".part", ".ytdl"))]
@@ -327,6 +329,13 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
                 source=source,
                 duration=int(info.get("duration") or 0) or None,
                 expires_at=time.time() + settings.artifact_ttl_seconds,
+            )
+
+            t_ready = time.monotonic()
+            logger.info(
+                "process_job timings job_id=%s source=%s enrich=%.1fs multi_source=%.1fs finalize=%.1fs total=%.1fs",
+                job_id, source, t_after_enrich - started, t_after_dl - t_after_enrich,
+                t_ready - t_after_dl, t_ready - started,
             )
 
             # BPM off the critical path: analyze in a daemon thread, then patch the

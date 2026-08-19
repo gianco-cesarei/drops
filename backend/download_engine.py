@@ -127,6 +127,7 @@ def find_soundcloud_match(
     if not queries:
         return None
 
+    search_t0 = time.monotonic()
     options = {
         "quiet": True,
         "no_warnings": True,
@@ -164,9 +165,10 @@ def find_soundcloud_match(
             score = score_candidate(artist, title, entry, catalog_no=catalog_no)
             if score >= 0.85:
                 logger.info(
-                    "soundcloud early exit query=%r url=%s score=%.2f duration_diff=%s",
+                    "soundcloud early exit query=%r url=%s score=%.2f duration_diff=%s elapsed=%.1fs",
                     query, url, score,
                     f"{abs(cand_duration - duration)}s" if (duration is not None and cand_duration is not None) else "unknown",
+                    time.monotonic() - search_t0,
                 )
                 return url
 
@@ -205,13 +207,13 @@ def find_soundcloud_match(
     if scored_candidates:
         top_candidates = sorted(scored_candidates, key=lambda x: x[3], reverse=True)[:5]
         logger.info(
-            "soundcloud candidates queries=%r duration=%s total=%d top=%s chosen=%s (score=%.2f)",
+            "soundcloud candidates queries=%r duration=%s total=%d top=%s chosen=%s (score=%.2f) elapsed=%.1fs",
             queries, duration, len(scored_candidates),
             [(c[1], c[2], round(c[3], 2), c[4]) for c in top_candidates],
-            best_url, best_score,
+            best_url, best_score, time.monotonic() - search_t0,
         )
     else:
-        logger.info("soundcloud no candidates found for queries=%r duration=%s", queries, duration)
+        logger.info("soundcloud no candidates found for queries=%r duration=%s elapsed=%.1fs", queries, duration, time.monotonic() - search_t0)
 
     return best_url
 
