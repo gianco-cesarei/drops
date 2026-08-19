@@ -295,27 +295,11 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
         <button className="rail-choice continent-disabled" disabled title="In arrivo con le prossime release">
           🌊 Oceania <span className="coming-badge">Soon</span>
         </button>
-
-        <div className="rail-sublist">
-          <span className="rail-label">Scene & Città Attive</span>
-          <div className="rail-list">
-            {cityGroups.map((g) => (
-              <button
-                key={g.name}
-                type="button"
-                className={`rail-choice ${activeCity === g.name ? 'active' : ''}`}
-                onClick={() => setActiveCity(activeCity === g.name ? null : g.name)}
-              >
-                📍 {g.name} ({g.items.length})
-              </button>
-            ))}
-          </div>
-        </div>
       </aside>
 
       <div className="environment-content">
         <div className="environment-toolbar">
-          <span className="shell-note">Mappa geografica europea · Trascina per esplorare, usa i pulsanti o la rotella per zoomare</span>
+          <span className="shell-note">Mappa geografica europea · Trascina e usa lo zoom per esplorare le scene musicali</span>
           <div className="map-meta-chips">
             <div className="map-zoom-controls">
               <button type="button" className="map-zoom-btn" onClick={() => setZoom((z) => Math.min(3.5, z + 0.3))} title="Ingrandisci">+</button>
@@ -323,7 +307,7 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
               <button type="button" className="map-zoom-btn" onClick={() => setZoom((z) => Math.max(0.8, z - 0.3))} title="Riduci">−</button>
               <button type="button" className="map-zoom-btn map-reset-btn" onClick={resetView} title="Ripristina vista">↺ Reset</button>
             </div>
-            <span className="chip-pill">{cityGroups.length} città</span>
+            <span className="chip-pill">{cityGroups.length} città connesse</span>
             <span className="chip-pill">{places.length} articoli</span>
           </div>
         </div>
@@ -340,23 +324,19 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
         >
           <svg className="europe-vector-map" viewBox="0 0 900 580" preserveAspectRatio="xMidYMid meet">
             <defs>
-              <pattern id="grid-pattern" width="30" height="30" patternUnits="userSpaceOnUse">
-                <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+              <pattern id="grid-pattern" width="36" height="36" patternUnits="userSpaceOnUse">
+                <path d="M 36 0 L 0 0 0 36" fill="none" stroke="rgba(22, 101, 52, 0.05)" strokeWidth="1" />
               </pattern>
-              <linearGradient id="map-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#141a15" />
-                <stop offset="100%" stopColor="#0b0f0c" />
-              </linearGradient>
             </defs>
 
-            {/* Static Background */}
-            <rect width="900" height="580" fill="url(#map-gradient)" rx="16" />
+            {/* Clean Cream Background */}
+            <rect width="900" height="580" fill="#f8f9f5" rx="16" />
             <rect width="900" height="580" fill="url(#grid-pattern)" rx="16" />
 
             {/* Zoomable / Pannable Landmass & City Layer */}
             <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`} style={{ transformOrigin: '450px 290px', transition: isDragging ? 'none' : 'transform 0.15s ease-out' }}>
-              {/* Stylized Continental Outlines of Europe */}
-              <g className="map-landmass-layer" fill="rgba(34, 197, 94, 0.05)" stroke="rgba(34, 197, 94, 0.28)" strokeWidth="1.3" strokeLinejoin="round">
+              {/* Stylized European Landmass with Clean Outlines */}
+              <g className="map-landmass-layer" fill="#eaeee5" stroke="#94a395" strokeWidth="1.4" strokeLinejoin="round">
                 {/* Iberian Peninsula (Portugal & Spain) */}
                 <path d="M 120 380 L 150 360 L 220 370 L 250 420 L 240 480 L 190 500 L 140 480 L 115 440 Z" />
                 {/* France & Benelux */}
@@ -396,19 +376,29 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
                     {/* Outer Pulsing Ping */}
                     <circle cx={x} cy={y} r={isSelected ? 22 : 14} className="map-marker-ping" />
                     {/* Middle Glow */}
-                    <circle cx={x} cy={y} r={isSelected ? 12 : 8} className="map-marker-core" />
+                    <circle cx={x} cy={y} r={isSelected ? 11 : 7} className="map-marker-core" />
                     {/* Pin Dot */}
                     <circle cx={x} cy={y} r={isSelected ? 5 : 3.5} className="map-marker-dot" />
 
-                    {/* City Label */}
-                    <text
-                      x={x}
-                      y={y - 14}
-                      textAnchor="middle"
-                      className="map-city-text"
-                    >
-                      {g.name.split(',')[0]} ({g.items.length})
-                    </text>
+                    {/* City Label Badge */}
+                    <g transform={`translate(${x}, ${y - 18})`}>
+                      <rect
+                        x={- (g.name.split(',')[0].length * 4 + 18)}
+                        y={-14}
+                        width={(g.name.split(',')[0].length * 8 + 36)}
+                        height={20}
+                        rx={10}
+                        className="map-city-pill"
+                      />
+                      <text
+                        x={0}
+                        y={0}
+                        textAnchor="middle"
+                        className="map-city-text"
+                      >
+                        📍 {g.name.split(',')[0]} ({g.items.length})
+                      </text>
+                    </g>
                   </g>
                 )
               })}
