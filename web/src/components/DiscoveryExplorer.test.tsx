@@ -11,7 +11,7 @@ describe('ambienti archivio autonomi', () => {
     render(<DiscoveryEnvironment items={developmentDiscoveryItems} />)
     expect(await screen.findByRole('search')).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Categorie Grid' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Stories' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Guide/ })).toBeInTheDocument()
     await userEvent.type(screen.getByRole('textbox', { name: 'Ricerca' }), 'Berlin')
     await userEvent.click(screen.getByRole('button', { name: 'Cerca' }))
     expect(location.search).toBe('?q=Berlin')
@@ -32,9 +32,9 @@ describe('ambienti archivio autonomi', () => {
     expect(await screen.findByLabelText('Mappa Europea dei Club e delle Scene')).toBeInTheDocument()
     expect(screen.getByText('🇪🇺 Europa')).toBeInTheDocument()
     expect(screen.getByText('🌎 Americhe')).toBeInTheDocument()
-    const berlinBtns = screen.getAllByRole('button', { name: /Berlin/ })
-    await userEvent.click(berlinBtns[0])
-    expect(screen.getByRole('heading', { name: '📍 Berlin' })).toBeInTheDocument()
+    const berlinBtn = screen.getByRole('button', { name: /Berlin/ })
+    await userEvent.click(berlinBtn)
+    expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(/Berlin/)
   })
 
   it('ripristina filtri su popstate dentro ambiente corrente', async () => {
