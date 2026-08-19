@@ -32,7 +32,8 @@ FROM python:3.12-slim AS api
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=8000 \
-    DROPS_WEB_STATE_DIR=/data
+    DROPS_WEB_STATE_DIR=/data \
+    DROPS_YTDLP_BGUTIL_HTTP_BASE_URL=http://127.0.0.1:4416
 
 RUN apt-get update \
     && apt-get install --no-install-recommends -y ca-certificates ffmpeg \
