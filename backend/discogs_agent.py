@@ -131,6 +131,10 @@ class DiscogsClient:
         labels = [item.get("name") for item in payload.get("labels") or [] if item.get("name")]
         artists = [item.get("name") for item in payload.get("artists") or [] if item.get("name")]
         styles = sorted(set((payload.get("styles") or []) + (payload.get("genres") or [])))
+        images = payload.get("images") or []
+        cover = next((image.get("uri") for image in images if image.get("type") == "primary" and image.get("uri")), None)
+        if not cover and images:
+            cover = images[0].get("uri")
         return {
             "label": labels[0] if labels else None,
             "labels": labels,
@@ -139,6 +143,7 @@ class DiscogsClient:
             "country": payload.get("country"),
             "styles": styles,
             "artists": artists,
+            "cover_url": cover,
             "discogs_url": payload.get("uri") or f"https://www.discogs.com/release/{payload['id']}",
             "release_id": payload.get("id"),
         }

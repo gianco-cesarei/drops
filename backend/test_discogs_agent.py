@@ -25,6 +25,50 @@ class DiscogsAgentTest(unittest.TestCase):
             brain = json.loads((Path(temp_dir) / "discogs-brain.json").read_text())
             self.assertEqual(brain["relations"][0]["source"], "discogs")
 
+    def test_enrich_extracts_primary_cover_image(self):
+        with patch.object(DiscogsClient, "_get") as get:
+            get.side_effect = [
+                {"results": [{"id": 42}]},
+                {
+                    "id": 42, "uri": "/release/42",
+                    "labels": [{"name": "Night Label", "catno": "NL-01"}],
+                    "year": 2024, "country": "Portugal", "styles": ["House"], "genres": [], "artists": [{"name": "Artist"}],
+                    "images": [
+                        {"type": "secondary", "uri": "https://img.discogs.com/secondary.jpg"},
+                        {"type": "primary", "uri": "https://img.discogs.com/primary.jpg"},
+                    ],
+                },
+            ]
+            with tempfile.TemporaryDirectory() as state_dir:
+                client = DiscogsClient(Path(state_dir))
+                client.token = "token"
+                result = client.enrich("Artist", "Title")
+        self.assertEqual(result["cover_url"], "https://img.discogs.com/primary.jpg")
+
+    def test_enrich_cover_falls_back_to_first_image_when_no_primary(self):
+        with patch.object(DiscogsClient, "_get") as get:
+            get.side_effect = [
+                {"results": [{"id": 42}]},
+                {
+                    "id": 42, "labels": [{"name": "L"}], "artists": [],
+                    "images": [{"type": "secondary", "uri": "https://img.discogs.com/only.jpg"}],
+                },
+            ]
+            with tempfile.TemporaryDirectory() as state_dir:
+                client = DiscogsClient(Path(state_dir))
+                client.token = "token"
+                result = client.enrich("Artist", "Title")
+        self.assertEqual(result["cover_url"], "https://img.discogs.com/only.jpg")
+
+    def test_enrich_cover_none_when_no_images(self):
+        with patch.object(DiscogsClient, "_get") as get:
+            get.side_effect = [{"results": [{"id": 42}]}, {"id": 42, "labels": [{"name": "L"}], "artists": []}]
+            with tempfile.TemporaryDirectory() as state_dir:
+                client = DiscogsClient(Path(state_dir))
+                client.token = "token"
+                result = client.enrich("Artist", "Title")
+        self.assertIsNone(result["cover_url"])
+
     def test_cache_avoids_second_discogs_request(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             with patch.dict(os.environ, {"DISCOGS_TOKEN": "test-token"}):
