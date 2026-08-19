@@ -34,11 +34,13 @@ describe('contenuti editoriali pubblicati', () => {
     }
   })
 
-  it('ogni articolo possiede un coverUrl valido con immagine ad alta risoluzione', () => {
+  it('ogni articolo possiede un coverUrl valido ed univoco con immagine ad alta risoluzione', () => {
+    const coverUrls = publishedContentItems.map((item) => item.coverUrl)
     for (const item of publishedContentItems) {
       expect(item.coverUrl).toBeTruthy()
       expect(item.coverUrl?.startsWith('https://')).toBe(true)
     }
+    expect(new Set(coverUrls).size).toBe(publishedContentItems.length)
   })
 
   it('verifica i dati specifici di XEXA — Kissom', () => {

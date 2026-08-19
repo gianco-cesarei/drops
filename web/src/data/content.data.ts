@@ -58,7 +58,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Release,
     kicker: 'Release',
     title: 'TD10: dieci anni di futurismo club per la Timedance di Bristol',
-    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
+    coverUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80',
     summary:
       "La compilation celebrativa curata da Batu raccoglie 23 tracce esclusive che fotografano l'evoluzione del sound di Bristol fra techno ibrida, bass culture e sound design chirurgico.",
     publishedAt: '2026-08-17T16:00:00.000Z',
@@ -100,7 +100,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Story,
     kicker: 'Notizia',
     title: 'Oroko Radio entra in pausa: la fragilità delle web-radio comunitarie',
-    coverUrl: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80',
+    coverUrl: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&w=1200&q=80',
     summary:
       "L'emittente indipendente di Accra sospende la diretta quotidiana per burnout e insostenibilità economica. Una vicenda che interroga l'ecosistema globale su chi finanzia la scoperta musicale.",
     publishedAt: '2026-08-16T12:00:00.000Z',
@@ -143,7 +143,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Label,
     kicker: 'Etichetta',
     title: 'Defected Records: anatomia di un impero della House Music globale',
-    coverUrl: 'https://images.unsplash.com/photo-1571266028243-3716f02d2d2e?auto=format&fit=crop&w=1200&q=80',
+    coverUrl: 'https://images.unsplash.com/photo-1545128485-c400e7702796?auto=format&fit=crop&w=1200&q=80',
     summary:
       "Fondata nel 1999 da Simon Dunmore e oggi guidata da Wez Saunders, Defected ha trasformato la vocal e club house in un ecosistema globale tra residenze a Ibiza, radio show storici e sublabel di culto come DFTD e Glitterbox.",
     publishedAt: '2026-08-19T11:00:00.000Z',
@@ -186,7 +186,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Label,
     kicker: 'Etichetta',
     title: 'Innervisions: l’estetica melodica e il rigore concettuale di Dixon & Âme',
-    coverUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80',
+    coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
     summary:
       "Fondata a Berlino nel 2005 da Steffen Berkhahn (Dixon) e Kristian Beyer & Frank Wiedemann (Âme), Innervisions ha ridefinito la house epica, ipnotica e drammatica, unendo release centellinate e l'esperienza immersiva di Lost In A Moment.",
     publishedAt: '2026-08-19T10:30:00.000Z',
@@ -233,7 +233,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Label,
     kicker: 'Etichetta',
     title: 'XL Recordings: dall’hardcore rave britannico alla rivoluzione discografica indipendente',
-    coverUrl: 'https://images.unsplash.com/photo-1539185441755-769473a23570?auto=format&fit=crop&w=1200&q=80',
+    coverUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=1200&q=80',
     summary:
       "Nata nel 1989 come spin-off dance di Beggars Banquet da Tim Palmer, Nick Halkes e Richard Russell, XL Recordings ha tracciato la traiettoria più straordinaria della musica indipendente: dai rave banger di The Prodigy a Burial, The xx, Radiohead, Overmono e Joy Orbison.",
     publishedAt: '2026-08-19T10:00:00.000Z',
@@ -276,7 +276,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Label,
     kicker: 'Etichetta',
     title: 'Warp Records: l’invenzione dell’ascolto sintetico e l’avanguardia sonora permanente',
-    coverUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=1200&q=80',
+    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
     summary:
       "Dalle origini bleep & bass a Sheffield nel 1989 con Steve Beckett e Rob Mitchell fino alla serie leggendaria 'Artificial Intelligence', Warp ha dato una casa ad Aphex Twin, Boards of Canada, Autechre, Nightmares on Wax, Flying Lotus e Oneohtrix Point Never.",
     publishedAt: '2026-08-19T09:30:00.000Z',
@@ -323,7 +323,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     partyKind: PartyKind.Festival,
     kicker: 'Festival',
     title: 'Dekmantel Festival Amsterdam 2026: il tempio dei selector nell’Amsterdamse Bos',
-    coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
+    coverUrl: 'https://images.unsplash.com/photo-1464375117522-1311d6a5b81f?auto=format&fit=crop&w=1200&q=80',
     summary:
       "Dal Main Stage immerso nella foresta all'UFO stage dedicato alla techno ipnotica e al greenhouse tropicale, Dekmantel 2026 ribadisce il suo ruolo di barometro globale del DJing colto e della club culture d'eccellenza.",
     publishedAt: '2026-08-19T09:00:00.000Z',
@@ -519,7 +519,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
         html: `<p>La spina dorsale della notte milanese poggia su spazi con un'identità granitica:</p><ul><li><b>Tunnel Club:</b> incastonato sotto i binari della Stazione Centrale in Via Sammartini, da oltre trent'anni è il tempio della techno, dell'electro e della club music più avanguardista (con serate resident come <i>Take It Easy</i> e format innovativi).</li><li><b>Plastic Club (Killer Plastic):</b> icona senza tempo della libertà queer, della house e della disco d'autore, punto di incontro per artisti, designer e amanti della notte autentica.</li><li><b>Apollo Milano:</b> raffinato club sui Navigli diviso tra cocktail bar e club room, ideale per selezioni house sofisticate, nu-disco ed eclettismo contemporaneo.</li></ul>`,
       },
       {
-        heading: "Spazi ibridi e rigenerazione: Il Tempio del Futuro Perduto",
+        heading: "Spazi generic e rigenerazione: Il Tempio del Futuro Perduto",
         html: `<p>In Via Luigi Nono, il <b>Tempio del Futuro Perduto</b> rappresenta un modello unico in Europa: uno spazio culturale multidisciplinare recuperato dall'abbandono, fondato su etica no-phone, sostenibilità, book-crossing e maratone musicali dove la techno ipnotica, la drum & bass e la musica ambient dialogano con installazioni artistiche diurne.</p>`,
       },
       {
@@ -543,7 +543,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     partyKind: PartyKind.Festival,
     kicker: 'Festival',
     title: 'CTM 2026 Berlino: audio spaziale, nuove composizioni e reti translocali',
-    coverUrl: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?auto=format&fit=crop&w=1200&q=80',
+    coverUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80',
     summary:
       "Il festival berlinese dedicato alle musiche avventurose esplora l'ascolto immersivo con Blawan e rinsalda le connessioni translocali con Accra e l'ecosistema di Oroko Radio.",
     publishedAt: '2026-08-15T18:00:00.000Z',
@@ -626,7 +626,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     partyKind: PartyKind.Festival,
     kicker: 'Festival',
     title: 'L.E.V. Gijón 2026: il club inteso come dispositivo audiovisivo',
-    coverUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80',
+    coverUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1200&q=80',
     summary:
       "Tra La Nave di Gijón e gli spazi museali asturiani, il Laboratorio di Elettronica Visiva unisce post-clubbing, turntablism sperimentale e performance con intelligenza artificiale.",
     publishedAt: '2026-08-13T14:00:00.000Z',
@@ -754,7 +754,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Story,
     kicker: 'Guida Pratica DJ',
     title: 'Guida pratica al Borderò per DJ: compilazione digitale SIAE, SPA e tutela del diritto d’autore',
-    coverUrl: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1200&q=80',
+    coverUrl: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=1200&q=80',
     summary:
       "Come funziona il Programma Musicale online (mioBorderò), le differenze fiscali e giuridiche tra esecuzione e registrazione fonografica, come gestire unreleased, dubplate e bootleg, e le regole per suonare tra Italia, Spagna e Portogallo.",
     publishedAt: '2026-08-19T12:00:00.000Z',
@@ -968,7 +968,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     type: DiscoveryType.Story,
     kicker: 'Guida',
     title: 'ISRC & UPC: i codici che tutelano le tue royalty',
-    coverUrl: 'https://images.unsplash.com/photo-1461360370896-922624d12aa1?auto=format&fit=crop&w=1200&q=80',
+    coverUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
     summary:
       'Due codici invisibili decidono se vieni pagato e riconosciuto. Cosa sono, chi te li dà, e gli errori tipici da evitare tra registrazioni e release.',
     publishedAt: '2026-08-16T10:00:00.000Z',
