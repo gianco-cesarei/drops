@@ -39,6 +39,15 @@ class ScoreCandidateTest(unittest.TestCase):
         entry = {"title": "TEXT01 Four Tet - Baby (Vinyl Cut)", "uploader": "Text Records"}
         self.assertGreaterEqual(score_candidate("Four Tet", "Baby", entry), 0.6)
 
+    def test_different_track_by_same_artist_is_rejected(self):
+        # Even if artist matches 100%, different track title must score low / zero
+        entry = {"title": "Four Tet - Teenage Birdsong", "uploader": "Four Tet"}
+        self.assertLess(score_candidate("Four Tet", "Baby", entry), 0.3)
+
+    def test_multi_word_title_different_track_by_same_artist_is_rejected(self):
+        entry = {"title": "Rene Wise - Liquid Dancer [RYC012]", "uploader": "novafuture"}
+        self.assertLess(score_candidate("Rene Wise", "Swamp Dancer", entry), 0.3)
+
     def test_unrelated_entry_scores_low(self):
         entry = {"title": "Totally Different Song", "uploader": "Nobody"}
         self.assertLess(score_candidate("Four Tet", "Baby", entry), 0.4)
@@ -52,11 +61,42 @@ class FindSoundcloudMatchTest(unittest.TestCase):
         with patch("download_engine.yt_dlp.YoutubeDL", side_effect=RuntimeError("boom")):
             self.assertIsNone(find_soundcloud_match("Four Tet", "Baby", None))
 
+    def test_options_include_ignoreerrors_and_ignore_no_formats_error(self):
+        captured_options = {}
+
+        def fake_ydl_init(options):
+            captured_options.update(options)
+            mock = MagicMock()
+            mock.__enter__.return_value = mock
+            mock.__exit__.return_value = False
+            mock.extract_info.return_value = {"entries": []}
+            return mock
+
+        with patch("download_engine.yt_dlp.YoutubeDL", side_effect=fake_ydl_init):
+            find_soundcloud_match("Four Tet", "Baby", 245)
+        self.assertTrue(captured_options.get("ignoreerrors"))
+        self.assertTrue(captured_options.get("ignore_no_formats_error"))
+
     def test_picks_best_scoring_entry_within_duration_tolerance(self):
         entries = [
             {"title": "Baby (slowed)", "uploader": "randomreupload", "duration": 400, "webpage_url": "https://soundcloud.com/x/wrong-duration"},
             {"title": "Baby", "uploader": "Four Tet", "duration": 245, "webpage_url": "https://soundcloud.com/fourtet/baby"},
             {"title": "Totally Unrelated", "uploader": "nobody", "duration": 246, "webpage_url": "https://soundcloud.com/x/unrelated"},
+        ]
+        fake_ydl = MagicMock()
+        fake_ydl.__enter__.return_value = fake_ydl
+        fake_ydl.__exit__.return_value = False
+        fake_ydl.extract_info.return_value = {"entries": entries}
+        with patch("download_engine.yt_dlp.YoutubeDL", return_value=fake_ydl):
+            result = find_soundcloud_match("Four Tet", "Baby", 245)
+        self.assertEqual(result, "https://soundcloud.com/fourtet/baby")
+
+    def test_skips_none_and_malformed_entries(self):
+        entries = [
+            None,
+            "not a dict",
+            {"no_url": "here"},
+            {"title": "Baby", "uploader": "Four Tet", "duration": 245, "webpage_url": "https://soundcloud.com/fourtet/baby"},
         ]
         fake_ydl = MagicMock()
         fake_ydl.__enter__.return_value = fake_ydl

@@ -156,14 +156,13 @@ class ResolveTrackTest(unittest.TestCase):
         response.read.return_value = payload
         response.__enter__.return_value = response
         response.__exit__.return_value = False
-        with patch("media_core.urllib.request.urlopen", return_value=response) as urlopen, \
-             patch("media_core._resolve_via_ytdlp", return_value={"duration": 210}):
+        with patch("media_core.urllib.request.urlopen", return_value=response) as urlopen:
             result = media_core.resolve_track("https://youtu.be/abc123")
         self.assertEqual(result["title"], "So U Kno")
         self.assertEqual(result["artist"], "Overmono")
         self.assertEqual(result["cover_url"], "https://i.ytimg.com/vi/abc/hqdefault.jpg")
         self.assertEqual(result["raw_title"], "Overmono - So U Kno (Official Video)")
-        self.assertEqual(result["duration"], 210)
+        self.assertIsNone(result["duration"])
         self.assertIn("youtube.com/oembed", urlopen.call_args.args[0].full_url)
 
     def test_soundcloud_uses_soundcloud_oembed(self):

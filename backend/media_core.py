@@ -231,11 +231,5 @@ def resolve_track(url: str) -> dict:
     if oembed and oembed.get("title"):
         raw_title = str(oembed["title"])
         artist, title = parse_artist_title(raw_title, oembed.get("author_name"))
-        duration = None
-        if host in {"youtube.com", "youtu.be", "music.youtube.com"} or host.endswith((".youtube.com", ".youtu.be")):
-            try:
-                duration = _resolve_via_ytdlp(url).get("duration")
-            except Exception:
-                duration = None
-        return {"title": title, "artist": artist, "raw_title": raw_title, "cover_url": oembed.get("thumbnail_url"), "duration": duration}
+        return {"title": title, "artist": artist, "raw_title": raw_title, "cover_url": oembed.get("thumbnail_url"), "duration": None}
     return _resolve_via_ytdlp(url)

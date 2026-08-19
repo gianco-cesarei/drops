@@ -53,17 +53,28 @@ def _token_overlap(query: str, target: str) -> float:
 def score_candidate(artist: str | None, title: str | None, entry: dict[str, Any]) -> float:
     candidate_title = str(entry.get("title") or "")
     candidate_uploader = str(entry.get("uploader") or "")
-    combined_query = f"{artist or ''} {title or ''}".strip()
     candidate_combined = f"{candidate_title} {candidate_uploader}".strip()
+
+    title_words = set(_normalize(title).split()) if title else set()
+    if title and title_words:
+        t_overlap = _token_overlap(title, candidate_combined)
+        if t_overlap == 0.0:
+            return 0.0
+        if len(title_words) >= 2 and t_overlap < 0.6:
+            return 0.3 * t_overlap
+    else:
+        t_overlap = 0.0
+
+    combined_query = f"{artist or ''} {title or ''}".strip()
     scores = [
         similarity(title, candidate_title),
         similarity(combined_query, candidate_title),
         _token_overlap(combined_query, candidate_combined),
-        _token_overlap(title, candidate_title) if title else 0.0,
+        t_overlap,
     ]
     if artist:
         scores.append((similarity(title, candidate_title) + similarity(artist, candidate_uploader)) / 2)
-        scores.append((_token_overlap(title, candidate_title) + _token_overlap(artist, candidate_uploader)) / 2)
+        scores.append((t_overlap + _token_overlap(artist, candidate_combined)) / 2)
     return max(scores)
 
 
@@ -94,8 +105,12 @@ def find_soundcloud_match(
         return None
 
     options = {
-        "quiet": True, "no_warnings": True,
-        "socket_timeout": 15, "extractor_args": ytdlp_extractor_args(),
+        "quiet": True,
+        "no_warnings": True,
+        "ignoreerrors": True,
+        "ignore_no_formats_error": True,
+        "socket_timeout": 15,
+        "extractor_args": ytdlp_extractor_args(),
     }
 
     all_entries: dict[str, dict[str, Any]] = {}
@@ -104,7 +119,7 @@ def find_soundcloud_match(
             with YTDLP_LOCK, yt_dlp.YoutubeDL(options) as ydl:
                 result = ydl.extract_info(f"scsearch{SOUNDCLOUD_SEARCH_COUNT}:{query}", download=False)
             for entry in (result or {}).get("entries") or []:
-                if not entry:
+                if not entry or not isinstance(entry, dict):
                     continue
                 url = entry.get("webpage_url") or entry.get("url")
                 if url and url not in all_entries:
@@ -121,10 +136,11 @@ def find_soundcloud_match(
 
         if duration is not None:
             if cand_duration is None or abs(cand_duration - duration) > DURATION_TOLERANCE_SECONDS:
+                score = score_candidate(artist, title, entry)
+                scored_candidates.append((url, cand_title, cand_duration, score, "duration_mismatch"))
                 continue
 
         score = score_candidate(artist, title, entry)
-        scored_candidates.append((url, cand_title, cand_duration, score))
 
         # Threshold rules:
         # If duration close (within ±5s): accept score >= 0.4
@@ -137,6 +153,9 @@ def find_soundcloud_match(
         else:
             min_threshold = 0.55
 
+        status = "accepted" if score >= min_threshold else "below_threshold"
+        scored_candidates.append((url, cand_title, cand_duration, score, status))
+
         if score >= min_threshold and score > best_score:
             best_score, best_url = score, url
 
@@ -145,7 +164,7 @@ def find_soundcloud_match(
         logger.info(
             "soundcloud candidates queries=%r duration=%s total=%d top=%s chosen=%s (score=%.2f)",
             queries, duration, len(scored_candidates),
-            [(c[1], c[2], round(c[3], 2)) for c in top_candidates],
+            [(c[1], c[2], round(c[3], 2), c[4]) for c in top_candidates],
             best_url, best_score,
         )
     else:
