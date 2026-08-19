@@ -951,6 +951,7 @@ footer { padding: 20px 0; color: var(--color-text-muted); font-size: 11px; text-
 @media (min-width: 900px) {
   .discovery-card.poster-card.is-featured {
     height: 480px;
+    aspect-ratio: auto;
     flex-direction: row;
   }
   .discovery-card.poster-card.is-featured .card-bg-wrap {
