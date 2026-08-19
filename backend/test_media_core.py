@@ -4,7 +4,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from media_core import ytdlp_cookiefile
+import media_core
+from media_core import YTDLP_PLAYER_CLIENTS, ytdlp_cookiefile, ytdlp_extractor_args, ytdlp_proxy
 
 
 class YtdlpCookiefileTest(unittest.TestCase):
@@ -41,6 +42,43 @@ class YtdlpCookiefileTest(unittest.TestCase):
                     self.assertEqual(ytdlp_cookiefile(), result)
             finally:
                 cookies.chmod(0o644)
+
+
+class YtdlpProxyTest(unittest.TestCase):
+    def test_returns_none_when_unset(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertIsNone(ytdlp_proxy())
+
+    def test_returns_none_when_blank(self):
+        with patch.dict(os.environ, {"DROPS_YTDLP_PROXY": "   "}):
+            self.assertIsNone(ytdlp_proxy())
+
+    def test_returns_configured_value(self):
+        with patch.dict(os.environ, {"DROPS_YTDLP_PROXY": "http://proxy.example:8080"}):
+            self.assertEqual(ytdlp_proxy(), "http://proxy.example:8080")
+
+
+class PotProviderExtractorArgsTest(unittest.TestCase):
+    def test_omitted_when_package_not_installed(self):
+        with patch("media_core.importlib.metadata.distribution", side_effect=media_core.importlib.metadata.PackageNotFoundError):
+            args = ytdlp_extractor_args()
+        self.assertNotIn("youtubepot-bgutilscript", args)
+        self.assertEqual(args["youtube"]["player_client"], YTDLP_PLAYER_CLIENTS)
+
+    def test_omitted_when_script_dir_missing(self):
+        with patch("media_core.importlib.metadata.distribution", return_value=object()), \
+             tempfile.TemporaryDirectory() as empty_parent:
+            missing = os.path.join(empty_parent, "no-such-script-dir")
+            with patch.dict(os.environ, {"DROPS_YTDLP_BGUTIL_SCRIPT": missing}):
+                args = ytdlp_extractor_args()
+        self.assertNotIn("youtubepot-bgutilscript", args)
+
+    def test_included_when_package_and_script_dir_present(self):
+        with patch("media_core.importlib.metadata.distribution", return_value=object()), \
+             tempfile.TemporaryDirectory() as script_dir:
+            with patch.dict(os.environ, {"DROPS_YTDLP_BGUTIL_SCRIPT": script_dir}):
+                args = ytdlp_extractor_args()
+        self.assertEqual(args["youtubepot-bgutilscript"], {"server_home": script_dir})
 
 
 if __name__ == "__main__":

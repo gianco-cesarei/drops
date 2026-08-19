@@ -3,6 +3,11 @@ import shutil
 import tempfile
 import threading
 import urllib.parse
+import importlib.metadata
+import logging
+from pathlib import Path
+
+logger = logging.getLogger("drops.media")
 
 
 ALLOWED_DOMAINS = ("youtube.com", "youtu.be", "soundcloud.com", "music.youtube.com")
@@ -25,7 +30,29 @@ def ytdlp_extractor_args() -> dict:
     bot" check on the default web client; tv/ios/android clients frequently
     skip it entirely. Tried before falling back to cookies.
     """
-    return {"youtube": {"player_client": list(YTDLP_PLAYER_CLIENTS)}}
+    args: dict = {"youtube": {"player_client": list(YTDLP_PLAYER_CLIENTS)}}
+    args.update(_pot_provider_extractor_args())
+    return args
+
+
+def _pot_provider_extractor_args() -> dict:
+    """Best-effort PO token via bgutil-ytdlp-pot-provider (script mode).
+
+    Helps dodge YouTube's bot-check but never required: needs the pip plugin
+    installed AND a cloned bgutil script dir (node/deno on PATH does the rest,
+    outside our control). Either missing -> skip silently, yt-dlp proceeds
+    without a PO token exactly like it does today.
+    """
+    try:
+        importlib.metadata.distribution("bgutil-ytdlp-pot-provider")
+    except importlib.metadata.PackageNotFoundError:
+        logger.info("pot provider: bgutil-ytdlp-pot-provider non installato, PO token disabilitato")
+        return {}
+    script_home = os.environ.get("DROPS_YTDLP_BGUTIL_SCRIPT", "").strip() or str(Path.home() / "bgutil-ytdlp-pot-provider" / "server")
+    if not os.path.isdir(script_home):
+        logger.info("pot provider: script bgutil non trovato in %s, PO token disabilitato", script_home)
+        return {}
+    return {"youtubepot-bgutilscript": {"server_home": script_home}}
 
 
 def ytdlp_cookiefile() -> str | None:
@@ -47,6 +74,15 @@ def ytdlp_cookiefile() -> str | None:
     if not os.path.isfile(writable_copy):
         shutil.copyfile(path, writable_copy)
     return writable_copy
+
+
+def ytdlp_proxy() -> str | None:
+    """Optional outbound proxy for yt-dlp's YouTube attempt, from DROPS_YTDLP_PROXY.
+
+    Empty/unset means off - most deployments never set this.
+    """
+    value = os.environ.get("DROPS_YTDLP_PROXY", "").strip()
+    return value or None
 
 
 def safe_filename(name: str, ext: str) -> str:
