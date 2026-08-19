@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode, SyntheticEvent } from 'react'
 import { api, ApiError } from './api'
-import type { Job, SpotifyPlaylist, SpotifyTrack, User } from './api'
+import type { PlaylistPreview, SpotifyPlaylist, SpotifyTrack, User } from './api'
 import { postLoginRoute } from './lib/routes'
 import { contentFields, contentStages, radarDevelopmentFixtures, radarLockedFixtures } from './data/private.fixture'
 import type { RadarFixture } from './data/private.fixture'
@@ -14,15 +14,6 @@ export type PrivateSection = 'login' | 'download' | 'spotify' | 'radar' | 'brain
 const terminalStatuses = new Set(['completed', 'complete', 'ready', 'failed', 'error', 'cancelled'])
 const readyStatuses = new Set(['completed', 'complete', 'ready'])
 const failedStatuses = new Set(['failed', 'error', 'cancelled'])
-const queuedStatuses = new Set(['queued', 'pending', 'recognized', 'enriching'])
-const statusLabels: Record<string, string> = {
-  recognized: 'In coda',
-  enriching: 'Arricchimento metadati…',
-  queued: 'In coda',
-  pending: 'In coda',
-  downloading: 'Download in corso',
-  processing: 'Elaborazione…',
-}
 const browserNavigate = (to: string) => window.location.assign(to)
 
 export default function App({ section = 'login', navigate = browserNavigate }: { section?: PrivateSection; navigate?: (to: string) => void }) {
@@ -295,90 +286,309 @@ function Content() {
   return <main className="private-workspace"><header className="workspace-heading"><span className="development-badge">Content · development shell</span><h1 className="sr-only">Content</h1><p>Pipeline editoriale strutturale. Nessun CMS implementato.</p></header><section className="content-pipeline" aria-label="Pipeline contenuti">{contentStages.map((stage) => <article key={stage}><h2>{stage}</h2><p>0 development items</p></article>)}</section><section className="tool-shell"><h2>Campi previsti</h2><div className="type-list">{contentFields.map((field) => <span key={field}>{field}</span>)}</div></section></main>
 }
 
-function Download({ user, onError, error, setError }: { user: User; onError: (error: unknown) => void; error: string; setError: (value: string) => void }) {
-  const [url, setUrl] = useState('')
-  const [job, setJob] = useState<Job | null>(null)
-  const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    if (!job?.id || terminalStatuses.has(job.status)) return
-    const timer = window.setInterval(async () => {
-      try { setJob(await api.getDownload(job.id)) }
-      catch (cause) { window.clearInterval(timer); onError(cause) }
-    }, 1500)
-    return () => window.clearInterval(timer)
-  }, [job?.id, job?.status, onError])
-
-  async function submit(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError(''); setJob(null)
-    try { setJob(await api.createDownload(url)); setUrl('') }
-    catch (cause) { onError(cause) }
-    finally { setBusy(false) }
-  }
-
-  return <main className="shell"><div className="workspace">
-    <section className="card hero-card"><div><span className="eyebrow">DOWNLOAD PRIVATO</span><h1 className="sr-only">Nuovo download</h1><p className="lead">Area personale di {user.name ?? user.username ?? 'utente'}.</p></div>
-      <form onSubmit={submit} className="download-form"><label htmlFor="download-url">URL contenuto</label><div className="url-row"><input id="download-url" type="url" required placeholder="https://…" value={url} onChange={(event) => setUrl(event.target.value)} /><button className="primary" disabled={busy}>{busy ? 'Avvio…' : 'Scarica'}</button></div></form>{error && <div className="alert" role="alert">{error}</div>}
-    </section>
-    <aside className="card status-card"><span className="eyebrow">STATO JOB</span>{!job ? <div className="empty"><p>Nessun download attivo</p></div> : <TrackCard job={job} />}</aside>
-  </div></main>
+type QueueJob = {
+  key: string
+  id: string | null
+  url: string
+  status: string
+  progress: number
+  optimistic: number
+  title?: string
+  artist?: string
+  coverUrl?: string
+  source?: string
+  message?: string
 }
 
-function TrackCard({ job }: { job: Job }) {
+type HistoryItem = {
+  id: string
+  title: string
+  artist?: string
+  coverUrl?: string
+  source?: string
+  bpm?: number
+  ts: number
+}
+
+const HISTORY_KEY = 'drops.downloads.history.v1'
+
+function loadHistory(): HistoryItem[] {
+  try {
+    const raw = window.localStorage.getItem(HISTORY_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? (parsed.filter((x) => x && typeof (x as HistoryItem).id === 'string') as HistoryItem[]) : []
+  } catch {
+    return []
+  }
+}
+
+function saveHistory(items: HistoryItem[]) {
+  try {
+    window.localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, 100)))
+  } catch {
+    /* storage non disponibile: la lista resta solo in memoria */
+  }
+}
+
+const makeKey = () =>
+  (globalThis.crypto?.randomUUID?.() ?? `k${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`)
+
+function looksLikePlaylist(value: string): boolean {
+  try {
+    const u = new URL(value)
+    const host = u.hostname.toLowerCase()
+    if (host.includes('youtube.com') || host === 'youtu.be') return u.searchParams.has('list')
+    if (host.includes('soundcloud.com')) return u.pathname.includes('/sets/')
+  } catch {
+    return false
+  }
+  return false
+}
+
+function optimisticCap(status: string): number {
+  if (readyStatuses.has(status)) return 100
+  if (status === 'downloading' || status === 'enriching' || status === 'processing') return 92
+  return 40
+}
+
+function queueStatusLabel(status: string): string {
+  if (readyStatuses.has(status)) return 'Pronto'
+  if (failedStatuses.has(status)) return 'Errore'
+  const map: Record<string, string> = {
+    starting: 'Avvio…',
+    recognized: 'In coda',
+    queued: 'In coda',
+    pending: 'In coda',
+    enriching: 'Riconoscimento…',
+    downloading: 'Scarico…',
+    processing: 'Elaborazione…',
+  }
+  return map[status] ?? 'Elaborazione…'
+}
+
+function Download({ user, onError, error, setError }: { user: User; onError: (error: unknown) => void; error: string; setError: (value: string) => void }) {
+  const [input, setInput] = useState('')
+  const [queue, setQueue] = useState<QueueJob[]>([])
+  const [history, setHistory] = useState<HistoryItem[]>(() => loadHistory())
+  const [busy, setBusy] = useState(false)
+  const [preview, setPreview] = useState<{ data: PlaylistPreview; resolve: (urls: string[] | null) => void } | null>(null)
+
+  const queueRef = useRef<QueueJob[]>([])
+  queueRef.current = queue
+  void onError
+
+  useEffect(() => { saveHistory(history) }, [history])
+
+  const hasActive = queue.some((j) => !readyStatuses.has(j.status) && !failedStatuses.has(j.status))
+
+  useEffect(() => {
+    if (!hasActive) return
+    const timer = window.setInterval(() => {
+      setQueue((cur) => cur.map((j) => {
+        if (readyStatuses.has(j.status) || failedStatuses.has(j.status)) return j
+        const cap = optimisticCap(j.status)
+        if (j.optimistic >= cap) return j
+        const next = Math.min(cap, j.optimistic + Math.max(0.5, (cap - j.optimistic) * 0.07))
+        return { ...j, optimistic: next }
+      }))
+    }, 220)
+    return () => window.clearInterval(timer)
+  }, [hasActive])
+
+  useEffect(() => {
+    if (!hasActive) return
+    const timer = window.setInterval(() => {
+      const active = queueRef.current.filter((j) => j.id && !terminalStatuses.has(j.status))
+      if (!active.length) return
+      active.forEach(async (j) => {
+        try {
+          const fresh = await api.getDownload(j.id as string)
+          setQueue((cur) => cur.map((x) => {
+            if (x.key !== j.key) return x
+            const merged: QueueJob = {
+              ...x,
+              status: fresh.status,
+              progress: typeof fresh.progress === 'number' ? fresh.progress : x.progress,
+              title: fresh.title ?? x.title,
+              artist: fresh.artist ?? x.artist,
+              coverUrl: fresh.coverUrl ?? x.coverUrl,
+              source: fresh.source ?? x.source,
+              message: fresh.message ?? x.message,
+            }
+            if (readyStatuses.has(fresh.status)) merged.optimistic = 100
+            return merged
+          }))
+          if (readyStatuses.has(fresh.status)) {
+            const record: HistoryItem = { id: fresh.id, title: fresh.title ?? fresh.fileName ?? 'Traccia', artist: fresh.artist, coverUrl: fresh.coverUrl, source: fresh.source, bpm: fresh.bpm, ts: Date.now() }
+            window.setTimeout(() => {
+              setHistory((h) => [record, ...h.filter((it) => it.id !== record.id)].slice(0, 100))
+              setQueue((cur) => cur.filter((x) => x.key !== j.key))
+            }, 1000)
+          }
+        } catch (cause) {
+          setQueue((cur) => cur.map((x) => (x.key === j.key ? { ...x, status: 'failed', message: cause instanceof ApiError ? cause.message : 'Errore di rete' } : x)))
+        }
+      })
+    }, 1500)
+    return () => window.clearInterval(timer)
+  }, [hasActive])
+
+  function askPlaylistSelection(data: PlaylistPreview): Promise<string[] | null> {
+    return new Promise((resolve) => setPreview({ data, resolve }))
+  }
+
+  async function handleAdd(event: SyntheticEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError('')
+    const links = [...new Set(input.split(/\r?\n/).map((x) => x.trim()).filter(Boolean))]
+    if (!links.length) return
+    setBusy(true)
+    const resolved: string[] = []
+    const errors: string[] = []
+    for (const link of links) {
+      if (!looksLikePlaylist(link)) { resolved.push(link); continue }
+      try {
+        const data = await api.resolvePlaylist(link)
+        if (data.count > 1) {
+          const chosen = await askPlaylistSelection(data)
+          if (chosen && chosen.length) resolved.push(...chosen)
+        } else {
+          resolved.push(...data.entries.map((e) => e.url))
+        }
+      } catch (cause) {
+        errors.push(cause instanceof ApiError ? cause.message : 'Playlist non leggibile')
+      }
+    }
+    const unique = [...new Set(resolved)].slice(0, 100)
+    if (unique.length) {
+      const newJobs: QueueJob[] = unique.map((url) => ({ key: makeKey(), id: null, url, status: 'starting', progress: 0, optimistic: 8 }))
+      setQueue((cur) => [...newJobs, ...cur])
+      setInput('')
+      newJobs.forEach((jobItem) => {
+        api.createDownload(jobItem.url)
+          .then((created) => {
+            setQueue((cur) => cur.map((x) => (x.key === jobItem.key ? {
+              ...x,
+              id: created.id,
+              status: created.status || 'queued',
+              title: created.title ?? x.title,
+              artist: created.artist ?? x.artist,
+              coverUrl: created.coverUrl ?? x.coverUrl,
+              source: created.source ?? x.source,
+            } : x)))
+            if (readyStatuses.has(created.status)) {
+              const record: HistoryItem = { id: created.id, title: created.title ?? created.fileName ?? 'Traccia', artist: created.artist, coverUrl: created.coverUrl, source: created.source, bpm: created.bpm, ts: Date.now() }
+              window.setTimeout(() => {
+                setHistory((h) => [record, ...h.filter((it) => it.id !== record.id)].slice(0, 100))
+                setQueue((cur) => cur.filter((x) => x.key !== jobItem.key))
+              }, 1000)
+            }
+          })
+          .catch((cause) => setQueue((cur) => cur.map((x) => (x.key === jobItem.key ? { ...x, status: 'failed', message: cause instanceof ApiError ? cause.message : 'Avvio non riuscito' } : x))))
+      })
+    }
+    if (errors.length) setError(errors.join(' · '))
+    setBusy(false)
+  }
+
+  const linkCount = input.split(/\r?\n/).map((x) => x.trim()).filter(Boolean).length
+  const activeCount = queue.filter((j) => !readyStatuses.has(j.status) && !failedStatuses.has(j.status)).length
+  const who = user.name ?? user.username ?? 'utente'
+
+  return <main className="shell"><div className="workspace">
+    <section className="card hero-card download-hero">
+      <div><span className="eyebrow">DOWNLOAD PRIVATO</span><p className="lead">Area personale di {who}. Incolla uno o più link e aggiungili alla coda.</p></div>
+      <form onSubmit={handleAdd} className="download-form">
+        <label htmlFor="download-url">Link brano, playlist o set</label>
+        <textarea id="download-url" className="download-textarea" placeholder={'Un link per riga · YouTube o SoundCloud\nLe playlist e i set chiedono conferma delle tracce'} value={input} onChange={(event) => setInput(event.target.value)} spellCheck={false} rows={3} />
+        <div className="download-actions">
+          <span className="download-hint">{linkCount ? `${linkCount} link rilevati` : 'Un link per riga · playlist supportate'}</span>
+          <button className="primary" disabled={busy || !input.trim()}>{busy ? 'Analisi…' : 'Aggiungi alla coda'}</button>
+        </div>
+      </form>
+      {error && <div className="alert" role="alert">{error}</div>}
+      {queue.length > 0 && (
+        <div className="dl-queue">
+          <div className="dl-queue-head"><span className="eyebrow">In coda</span><span className="dl-count">{activeCount} attivi · {queue.length} in lista</span></div>
+          <div className="dl-queue-list">{queue.map((job) => <QueueRow key={job.key} job={job} />)}</div>
+        </div>
+      )}
+    </section>
+    <aside className="card status-card">
+      <div className="dl-history-head"><span className="eyebrow">Scaricati</span>{history.length > 0 && <button className="dl-clear" onClick={() => setHistory([])}>Svuota</button>}</div>
+      {history.length === 0
+        ? <div className="empty"><span>♪</span><p>Nessun download</p><small>I brani scaricati restano qui su questo browser.</small></div>
+        : <div className="dl-history">{history.map((item) => <HistoryRow key={item.id} item={item} />)}</div>}
+    </aside>
+  </div>
+  {preview && <PlaylistDialog data={preview.data} onConfirm={(urls) => { preview.resolve(urls); setPreview(null) }} onCancel={() => { preview.resolve(null); setPreview(null) }} />}
+  </main>
+}
+
+function QueueRow({ job }: { job: QueueJob }) {
   const ready = readyStatuses.has(job.status)
   const failed = failedStatuses.has(job.status)
-  const queued = queuedStatuses.has(job.status)
-  const statusLabel = ready ? 'Pronto' : failed ? 'Download fallito' : statusLabels[job.status] ?? 'Elaborazione…'
-  const progress = Math.max(0, Math.min(100, job.progress ?? (ready ? 100 : 0)))
-
-  const chips: { key: string; label: string; isBpm?: boolean }[] = []
-  if (job.label) chips.push({ key: `label-${job.label}`, label: job.label })
-  if (job.year) chips.push({ key: `year-${job.year}`, label: String(job.year) })
-  if (job.styles && job.styles.length > 0) {
-    job.styles.forEach((style, idx) => chips.push({ key: `style-${style}-${idx}`, label: style }))
-  }
-  if (job.bpm != null) chips.push({ key: `bpm-${job.bpm}`, label: `${Math.round(job.bpm)} BPM`, isBpm: true })
-
+  const pct = Math.min(100, Math.round(Math.max(job.optimistic, job.progress)))
   return (
-    <div className={`track-card ${ready ? 'ready' : failed ? 'failed' : ''}`}>
-      <div className="track-cover" aria-hidden="true">
-        {job.coverUrl ? <img src={job.coverUrl} alt="" /> : <span className="track-cover-fallback">♪</span>}
+    <div className={`dl-job ${ready ? 'ready' : failed ? 'failed' : ''}`}>
+      <div className="dl-job-cover" aria-hidden="true">{job.coverUrl ? <img src={job.coverUrl} alt="" /> : <span>♪</span>}</div>
+      <div className="dl-job-main">
+        <div className="dl-job-title">{job.title ?? job.url}</div>
+        <div className="dl-job-detail">{failed ? (job.message ?? 'Errore') : ready ? 'Completato' : queueStatusLabel(job.status)}{job.source ? ` · ${job.source}` : ''}</div>
+        {!failed && <div className="progress"><span style={{ width: `${ready ? 100 : pct}%` }} /></div>}
       </div>
-      <div className="track-info">
-        <p className="track-title">{job.title ?? job.fileName ?? `Job ${job.id}`}</p>
-        {job.artist && <p className="track-artist">{job.artist}</p>}
-        {chips.length > 0 && (
-          <div className="track-chips" aria-label="Metadati traccia">
-            {chips.map((chip) => (
-              <span key={chip.key} className={`track-chip ${chip.isBpm ? 'track-chip-bpm' : ''}`}>
-                {chip.label}
-              </span>
-            ))}
-          </div>
-        )}
-        <div className="track-status-row">
-          <span className="status-dot" />
-          <span className="track-status-label">{statusLabel}</span>
+      <div className={`dl-job-badge ${ready ? 'ok' : failed ? 'err' : ''}`}>{ready ? '✓' : failed ? '!' : `${pct}%`}</div>
+    </div>
+  )
+}
+
+function HistoryRow({ item }: { item: HistoryItem }) {
+  return (
+    <div className="dl-hist">
+      <div className="dl-job-cover" aria-hidden="true">{item.coverUrl ? <img src={item.coverUrl} alt="" /> : <span>♪</span>}</div>
+      <div className="dl-job-main">
+        <div className="dl-job-title">{item.title}</div>
+        {item.artist && <div className="dl-job-detail">{item.artist}</div>}
+        <div className="dl-hist-chips">
+          {item.bpm != null && <span className="track-chip track-chip-bpm">{Math.round(item.bpm)} BPM</span>}
+          {item.source && <span className="dl-hist-source">fonte: {item.source}</span>}
         </div>
-        {!failed && !ready && (
-          <>
-            <div className="progress">
-              <span style={{ width: `${queued ? 0 : progress}%` }} />
-            </div>
-            <small>{!queued && progress ? `${progress}%` : ''}</small>
-          </>
-        )}
-        {failed && <div className="alert" role="alert">{job.message ?? 'Il job non è stato completato. Riprova.'}</div>}
-        {ready && (
-          <a className="primary download-link download-btn-ghost" href={api.fileUrl(job.id)} download>
-            ↓ Scarica file
-          </a>
-        )}
-        {job.source && (
-          <div className="track-source">
-            <span>fonte: {job.source}</span>
-          </div>
-        )}
+      </div>
+      <a className="dl-hist-dl" href={api.fileUrl(item.id)} download title={`Scarica ${item.title}`} aria-label={`Scarica ${item.title}`}>↓</a>
+    </div>
+  )
+}
+
+function PlaylistDialog({ data, onConfirm, onCancel }: { data: PlaylistPreview; onConfirm: (urls: string[]) => void; onCancel: () => void }) {
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(data.entries.map((e) => e.url)))
+  const allOn = selected.size === data.entries.length
+  const toggle = (url: string) => setSelected((cur) => {
+    const next = new Set(cur)
+    if (next.has(url)) next.delete(url); else next.add(url)
+    return next
+  })
+  return (
+    <div className="dl-overlay" role="dialog" aria-modal="true" aria-label="Anteprima playlist">
+      <div className="dl-dialog">
+        <div className="dl-dialog-head">
+          <div><div className="dl-dialog-title">{data.title}</div><div className="dl-dialog-sub">{data.count} tracce{data.truncated ? ' (elenco troncato)' : ''} · {selected.size} selezionate</div></div>
+          <button className="secondary" onClick={onCancel}>Chiudi</button>
+        </div>
+        <div className="dl-dialog-tools">
+          <button className="secondary" onClick={() => setSelected(allOn ? new Set() : new Set(data.entries.map((e) => e.url)))}>{allOn ? 'Deseleziona tutti' : 'Seleziona tutti'}</button>
+        </div>
+        <div className="dl-dialog-list">
+          {data.entries.map((entry) => (
+            <label key={entry.url} className="dl-entry">
+              <input type="checkbox" checked={selected.has(entry.url)} onChange={() => toggle(entry.url)} />
+              <span className="dl-entry-main"><span className="dl-entry-title">{entry.title}</span>{entry.uploader ? <span className="dl-entry-sub">{entry.uploader}</span> : null}</span>
+            </label>
+          ))}
+        </div>
+        <div className="dl-dialog-actions">
+          <button className="primary" disabled={!selected.size} onClick={() => onConfirm(data.entries.filter((e) => selected.has(e.url)).map((e) => e.url))}>Aggiungi {selected.size} alla coda</button>
+        </div>
       </div>
     </div>
   )

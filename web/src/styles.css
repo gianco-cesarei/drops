@@ -404,3 +404,54 @@ footer { padding: 20px 0; color: var(--color-text-muted); font-size: 11px; text-
   .hero-card { gap: 42px; }
   .account { gap: 6px; }
 }
+
+/* ─── Download: coda + scaricati + dialog playlist ─────────────────────── */
+.download-textarea { width: 100%; min-height: 90px; padding: 13px 15px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-control); outline: none; background: var(--color-surface-subtle); color: var(--color-text); font: inherit; font-size: 15px; line-height: 1.45; resize: vertical; }
+.download-textarea:focus { border-color: var(--color-accent-strong); box-shadow: 0 0 0 3px var(--color-accent-soft); }
+.download-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.download-hint { color: var(--color-text-muted); font-size: 12px; }
+.download-actions .primary { flex: none; }
+
+.dl-queue { display: flex; flex-direction: column; gap: 10px; }
+.dl-queue-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.dl-queue-head .eyebrow { margin: 0; }
+.dl-count { color: var(--color-text-muted); font-size: 12px; font-family: var(--font-mono); }
+.dl-queue-list { display: flex; flex-direction: column; gap: 8px; }
+
+.dl-job { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 11px; background: var(--color-surface); }
+.dl-job.ready { border-color: rgba(34,197,94,.45); background: linear-gradient(0deg, var(--color-accent-soft), var(--color-surface) 60%); }
+.dl-job.failed { border-color: #f1b7b2; background: var(--color-danger-soft); }
+.dl-job-cover { flex: none; display: grid; place-items: center; width: 44px; height: 44px; overflow: hidden; border-radius: 9px; background: var(--color-surface-subtle); border: 1px solid var(--color-border); color: var(--color-accent-strong); font-size: 18px; }
+.dl-job-cover img { width: 100%; height: 100%; object-fit: cover; }
+.dl-job-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.dl-job-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 700; color: var(--color-text); }
+.dl-job-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--color-text-muted); font-weight: 600; }
+.dl-job-badge { flex: none; min-width: 42px; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--color-text-muted); }
+.dl-job-badge.ok { color: var(--color-accent-strong); font-size: 15px; }
+.dl-job-badge.err { color: var(--color-danger); font-size: 15px; }
+
+.dl-history-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+.dl-history-head .eyebrow { margin: 0; }
+.dl-clear { border: 0; background: none; padding: 0; color: var(--color-text-muted); font-size: 12px; font-weight: 700; cursor: pointer; }
+.dl-clear:hover { color: var(--color-danger); }
+.dl-history { display: flex; flex-direction: column; gap: 7px; max-height: 520px; overflow: auto; padding-right: 2px; }
+.dl-hist { display: flex; align-items: center; gap: 11px; padding: 8px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); }
+.dl-hist-dl { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; border: 1.5px solid var(--color-accent); color: var(--color-accent-strong); text-decoration: none; font-size: 15px; font-weight: 800; }
+.dl-hist-dl:hover { background: var(--color-accent-soft); }
+
+.dl-overlay { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(16,20,17,.55); backdrop-filter: blur(4px); }
+.dl-dialog { width: min(680px, 100%); max-height: 84vh; display: flex; flex-direction: column; gap: 14px; padding: 22px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); box-shadow: 0 24px 80px rgba(0,0,0,.28); }
+.dl-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.dl-dialog-title { font-size: 18px; font-weight: 900; color: var(--color-text); overflow-wrap: anywhere; }
+.dl-dialog-sub { margin-top: 5px; color: var(--color-text-muted); font-size: 12.5px; }
+.dl-dialog-tools { display: flex; gap: 8px; }
+.dl-dialog-list { flex: 1; min-height: 120px; overflow: auto; border: 1px solid var(--color-border); border-radius: 11px; background: var(--color-surface-subtle); }
+.dl-entry { display: flex; align-items: center; gap: 11px; padding: 11px 13px; border-bottom: 1px solid var(--color-border); cursor: pointer; }
+.dl-entry:last-child { border-bottom: 0; }
+.dl-entry input { width: 17px; height: 17px; flex: none; }
+.dl-entry-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dl-entry-title { font-size: 13.5px; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-entry-sub { font-size: 11px; color: var(--color-text-muted); }
+.dl-dialog-actions { display: flex; justify-content: flex-end; }
+.dl-hist-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 2px; }
+.dl-hist-source { font-family: var(--font-mono); font-size: 10.5px; color: var(--color-text-muted); opacity: .8; letter-spacing: .02em; }

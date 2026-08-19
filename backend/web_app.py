@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 from bpm_analyzer import analyze_bpm
 from download_engine import AUDIO_QUALITY, download_multi_source
-from media_core import is_supported_url, resolve_track, safe_filename, ytdlp_cookiefile, ytdlp_proxy
+from media_core import is_supported_url, resolve_track, safe_filename, ytdlp_cookiefile, ytdlp_extractor_args, ytdlp_proxy
 from spotify_agent import SpotifyAgentError, WebSpotifyClient
 from discogs_agent import DiscogsClient
 from bpm_jobs import BpmJobManager
@@ -41,6 +41,10 @@ class WebDownloadRequest(BaseModel):
     quality: str = "320"
 
 
+class PlaylistResolveRequest(BaseModel):
+    url: str
+
+
 class DiscogsEnrichRequest(BaseModel):
     artist: str
     title: str
@@ -55,6 +59,18 @@ class BpmComputeRequest(BaseModel):
     title: str
     isrc: str | None = None
     source_url: str | None = None
+
+
+def _playlist_entry_url(entry: dict, original_url: str) -> str | None:
+    for key in ("webpage_url", "original_url", "url"):
+        value = entry.get(key)
+        if isinstance(value, str) and is_supported_url(value):
+            return value
+    extractor = str(entry.get("extractor_key") or entry.get("ie_key") or "").lower()
+    video_id = entry.get("id")
+    if video_id and "youtube" in extractor:
+        return f"https://www.youtube.com/watch?v={video_id}"
+    return original_url if is_supported_url(original_url) else None
 
 
 def create_app(settings: WebSettings | None = None) -> FastAPI:
@@ -386,6 +402,59 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
             raise HTTPException(status_code=429, detail="Download queue full")
         app.state.executor.submit(process_job, job_id, request.url, request.quality)
         return public_job(store.get_job(job_id, owner))
+
+    @app.post("/api/v1/playlists/resolve")
+    def resolve_playlist(
+        request: PlaylistResolveRequest,
+        owner: str = Depends(current_owner),
+        _: None = Depends(require_csrf_origin),
+    ):
+        if not is_supported_url(request.url):
+            raise HTTPException(status_code=400, detail="Unsupported URL")
+        options = {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "extract_flat": "in_playlist",
+            "playlistend": settings.max_queued + 1,
+            "extractor_args": ytdlp_extractor_args(),
+        }
+        cookiefile = ytdlp_cookiefile()
+        if cookiefile:
+            options["cookiefile"] = cookiefile
+        proxy = ytdlp_proxy()
+        if proxy:
+            options["proxy"] = proxy
+        try:
+            with yt_dlp.YoutubeDL(options) as ydl:
+                info = ydl.extract_info(request.url, download=False)
+        except Exception as exc:
+            logger.warning("playlist resolve fallita error=%r", str(exc)[:200])
+            raise HTTPException(status_code=400, detail="Playlist non leggibile. Controlla link, privacy e disponibilita.") from exc
+        raw_entries = list((info or {}).get("entries") or [])
+        if not raw_entries:
+            raw_entries = [info or {}]
+        entries = []
+        for entry in raw_entries[: settings.max_queued]:
+            if not entry:
+                continue
+            entry_url = _playlist_entry_url(entry, request.url)
+            if not entry_url:
+                continue
+            entries.append({
+                "url": entry_url,
+                "title": entry.get("title") or "Senza titolo",
+                "uploader": entry.get("uploader") or entry.get("channel") or "",
+                "duration": entry.get("duration"),
+            })
+        if not entries:
+            raise HTTPException(status_code=400, detail="Nessun elemento scaricabile trovato")
+        return {
+            "title": (info or {}).get("title") or entries[0]["title"],
+            "entries": entries,
+            "count": len(entries),
+            "truncated": len(raw_entries) > settings.max_queued,
+        }
 
     @app.get("/api/v1/downloads/{job_id}")
     def get_download(job_id: str, owner: str = Depends(current_owner)):

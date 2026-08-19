@@ -41,6 +41,8 @@ export type SpotifyTrack = {
 }
 
 export type SpotifyPlaylist = { id: string; name: string; tracks_total: number }
+export type PlaylistEntry = { url: string; title: string; uploader?: string; duration?: number | null }
+export type PlaylistPreview = { title: string; entries: PlaylistEntry[]; count: number; truncated: boolean }
 export type DiscogsEnrichment = { label: string | null; year?: number | null; country?: string | null; styles?: string[]; artists?: string[]; catalog_no?: string | null; discogs_url?: string | null }
 
 export class ApiError extends Error {
@@ -138,6 +140,8 @@ export const api = {
     request<unknown>('/api/v1/downloads', { method: 'POST', body: JSON.stringify({ url }) }).then(normalizeJob),
   getDownload: (id: string) => request<unknown>(`/api/v1/downloads/${encodeURIComponent(id)}`).then(normalizeJob),
   fileUrl: (id: string) => `${apiUrl()}/api/v1/downloads/${encodeURIComponent(id)}/file`,
+  resolvePlaylist: (url: string) =>
+    request<PlaylistPreview>('/api/v1/playlists/resolve', { method: 'POST', body: JSON.stringify({ url }) }),
   spotifyConnectUrl: () => `${apiUrl()}/api/v1/spotify/connect`,
   spotifyStatus: () => request<{ connected: boolean; display_name: string | null }>('/api/v1/spotify/status'),
   spotifyLiked: (limit = 100, offset = 0) => request<{ total: number; tracks: SpotifyTrack[] }>(`/api/v1/spotify/liked?limit=${limit}&offset=${offset}`),
