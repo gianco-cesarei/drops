@@ -1,8 +1,10 @@
+import json
 import os
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import media_core
 from media_core import YTDLP_PLAYER_CLIENTS, ytdlp_cookiefile, ytdlp_extractor_args, ytdlp_proxy
@@ -79,6 +81,109 @@ class PotProviderExtractorArgsTest(unittest.TestCase):
             with patch.dict(os.environ, {"DROPS_YTDLP_BGUTIL_SCRIPT": script_dir}):
                 args = ytdlp_extractor_args()
         self.assertEqual(args["youtubepot-bgutilscript"], {"server_home": script_dir})
+
+
+class ParseArtistTitleTest(unittest.TestCase):
+    def test_splits_on_hyphen(self):
+        self.assertEqual(media_core.parse_artist_title("Four Tet - Baby"), ("Four Tet", "Baby"))
+
+    def test_splits_on_en_dash(self):
+        self.assertEqual(media_core.parse_artist_title("Bicep – Glue"), ("Bicep", "Glue"))
+
+    def test_strips_official_video_noise(self):
+        self.assertEqual(
+            media_core.parse_artist_title("Overmono - So U Kno (Official Video)"),
+            ("Overmono", "So U Kno"),
+        )
+
+    def test_strips_original_mix_and_label_bracket(self):
+        self.assertEqual(
+            media_core.parse_artist_title("Job Jobse - Wavez (Original Mix) [Klasse Wrecks]"),
+            ("Job Jobse", "Wavez"),
+        )
+
+    def test_strips_free_download_and_premiere(self):
+        self.assertEqual(
+            media_core.parse_artist_title("Artist - Track [Free Download] PREMIERE"),
+            ("Artist", "Track"),
+        )
+
+    def test_falls_back_to_uploader_when_no_separator(self):
+        self.assertEqual(
+            media_core.parse_artist_title("Just A Title", fallback_artist="Some Channel"),
+            ("Some Channel", "Just A Title"),
+        )
+
+    def test_falls_back_to_none_artist_when_no_separator_and_no_uploader(self):
+        self.assertEqual(media_core.parse_artist_title("Just A Title"), (None, "Just A Title"))
+
+
+class ResolveTrackTest(unittest.TestCase):
+    def test_youtube_uses_oembed(self):
+        payload = json.dumps({
+            "title": "Overmono - So U Kno (Official Video)",
+            "author_name": "Overmono",
+            "thumbnail_url": "https://i.ytimg.com/vi/abc/hqdefault.jpg",
+        }).encode()
+        response = MagicMock()
+        response.read.return_value = payload
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+        with patch("media_core.urllib.request.urlopen", return_value=response) as urlopen:
+            result = media_core.resolve_track("https://youtu.be/abc123")
+        self.assertEqual(result["title"], "So U Kno")
+        self.assertEqual(result["artist"], "Overmono")
+        self.assertEqual(result["cover_url"], "https://i.ytimg.com/vi/abc/hqdefault.jpg")
+        self.assertEqual(result["raw_title"], "Overmono - So U Kno (Official Video)")
+        self.assertIsNone(result["duration"])
+        self.assertIn("youtube.com/oembed", urlopen.call_args.args[0].full_url)
+
+    def test_soundcloud_uses_soundcloud_oembed(self):
+        payload = json.dumps({
+            "title": "Artist - Track",
+            "author_name": "Artist",
+            "thumbnail_url": "https://i1.sndcdn.com/x.jpg",
+        }).encode()
+        response = MagicMock()
+        response.read.return_value = payload
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+        with patch("media_core.urllib.request.urlopen", return_value=response) as urlopen:
+            result = media_core.resolve_track("https://soundcloud.com/artist/track")
+        self.assertEqual(result["title"], "Track")
+        self.assertIn("soundcloud.com/oembed", urlopen.call_args.args[0].full_url)
+
+    def test_falls_back_to_ytdlp_when_oembed_fails(self):
+        with patch("media_core.urllib.request.urlopen", side_effect=urllib.error.URLError("no network")), \
+             patch("media_core.yt_dlp.YoutubeDL") as fake_ydl_class:
+            fake_ydl = MagicMock()
+            fake_ydl.__enter__.return_value = fake_ydl
+            fake_ydl.__exit__.return_value = False
+            fake_ydl.extract_info.return_value = {
+                "title": "Artist - Track (Original Mix)",
+                "uploader": "Artist",
+                "thumbnail": "https://example.com/cover.jpg",
+                "duration": 245,
+            }
+            fake_ydl_class.return_value = fake_ydl
+            result = media_core.resolve_track("https://youtu.be/private123")
+        self.assertEqual(result["title"], "Track")
+        self.assertEqual(result["artist"], "Artist")
+        self.assertEqual(result["duration"], 245)
+        fake_ydl_class.assert_called_once()
+        options = fake_ydl_class.call_args.args[0]
+        self.assertTrue(options["skip_download"])
+        fake_ydl.extract_info.assert_called_once_with("https://youtu.be/private123", download=False)
+
+    def test_never_raises_when_everything_fails(self):
+        with patch("media_core.urllib.request.urlopen", side_effect=urllib.error.URLError("no network")), \
+             patch("media_core.yt_dlp.YoutubeDL", side_effect=RuntimeError("boom")):
+            result = media_core.resolve_track("https://youtu.be/gone")
+        self.assertIsNone(result["title"])
+        self.assertIsNone(result["artist"])
+        self.assertIsNone(result["raw_title"])
+        self.assertIsNone(result["cover_url"])
+        self.assertIsNone(result["duration"])
 
 
 if __name__ == "__main__":

@@ -1,11 +1,17 @@
+import json
 import os
+import re
 import shutil
 import tempfile
 import threading
+import urllib.error
 import urllib.parse
+import urllib.request
 import importlib.metadata
 import logging
 from pathlib import Path
+
+import yt_dlp
 
 logger = logging.getLogger("drops.media")
 
@@ -99,3 +105,103 @@ def is_supported_url(value: str) -> bool:
         return False
     host = parsed.hostname.lower().rstrip(".")
     return any(host == domain or host.endswith(f".{domain}") for domain in ALLOWED_DOMAINS)
+
+
+_NOISE_BRACKET_TOKENS = (
+    "official", "free download", "premiere", "label", "records", "out now",
+    "video oficial", "audio oficial", "hq", "hd", "4k", "lyric video", "original mix",
+)
+_NOISE_STANDALONE = ("free download", "premiere")
+_BRACKET_RE = re.compile(r"[\(\[][^\(\)\[\]]*[\)\]]")
+_SPLIT_RE = re.compile(r"\s[-–—]\s")
+
+
+def _strip_noise(raw: str) -> str:
+    def _drop_if_noise(match: "re.Match[str]") -> str:
+        full = match.group(0)
+        # Square-bracket groups are, by convention on YouTube music uploads,
+        # metadata tags (record label, availability, quality) rather than
+        # part of the actual title - always drop them. Parenthesised groups
+        # are kept unless they match a known noise token (e.g. "Original Mix"
+        # is boilerplate; a remixer's name in parens is meaningful and stays).
+        if full.startswith("["):
+            return ""
+        inner = full[1:-1].strip().lower()
+        if any(token in inner for token in _NOISE_BRACKET_TOKENS):
+            return ""
+        return full
+
+    cleaned = _BRACKET_RE.sub(_drop_if_noise, raw)
+    for token in _NOISE_STANDALONE:
+        cleaned = re.sub(re.escape(token), "", cleaned, flags=re.IGNORECASE)
+    return re.sub(r"\s{2,}", " ", cleaned).strip(" -–—")
+
+
+def parse_artist_title(raw_title: str, fallback_artist: str | None = None) -> tuple[str | None, str]:
+    """Best-effort "Artist - Title" split, with noise like (Official Video) stripped first."""
+    cleaned = _strip_noise(raw_title)
+    parts = _SPLIT_RE.split(cleaned, maxsplit=1)
+    if len(parts) == 2 and parts[0].strip() and parts[1].strip():
+        return parts[0].strip(), parts[1].strip()
+    artist = fallback_artist.strip() if fallback_artist and fallback_artist.strip() else None
+    return artist, cleaned.strip()
+
+
+def _oembed(endpoint: str, url: str) -> dict | None:
+    query = urllib.parse.urlencode({"url": url, "format": "json"})
+    request = urllib.request.Request(f"{endpoint}?{query}", headers={"User-Agent": "Drops/1.0"})
+    try:
+        with urllib.request.urlopen(request, timeout=8) as response:
+            return json.loads(response.read())
+    except (urllib.error.URLError, ValueError) as exc:
+        logger.info("resolve_track oembed fallita endpoint=%s error=%s", endpoint, exc)
+        return None
+
+
+def _resolve_via_ytdlp(url: str) -> dict:
+    """Metadata-only fallback when oEmbed can't answer (private/unlisted/oembed-less sources).
+
+    skip_download=True never resolves a playable stream format, so this never
+    reaches the parts of yt-dlp that trigger YouTube's bot-check on a cold IP.
+    """
+    options = {
+        "skip_download": True, "quiet": True, "no_warnings": True, "noplaylist": True,
+        "socket_timeout": 15, "extractor_args": ytdlp_extractor_args(),
+    }
+    cookies = ytdlp_cookiefile()
+    if cookies:
+        options["cookiefile"] = cookies
+    try:
+        with YTDLP_LOCK, yt_dlp.YoutubeDL(options) as ydl:
+            info = ydl.extract_info(url, download=False)
+    except Exception as exc:
+        logger.info("resolve_track ytdlp fallback fallito url_host=%s error=%r", urllib.parse.urlsplit(url).hostname, str(exc)[:200])
+        return {"title": None, "artist": None, "raw_title": None, "cover_url": None, "duration": None}
+    raw_title = str(info.get("title")) if info.get("title") else None
+    if raw_title:
+        artist, title = parse_artist_title(raw_title, info.get("uploader"))
+    else:
+        artist, title = info.get("uploader"), None
+    return {"title": title, "artist": artist, "raw_title": raw_title, "cover_url": info.get("thumbnail"), "duration": info.get("duration")}
+
+
+def resolve_track(url: str) -> dict:
+    """Fast, metadata-only track recognition - never downloads audio, never touches the bot wall.
+
+    Order: oEmbed (no auth, no bot-check) for YouTube/SoundCloud, then a
+    yt-dlp skip_download fallback. Always returns a dict, never raises -
+    recognition failures degrade to an unknown-track job instead of blocking
+    the "card appears instantly" flow.
+    """
+    host = (urllib.parse.urlsplit(url).hostname or "").lower()
+    endpoint = None
+    if host == "soundcloud.com" or host.endswith(".soundcloud.com"):
+        endpoint = "https://soundcloud.com/oembed"
+    elif host in {"youtube.com", "youtu.be", "music.youtube.com"} or host.endswith((".youtube.com", ".youtu.be")):
+        endpoint = "https://www.youtube.com/oembed"
+    oembed = _oembed(endpoint, url) if endpoint else None
+    if oembed and oembed.get("title"):
+        raw_title = str(oembed["title"])
+        artist, title = parse_artist_title(raw_title, oembed.get("author_name"))
+        return {"title": title, "artist": artist, "raw_title": raw_title, "cover_url": oembed.get("thumbnail_url"), "duration": None}
+    return _resolve_via_ytdlp(url)
