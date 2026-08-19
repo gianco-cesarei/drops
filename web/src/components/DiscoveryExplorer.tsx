@@ -482,21 +482,20 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
 
   // Initialize Leaflet real geographic map on mount
   useEffect(() => {
-    const el = document.getElementById('europe-leaflet-map')
-    if (!el || typeof window === 'undefined') return
+    if (!mapElement || typeof window === 'undefined') return
 
     let leafletMap: any = null
 
     import('leaflet').then((LModule) => {
       const L = LModule.default || LModule
       // @ts-expect-error internal check
-      if (el._leaflet_id) {
+      if (mapElement._leaflet_id) {
         // @ts-expect-error internal cleanup
-        el._leaflet_id = null
+        mapElement._leaflet_id = null
       }
 
       // Center on Central Europe (Milan/Zurich/Munich latitude) with maxBounds on Europe
-      leafletMap = L.map(el, {
+      leafletMap = L.map(mapElement, {
         center: [52.0, 10.0],
         zoom: 4.0,
         minZoom: 3.0,
@@ -555,7 +554,7 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
         leafletMap.remove()
       }
     }
-  }, [allCities])
+  }, [mapElement, allCities])
 
   return (
     <div className="environment-layout">
