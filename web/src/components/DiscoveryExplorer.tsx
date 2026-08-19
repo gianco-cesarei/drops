@@ -508,11 +508,11 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
         maxBoundsViscosity: 0.9,
       })
 
-      // Standard Google Maps Tile Layer with Terrain/Road styling (matches the user's reference image exactly)
-      L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      // CartoDB Positron Light Monochrome basemap for a super clean and minimalist look
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         maxZoom: 20,
-        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-        attribution: '&copy; Google Maps'
+        subdomains: 'abcd',
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
       }).addTo(leafletMap)
 
       // Add City Markers directly onto the map
