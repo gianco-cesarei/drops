@@ -3,13 +3,13 @@ import { DiscoveryType, PartyKind, RelationType, discoveryDatasetSchema } from '
 // CONTENUTO REALE pubblicato su Drops (non fixture di sviluppo)
 export const publishedContentItems = discoveryDatasetSchema.parse([
   // ==========================================
-  // SEZIONE A: ARTISTI EMERGENTI & RADAR SIGNALS
+  // SEZIONE A: ARTISTI & RADAR SIGNALS
   // ==========================================
   {
     id: 'radar-xexa-kissom',
     slug: 'xexa-kissom',
-    type: DiscoveryType.Release,
-    kicker: 'Artista Emergente',
+    type: DiscoveryType.Artist,
+    kicker: 'Radar',
     title: 'XEXA — Kissom: violoncello, intimità pop e kizomba decostruita',
     coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=80',
     summary:
@@ -17,7 +17,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     publishedAt: '2026-08-18T14:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Lisbona, Portogallo', countryCode: 'PT', latitude: 38.7223, longitude: -9.1393 },
     mapEligible: true,
-    tags: ['artista emergente', 'lisbona', 'principe', 'kizomba', 'ambient', 'violoncello', 'leftfield-pop'],
+    tags: ['radar', 'artista emergente', 'lisbona', 'principe', 'kizomba', 'ambient', 'violoncello', 'leftfield-pop'],
     sources: [
       { url: 'https://principediscos.bandcamp.com/album/kissom', label: 'Bandcamp (Acquisto & Vinile)', kind: 'original' },
       { url: 'https://open.spotify.com/album/xexa-kissom', label: 'Spotify', kind: 'listen' },
@@ -56,7 +56,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     id: 'radar-timedance-td10',
     slug: 'timedance-td10',
     type: DiscoveryType.Release,
-    kicker: 'Release',
+    kicker: 'Radar',
     title: 'TD10: dieci anni di futurismo club per la Timedance di Bristol',
     coverUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80',
     summary:
@@ -64,7 +64,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     publishedAt: '2026-08-17T16:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Bristol, Regno Unito', countryCode: 'GB', latitude: 51.4545, longitude: -2.5879 },
     mapEligible: true,
-    tags: ['release', 'bristol', 'timedance', 'batu', 'techno', 'bass', 'soundsystem', 'compilation'],
+    tags: ['radar', 'release', 'bristol', 'timedance', 'batu', 'techno', 'bass', 'soundsystem', 'compilation'],
     sources: [
       { url: 'https://timedance.bandcamp.com/album/td10', label: 'Bandcamp (TD10 Compilation & Vinile)', kind: 'original' },
       { url: 'https://open.spotify.com/album/timedance-td10', label: 'Spotify', kind: 'listen' },
@@ -73,7 +73,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
       { url: 'https://www.discogs.com/label/827660-Timedance', label: 'Discogs (Catalogo Timedance)', kind: 'reference' },
     ],
     relations: [
-      { id: 'label-xl-recordings', type: RelationType.Label, label: 'XL Recordings & UK Bass Heritage', reason: 'Radici e collegamenti sonori con il Bristol Sound' },
+      { id: 'festival-dekmantel-amsterdam-2026', type: RelationType.Party, label: 'Dekmantel Connection', reason: 'Batu e Timedance costantemente ospitati sui palchi UFO' },
     ],
     body: [
       {
@@ -98,7 +98,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     id: 'radar-oroko-radio-hiatus',
     slug: 'oroko-radio-pausa-infrastrutture-indipendenti',
     type: DiscoveryType.Story,
-    kicker: 'Notizia',
+    kicker: 'Radar',
     title: 'Oroko Radio entra in pausa: la fragilità delle web-radio comunitarie',
     coverUrl: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&w=1200&q=80',
     summary:
@@ -106,14 +106,14 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     publishedAt: '2026-08-16T12:00:00.000Z',
     primaryLocation: { kind: 'geographic', name: 'Accra, Ghana', countryCode: 'GH', latitude: 5.6037, longitude: -0.1870 },
     mapEligible: true,
-    tags: ['notizia', 'accra', 'community-radio', 'archivio', 'sostenibilità', 'infrastrutture'],
+    tags: ['radar', 'notizia', 'accra', 'community-radio', 'archivio', 'sostenibilità', 'infrastrutture'],
     sources: [
       { url: 'https://oroko.live/news/hiatus', label: 'Oroko Radio (Comunicato Ufficiale)', kind: 'original' },
       { url: 'https://oroko.live/archive', label: 'Oroko Live Archive (Ascolto trasmissioni)', kind: 'listen' },
       { url: 'https://www.instagram.com/orokoradio/', label: 'Instagram Oroko Radio', kind: 'official' },
     ],
     relations: [
-      { id: 'radar-ctm-festival-2026', type: RelationType.Story, label: 'CTM Festival & Oroko', reason: 'Collaborazione translocale tra festival berlinese e radio di Accra' },
+      { id: 'radar-ctm-festival-2026', type: RelationType.Party, label: 'CTM Festival & Oroko', reason: 'Collaborazione translocale tra festival berlinese e radio di Accra' },
     ],
     body: [
       {
@@ -135,186 +135,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
   },
 
   // ==========================================
-  // SEZIONE B: FOCUS SU ETICHETTE DISCOGRAFICHE
-  // ==========================================
-  {
-    id: 'label-defected-records',
-    slug: 'defected-records-house-music-heritage',
-    type: DiscoveryType.Label,
-    kicker: 'Etichetta',
-    title: 'Defected Records: anatomia di un impero della House Music globale',
-    coverUrl: 'https://images.unsplash.com/photo-1545128485-c400e7702796?auto=format&fit=crop&w=1200&q=80',
-    summary:
-      "Fondata nel 1999 da Simon Dunmore e oggi guidata da Wez Saunders, Defected ha trasformato la vocal e club house in un ecosistema globale tra residenze a Ibiza, radio show storici e sublabel di culto come DFTD e Glitterbox.",
-    publishedAt: '2026-08-19T11:00:00.000Z',
-    primaryLocation: { kind: 'geographic', name: 'Londra, Regno Unito', countryCode: 'GB', latitude: 51.5074, longitude: -0.1278 },
-    mapEligible: true,
-    tags: ['etichetta', 'defected', 'house-music', 'glitterbox', 'dftd', 'ibiza', 'london', 'club-culture'],
-    sources: [
-      { url: 'https://defected.com', label: 'Sito Ufficiale Defected', kind: 'official' },
-      { url: 'https://defected.bandcamp.com', label: 'Defected Bandcamp Store', kind: 'original' },
-      { url: 'https://open.spotify.com/user/defectedrecords', label: 'Spotify Curated Profile', kind: 'listen' },
-      { url: 'https://www.discogs.com/label/744-Defected', label: 'Discogs (Catalogo Defected)', kind: 'reference' },
-      { url: 'https://soundcloud.com/defectedrecords', label: 'SoundCloud Radio Stream', kind: 'listen' },
-    ],
-    relations: [
-      { id: 'guide-bordero-siae-spa-dj', type: RelationType.Story, label: 'Diritti d’Autore nei Club', reason: 'Gestione royalty per le hit mondiali nei DJ set estivi' },
-      { id: 'guide-beatport-spiegato', type: RelationType.Story, label: 'Beatport Chart Dynamics', reason: 'Strategia di vertice nelle classifiche House e Tech House' },
-    ],
-    body: [
-      {
-        html: `<p class="lead">Fondata a Londra nel 1999 dal visionario <b>Simon Dunmore</b> e oggi proiettata nel futuro sotto la guida del CEO <b>Wez Saunders</b>, <b>Defected Records</b> rappresenta il pilastro assoluto e la memoria vivente della <i>House Music</i> su scala planetaria.</p>`,
-      },
-      {
-        heading: "Dalle origini a Soho alla conquista di Ibiza",
-        html: `<p>Nata in un piccolo ufficio nel cuore di Soho con l'intento di preservare l'anima soul, gospel e vocal della house americana trapiantandola nei club britannici, Defected ha debuttato con la storica hit <i>I Can't Get No Sleep</i> di Masters At Work feat. India. Da allora, l'etichetta ha costruito un ponte ininterrotto con l'isola di Ibiza, trasformando le proprie residency — dall'El Divino e Pacha fino al leggendario appuntamento settimanale all'Eden di San Antonio e all'Ushuaïa — in un rituale di massa per clubber di ogni generazione.</p>`,
-      },
-      {
-        heading: "L'arcipelago delle sublabel: Glitterbox, DFTD e The Remedy Project",
-        html: `<p>La forza di Defected risiede nella sua capacità di segmentare l'esperienza del dancefloor attraverso divisioni specializzate:</p><ul><li><b>Glitterbox:</b> l'esaltazione della disco-house, del funk anni '70 e '80 e della cultura queer originaria di New York e Chicago, con feste inclusive ed estetiche teatrali sfavillanti.</li><li><b>DFTD:</b> lo sbocco dedicato alla club-techno e alla minimal tech-house più cruda e sotterranea, pensata per i club più scuri e intimi.</li><li><b>The Remedy Project & Stay True Sounds:</b> imprint curati da figure come Melé e Kid Fonque per esplorare tribal rhythms, afro-house e deep house sudafricana.</li><li><b>D-Vine Sounds & Big Love:</b> boutique label fondate da Sam Divine e Seamus Haji per mantenere vivo il groove puro.</li></ul>`,
-      },
-      {
-        heading: "Infrastruttura digitale e collezionismo",
-        html: `<p>Defected non è solo un catalogo di oltre 1.000 release: è una media company autonoma con un radio show settimanale syndication trasmesso in oltre 60 paesi, festival proprietari in Croazia, Malta e Londra, e una divisione vinili che continua a stampare edizioni limitate e cofanetti da collezione rimasterizzati con la massima cura audiofila.</p>`,
-      },
-    ],
-  },
-
-  {
-    id: 'label-innervisions-berlin',
-    slug: 'innervisions-berlino-dixon-ame',
-    type: DiscoveryType.Label,
-    kicker: 'Etichetta',
-    title: 'Innervisions: l’estetica melodica e il rigore concettuale di Dixon & Âme',
-    coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
-    summary:
-      "Fondata a Berlino nel 2005 da Steffen Berkhahn (Dixon) e Kristian Beyer & Frank Wiedemann (Âme), Innervisions ha ridefinito la house epica, ipnotica e drammatica, unendo release centellinate e l'esperienza immersiva di Lost In A Moment.",
-    publishedAt: '2026-08-19T10:30:00.000Z',
-    primaryLocation: { kind: 'geographic', name: 'Berlino, Germania', countryCode: 'DE', latitude: 52.5200, longitude: 13.4050 },
-    mapEligible: true,
-    tags: ['etichetta', 'innervisions', 'dixon', 'ame', 'melodic-house', 'berlino', 'lost-in-a-moment', 'secret-weapons'],
-    sources: [
-      { url: 'https://www.innervisions.com', label: 'Innervisions Official Hub', kind: 'official' },
-      { url: 'https://innervisions.bandcamp.com', label: 'Innervisions Bandcamp Store', kind: 'original' },
-      { url: 'https://open.spotify.com/user/innervisionsofficial', label: 'Spotify Innervisions', kind: 'listen' },
-      { url: 'https://www.discogs.com/label/42791-Innervisions', label: 'Discogs (Catalogo Completo)', kind: 'reference' },
-      { url: 'https://ra.co/labels/834', label: 'Resident Advisor Label Profile', kind: 'reference' },
-    ],
-    relations: [
-      { id: 'festival-dekmantel-amsterdam-2026', type: RelationType.Party, label: 'Dekmantel Connection', reason: 'Presenza cardine nei Main Stage e UFO stage' },
-      { id: 'radar-ctm-festival-2026', type: RelationType.Party, label: 'Ecosistema Elettronico Berlinese', reason: 'Radici e sviluppo nel contesto d’avanguardia tedesco' },
-    ],
-    body: [
-      {
-        html: `<p class="lead">Nata nel 2005 a Berlino dalla visione congiunta di <b>Dixon (Steffen Berkhahn)</b> e del duo <b>Âme (Kristian Beyer & Frank Wiedemann)</b>, <b>Innervisions</b> ha riscritto le coordinate della musica elettronica contemporanea, forgiando un suono emozionale, drammaturgico e senza compromessi.</p>`,
-      },
-      {
-        heading: "La genesi sonora: oltre la minimal berlinese",
-        html: `<p>All'apice del dominio del minimalismo sonoro a Berlino, Innervisions ha osato reintrodurre tensione armonica, melodie stratificate, vocal eterei e costruzioni sinfoniche. Tracce manifesto come <i>Rej</i> di Âme, <i>En Route</i> di Marcus Worgull e gli indimenticabili remix di Dixon hanno dimostrato che il dancefloor può essere un luogo di profonda catarsi emotiva ed eleganza senza tempo.</p>`,
-      },
-      {
-        heading: "La saga 'Secret Weapons' e la severità curatoriale",
-        html: `<p>L'approccio dell'etichetta è leggendario per la sua estrema selettività: poche release all'anno, testate per mesi in segreto durante i tour mondiali dei fondatori prima di vedere la luce. La celebre serie di compilation <i>Secret Weapons</i> è diventata il trampolino di lancio per talenti come Henrik Schwarz, Agoria, Âme, Denis Horvat, Trikk e Jimi Jules, definendo anno dopo anno gli standard timbrici del DJing internazionale.</p>`,
-      },
-      {
-        heading: "Lost In A Moment: la decostruzione del club tradizionale",
-        html: `<p>Con il format itinerante <b>Lost In A Moment</b>, Innervisions ha abbandonato le pareti buie dei club convenzionali per creare esperienze diurne in siti carichi di valore storico, paesaggistico e architettonico: da isole deserte in Croazia a castelli medievali e fortezze costiere, eliminando qualsiasi divisione VIP e ripristinando l'ascolto collettivo all'aria aperta.</p>`,
-      },
-      {
-        heading: "Muting The Noise e la cultura della manifattura",
-        html: `<p>Attraverso la propria casa di distribuzione e negozio <i>Muting The Noise</i>, Innervisions ha sempre trattato il vinile non come semplice supporto, ma come oggetto d'arte: copertine serigrafate, packaging tattili e una dedizione meticolosa alla masterizzazione analogica che ne fanno uno dei cataloghi più ricercati dai collezionisti.</p>`,
-      },
-    ],
-  },
-
-  {
-    id: 'label-xl-recordings',
-    slug: 'xl-recordings-da-rave-a-potenza-indipendente',
-    type: DiscoveryType.Label,
-    kicker: 'Etichetta',
-    title: 'XL Recordings: dall’hardcore rave britannico alla rivoluzione discografica indipendente',
-    coverUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=1200&q=80',
-    summary:
-      "Nata nel 1989 come spin-off dance di Beggars Banquet da Tim Palmer, Nick Halkes e Richard Russell, XL Recordings ha tracciato la traiettoria più straordinaria della musica indipendente: dai rave banger di The Prodigy a Burial, The xx, Radiohead, Overmono e Joy Orbison.",
-    publishedAt: '2026-08-19T10:00:00.000Z',
-    primaryLocation: { kind: 'geographic', name: 'Londra, Regno Unito', countryCode: 'GB', latitude: 51.5138, longitude: -0.2084 },
-    mapEligible: true,
-    tags: ['etichetta', 'xl-recordings', 'richard-russell', 'rave', 'uk-bass', 'overmono', 'joy-orbison', 'londra'],
-    sources: [
-      { url: 'https://xlrecordings.com', label: 'XL Recordings Official Portal', kind: 'official' },
-      { url: 'https://xlrecordings.bandcamp.com', label: 'XL Recordings Bandcamp Store', kind: 'original' },
-      { url: 'https://open.spotify.com/user/xlrecordings', label: 'Spotify XL Releases', kind: 'listen' },
-      { url: 'https://www.discogs.com/label/150-XL-Recordings', label: 'Discogs (Catalogo XL)', kind: 'reference' },
-      { url: 'https://beggars.com', label: 'Beggars Group Archive', kind: 'reference' },
-    ],
-    relations: [
-      { id: 'radar-timedance-td10', type: RelationType.Release, label: 'Bristol & UK Bass Evolution', reason: 'Collaborazioni e osmosi estetica con Joy Orbison e Overmono' },
-      { id: 'label-warp-records', type: RelationType.Label, label: 'Avanguardie Britanniche Indipendenti', reason: 'I due poli della discografia d’autore inglese' },
-    ],
-    body: [
-      {
-        html: `<p class="lead">Poche entità nella storia della musica registrata hanno incarnato la libertà creativa e la capacità di plasmare il canone contemporaneo come <b>XL Recordings</b>. Dalla polvere dei rave illegali britannici del 1989 agli stadi e ai vertici delle classifiche globali, XL è il modello definitivo di etichetta discografica indipendente.</p>`,
-      },
-      {
-        heading: "1989–1995: L'esplosione breakbeat hardcore e The Prodigy",
-        html: `<p>Fondata come costola elettronica del Beggars Group da Tim Palmer, Nick Halkes e un giovanissimo <b>Richard Russell</b>, XL cattura immediatamente l'energia tellurica del movimento rave con inni come <i>Charly</i> ed <i>Everybody in the Place</i> dei The Prodigy, SL2 (<i>On a Ragga Tip</i>) e Liquid. Quella matrice breakbeat, viscerale e orgogliosamente popolare rimarrà per sempre il DNA ritmico della label.</p>`,
-      },
-      {
-        heading: "La filosofia di Richard Russell: meno uscite, totale dedizione",
-        html: `<p>Assunta la guida solitaria dell'etichetta, Richard Russell impone una regola editoriale controintuitiva: pubblicare non più di cinque o sei album all'anno. Questo approccio sartoriale consente a XL di investire risorse e tempo smisurati in ciascun progetto, diventando la casa naturale per capolavori epocali come <i>In Rainbows</i> e i lavori solisti di Thom Yorke, <i>The xx</i>, Dizzee Rascal (il caposaldo del grime <i>Boy in da Corner</i>), King Krule, FKA twigs e Adele.</p>`,
-      },
-      {
-        heading: "Il ritorno al clubbing del futuro: Overmono, Joy Orbison e Two Shell",
-        html: `<p>Nel panorama clubbing attuale, XL Recordings è tornata ad essere il barometro supremo del suono da club britannico. Con la firma dei fratelli <b>Overmono</b> (il cui album <i>Good Lies</i> ha unito UK garage, trance nostalgia e bass culture), le pietre miliari di <b>Joy Orbison</b> (<i>flight fm</i>, <i>still slipping vol.1</i>) e gli enigmatici rilasci di Two Shell, la label dimostra che il clubbing sperimentale può comunicare con milioni di ascoltatori senza cedere alla mediocrità commerciale.</p>`,
-      },
-    ],
-  },
-
-  {
-    id: 'label-warp-records',
-    slug: 'warp-records-artificial-intelligence-avanguardia',
-    type: DiscoveryType.Label,
-    kicker: 'Etichetta',
-    title: 'Warp Records: l’invenzione dell’ascolto sintetico e l’avanguardia sonora permanente',
-    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
-    summary:
-      "Dalle origini bleep & bass a Sheffield nel 1989 con Steve Beckett e Rob Mitchell fino alla serie leggendaria 'Artificial Intelligence', Warp ha dato una casa ad Aphex Twin, Boards of Canada, Autechre, Nightmares on Wax, Flying Lotus e Oneohtrix Point Never.",
-    publishedAt: '2026-08-19T09:30:00.000Z',
-    primaryLocation: { kind: 'geographic', name: 'Sheffield, Regno Unito', countryCode: 'GB', latitude: 53.3811, longitude: -1.4701 },
-    mapEligible: true,
-    tags: ['etichetta', 'warp', 'sheffield', 'aphex-twin', 'boards-of-canada', 'autechre', 'idm', 'bleep-techno'],
-    sources: [
-      { url: 'https://warp.net', label: 'Warp.net Official Universe', kind: 'official' },
-      { url: 'https://warprecords.bandcamp.com', label: 'Warp Bandcamp Catalogue', kind: 'original' },
-      { url: 'https://bleep.com', label: 'Bleep.com Music Store', kind: 'reference' },
-      { url: 'https://open.spotify.com/user/warprecords', label: 'Spotify Warp Curated', kind: 'listen' },
-      { url: 'https://www.discogs.com/label/23528-Warp-Records', label: 'Discogs (Archivio Warp Records)', kind: 'reference' },
-    ],
-    relations: [
-      { id: 'label-xl-recordings', type: RelationType.Label, label: 'XL Recordings', reason: 'Poli cardine della cultura discografica autonoma britannica' },
-      { id: 'radar-lev-festival-gijon-2026', type: RelationType.Party, label: 'Ricerca Audiovisiva ed Elettronica', reason: 'Affinità estetica tra IDM e festival audiovisivi contemporanei' },
-    ],
-    body: [
-      {
-        html: `<p class="lead">Fondata nel 1989 nel retro del negozio di dischi FON a Sheffield da <b>Steve Beckett</b> e il compianto <b>Rob Mitchell</b>, <b>Warp Records</b> non è semplicemente un'etichetta discografica: è l'istituzione che ha ridefinito la natura stessa della musica elettronica, inventando l'ascolto per la mente (<i>electronic listening music</i>) e spingendo la ricerca sonora oltre ogni limite conosciuto.</p>`,
-      },
-      {
-        heading: "Sheffield 1989: Bleep & Bass come identità industriale",
-        html: `<p>Il viaggio di Warp inizia con il suono metallico e industriale dello Yorkshire: la <i>Bleep Techno</i>. Uscite pionieristiche come <i>Track With No Name</i> di Forgemasters (WAP1), LFO (il cui singolo omonimo bruciò i diffusori dei club nel 1990) e Nightmares on Wax inventarono un linguaggio percussivo basato su sub-frequenze telluriche e impulsi sinusoidali purissimi, sintetizzando l'angoscia e la speranza della classe operaia inglese post-thatcheriana.</p>`,
-      },
-      {
-        heading: "La rivoluzione 'Artificial Intelligence' e la nascita dell'IDM",
-        html: `<p>Nel 1992, con la leggendaria compilation <i>Artificial Intelligence</i> e lo slogan iconico <i>'Electronic Listening Music from Warp'</i>, la label compie la sua mossa più audace: dimostrare che la musica elettronica non serviva solo per ballare nei warehouse, ma poteva essere fruita seduti in poltrona come la grande musica colta o il jazz d'avanguardia. Da questo manifesto nascono le carriere immortali di <b>Polygon Window / Aphex Twin (Richard D. James)</b>, <b>Autechre</b>, <b>B12</b> e The Black Dog.</p>`,
-      },
-      {
-        heading: "I maestri della nostalgia e dell'astrazione: Boards of Canada e Flying Lotus",
-        html: `<p>Negli anni successivi, Warp ha continuato ad espandere i propri confini: dal calore analogico, vellutato e nostalgico dei <b>Boards of Canada</b> (<i>Music Has the Right to Children</i>, <i>Geogaddi</i>) al jazz cibernetico losangelino di <b>Flying Lotus</b> (<i>Cosmogramma</i>), fino al modernismo sintetico di Oneohtrix Point Never, Squarepusher, Battles, Kelela e Yves Tumor. Una traiettoria inesauribile che dimostra come Warp rimanga il faro guida dell'avanguardia globale.</p>`,
-      },
-    ],
-  },
-
-  // ==========================================
-  // SEZIONE C: REPORT FESTIVAL E SCENE 2026
+  // SEZIONE B: REPORT FESTIVAL E SCENE 2026
   // ==========================================
   {
     id: 'festival-dekmantel-amsterdam-2026',
@@ -337,7 +158,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
       { url: 'https://soundcloud.com/dkmntl', label: 'Dekmantel Podcast & Live Archive', kind: 'listen' },
     ],
     relations: [
-      { id: 'label-innervisions-berlin', type: RelationType.Label, label: 'Innervisions & Dixon', reason: 'Showcase storici e performance indimenticabili' },
+      { id: 'festival-sonar-barcellona-2026', type: RelationType.Party, label: 'Sónar Barcellona', reason: 'I due poli d’eccellenza dell’estate festivaliera europea' },
       { id: 'radar-timedance-td10', type: RelationType.Release, label: 'UK & Bristol Connection', reason: 'Batu e Timedance costantemente ospitati sui palchi UFO' },
     ],
     body: [
@@ -557,7 +378,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
     ],
     relations: [
       { id: 'radar-oroko-radio-hiatus', type: RelationType.Story, label: 'Oroko Radio Connection', reason: 'Programma congiunto e talk sulla circolazione musicale' },
-      { id: 'label-innervisions-berlin', type: RelationType.Label, label: 'Scena di Berlino', reason: 'Poli complementari della notte e della ricerca sonora tedesca' },
+      { id: 'festival-sonar-barcellona-2026', type: RelationType.Party, label: 'Festival d’Avanguardia', reason: 'Poli complementari della ricerca sonora e delle arti digitali' },
     ],
     body: [
       {
@@ -598,7 +419,7 @@ export const publishedContentItems = discoveryDatasetSchema.parse([
       { url: 'https://avafestival.com/conference/', label: 'AVA Conference & Talk', kind: 'reference' },
     ],
     relations: [
-      { id: 'label-xl-recordings', type: RelationType.Label, label: 'Scena UK & Irlanda', reason: 'Rappresentanza territoriale e sviluppo talenti' },
+      { id: 'festival-dekmantel-amsterdam-2026', type: RelationType.Party, label: 'Circuiti Festival Europei', reason: 'Curatela attenta alle radici dei talenti locali' },
     ],
     body: [
       {

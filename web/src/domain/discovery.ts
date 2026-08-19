@@ -113,11 +113,11 @@ export type DiscoveryItem = z.infer<typeof discoveryItemSchema>
 export type DiscoveryBodyBlock = z.infer<typeof bodyBlockSchema>
 
 export const categoryLabels: Record<DiscoveryType, string> = {
-  [DiscoveryType.Label]: 'Labels',
-  [DiscoveryType.Artist]: 'Artists',
-  [DiscoveryType.Playlist]: 'Playlists',
-  [DiscoveryType.Set]: 'Sets',
-  [DiscoveryType.Release]: 'Releases',
-  [DiscoveryType.Story]: 'Stories',
-  [DiscoveryType.Party]: 'Parties',
+  [DiscoveryType.Label]: 'Etichette',
+  [DiscoveryType.Artist]: 'Artisti',
+  [DiscoveryType.Playlist]: 'Playlist',
+  [DiscoveryType.Set]: 'Set',
+  [DiscoveryType.Release]: 'Radar',
+  [DiscoveryType.Story]: 'Guide',
+  [DiscoveryType.Party]: 'Festival',
 }

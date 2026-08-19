@@ -3,8 +3,8 @@ import { publishedContentItems } from './content.data'
 import { DiscoveryType, PartyKind } from '../domain/discovery'
 
 describe('contenuti editoriali pubblicati', () => {
-  it('contiene tutti i 24 contenuti editoriali (radar, release, label focus, festival 2026, scene e guide DJ)', () => {
-    expect(publishedContentItems.length).toBe(24)
+  it('contiene tutti i 20 contenuti editoriali (radar, release, festival 2026, scene e guide DJ)', () => {
+    expect(publishedContentItems.length).toBe(20)
   })
 
   it('tutti i contenuti hanno slug unici e id univoci', () => {
@@ -46,8 +46,8 @@ describe('contenuti editoriali pubblicati', () => {
   it('verifica i dati specifici di XEXA — Kissom', () => {
     const xexa = publishedContentItems.find((i) => i.slug === 'xexa-kissom')
     expect(xexa).toBeTruthy()
-    expect(xexa?.type).toBe(DiscoveryType.Release)
-    expect(xexa?.kicker).toBe('Artista Emergente')
+    expect(xexa?.type).toBe(DiscoveryType.Artist)
+    expect(xexa?.kicker).toBe('Radar')
     expect(xexa?.primaryLocation.kind).toBe('geographic')
     expect(xexa?.tags).toContain('lisbona')
     expect(xexa?.tags).toContain('principe')
@@ -59,35 +59,17 @@ describe('contenuti editoriali pubblicati', () => {
     const td10 = publishedContentItems.find((i) => i.slug === 'timedance-td10')
     expect(td10).toBeTruthy()
     expect(td10?.type).toBe(DiscoveryType.Release)
-    expect(td10?.kicker).toBe('Release')
+    expect(td10?.kicker).toBe('Radar')
     expect(td10?.primaryLocation.kind).toBe('geographic')
     expect(td10?.tags).toContain('bristol')
   })
 
-  it('verifica i dati specifici dei focus su etichette (Defected, Innervisions, XL Recordings, Warp)', () => {
-    const labels = publishedContentItems.filter((i) => i.type === DiscoveryType.Label)
-    expect(labels.length).toBe(4)
-    const labelSlugs = labels.map((l) => l.slug)
-    expect(labelSlugs).toContain('defected-records-house-music-heritage')
-    expect(labelSlugs).toContain('innervisions-berlino-dixon-ame')
-    expect(labelSlugs).toContain('xl-recordings-da-rave-a-potenza-indipendente')
-    expect(labelSlugs).toContain('warp-records-artificial-intelligence-avanguardia')
-
-    const defected = labels.find((l) => l.slug === 'defected-records-house-music-heritage')
-    expect(defected?.primaryLocation.name).toContain('Londra')
-    expect(defected?.tags).toContain('glitterbox')
-
-    const innervisions = labels.find((l) => l.slug === 'innervisions-berlino-dixon-ame')
-    expect(innervisions?.primaryLocation.name).toContain('Berlino')
-    expect(innervisions?.tags).toContain('dixon')
-
-    const xl = labels.find((l) => l.slug === 'xl-recordings-da-rave-a-potenza-indipendente')
-    expect(xl?.primaryLocation.name).toContain('Londra')
-    expect(xl?.tags).toContain('rave')
-
-    const warp = labels.find((l) => l.slug === 'warp-records-artificial-intelligence-avanguardia')
-    expect(warp?.primaryLocation.name).toContain('Sheffield')
-    expect(warp?.tags).toContain('aphex-twin')
+  it('verifica i dati specifici di Oroko Radio', () => {
+    const oroko = publishedContentItems.find((i) => i.slug === 'oroko-radio-pausa-infrastrutture-indipendenti')
+    expect(oroko).toBeTruthy()
+    expect(oroko?.kicker).toBe('Radar')
+    expect(oroko?.primaryLocation.kind).toBe('geographic')
+    expect(oroko?.primaryLocation.name).toContain('Accra')
   })
 
   it('verifica i festival (Dekmantel, Sónar, Primavera Sound, CTM, AVA, L.E.V., MOSTRA, Nyege Nyege)', () => {
