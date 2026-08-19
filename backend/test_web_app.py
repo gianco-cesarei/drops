@@ -38,12 +38,15 @@ class WebAppTest(unittest.TestCase):
             environment="test",
             allow_missing_origin=True,
         )
+        self.resolve_patch = patch("web_app.resolve_track", return_value={"title": None, "artist": None, "raw_title": None, "cover_url": None, "duration": None})
+        self.resolve_patch.start()
         self.app = create_app(self.settings)
         self.client_context = TestClient(self.app)
         self.client = self.client_context.__enter__()
 
     def tearDown(self):
         self.client_context.__exit__(None, None, None)
+        self.resolve_patch.stop()
         self.temp.cleanup()
 
     def login(self):
@@ -470,6 +473,92 @@ class WebAppTest(unittest.TestCase):
         sleep.assert_not_called()
         job = self.client.get(f"/api/v1/downloads/{job_id}")
         self.assertEqual(job.json()["error"], "Download size limit exceeded")
+
+    def test_start_download_returns_recognized_job_instantly(self):
+        self.login()
+        self.resolve_patch.stop()
+        try:
+            with patch("web_app.resolve_track", return_value={
+                "title": "Baby", "artist": "Four Tet", "raw_title": "Four Tet - Baby (Official Video)",
+                "cover_url": "https://i.ytimg.com/vi/x/hq.jpg", "duration": 245,
+            }), patch.object(self.app.state.executor, "submit") as submit:
+                response = self.client.post("/api/v1/downloads", json={"url": "https://youtu.be/x", "quality": "320"})
+        finally:
+            self.resolve_patch.start()
+        self.assertEqual(response.status_code, 202)
+        body = response.json()
+        self.assertEqual(body["status"], "recognized")
+        self.assertEqual(body["title"], "Baby")
+        self.assertEqual(body["artist"], "Four Tet")
+        self.assertEqual(body["cover_url"], "https://i.ytimg.com/vi/x/hq.jpg")
+        self.assertEqual(body["duration"], 245)
+        submit.assert_called_once()
+
+    def test_process_job_tries_soundcloud_before_native_and_records_source(self):
+        self.login()
+        self.resolve_patch.stop()
+        try:
+            with patch("web_app.resolve_track", return_value={
+                "title": "Baby", "artist": "Four Tet", "raw_title": "Four Tet - Baby",
+                "cover_url": None, "duration": 245,
+            }), patch.object(self.app.state.executor, "submit") as submit:
+                response = self.client.post("/api/v1/downloads", json={"url": "https://youtu.be/native"})
+        finally:
+            self.resolve_patch.start()
+        worker, job_id, url, quality = submit.call_args.args
+
+        # download_multi_source is mocked, so process_job's own job_dir.mkdir()
+        # is the only mkdir - the fake writes its artifact into that same dir
+        # (job_dir is download_multi_source's first positional argument).
+        def fake_multi_source(job_dir, *args, **kwargs):
+            Path(job_dir, "Baby.mp3").write_bytes(b"fake-audio")
+            return {"title": "Baby", "duration": 245}, "soundcloud"
+
+        with patch("web_app.download_multi_source", side_effect=fake_multi_source), \
+             patch("web_app.analyze_bpm", return_value={"bpm": 122.0, "bpm_confidence": 0.8}):
+            worker(job_id, url, quality)
+
+        job = self.client.get(f"/api/v1/downloads/{job_id}")
+        payload = job.json()
+        self.assertEqual(payload["status"], "ready")
+        self.assertEqual(payload["source"], "soundcloud")
+        self.assertEqual(payload["bpm"], 122.0)
+
+    def test_process_job_runs_discogs_enrichment_when_metadata_present(self):
+        self.login()
+        self.resolve_patch.stop()
+        try:
+            with patch("web_app.resolve_track", return_value={
+                "title": "Baby", "artist": "Four Tet", "raw_title": "Four Tet - Baby",
+                "cover_url": None, "duration": 245,
+            }), patch.object(self.app.state.executor, "submit") as submit:
+                response = self.client.post("/api/v1/downloads", json={"url": "https://youtu.be/native"})
+        finally:
+            self.resolve_patch.start()
+        worker, job_id, url, quality = submit.call_args.args
+
+        with patch.object(self.app.state.discogs, "enrich", return_value={
+            "label": "Text Records", "year": 2020, "country": "UK", "catalog_no": "TEXT001",
+            "styles": ["Electronic"], "discogs_url": "https://discogs.com/release/1", "cover_url": None,
+        }) as enrich, patch("web_app.download_multi_source", side_effect=RuntimeError("stop after enrichment")):
+            worker(job_id, url, quality)
+        enrich.assert_called_once_with("Four Tet", "Baby")
+
+        job = self.client.get(f"/api/v1/downloads/{job_id}")
+        payload = job.json()
+        self.assertEqual(payload["label"], "Text Records")
+        self.assertEqual(payload["year"], 2020)
+        self.assertEqual(payload["style"], ["Electronic"])
+        self.assertEqual(payload["status"], "error")
+
+    def test_process_job_skips_discogs_when_metadata_missing(self):
+        self.login()
+        with patch.object(self.app.state.executor, "submit") as submit:
+            response = self.client.post("/api/v1/downloads", json={"url": "https://youtu.be/native"})
+        worker, job_id, url, quality = submit.call_args.args
+        with patch.object(self.app.state.discogs, "enrich") as enrich, patch("web_app.yt_dlp.YoutubeDL", side_effect=RuntimeError("boom")):
+            worker(job_id, url, quality)
+        enrich.assert_not_called()
 
     def test_download_and_bpm_serialize_through_shared_ytdlp_lock(self):
         # Concurrent yt-dlp calls from the same process/IP add up to more
