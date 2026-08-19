@@ -3,6 +3,7 @@ import os
 import secrets
 import shutil
 import time
+import json
 import uuid
 from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
@@ -17,7 +18,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 
-from media_core import YTDLP_LOCK, is_supported_url, safe_filename, ytdlp_cookiefile, ytdlp_extractor_args
+from bpm_analyzer import analyze_bpm
+from download_engine import AUDIO_QUALITY, download_multi_source
+from media_core import is_supported_url, resolve_track, safe_filename, ytdlp_cookiefile, ytdlp_proxy
 from spotify_agent import SpotifyAgentError, WebSpotifyClient
 from discogs_agent import DiscogsClient
 from bpm_jobs import BpmJobManager
@@ -25,14 +28,6 @@ from web_settings import WebSettings
 from web_store import WebStore
 
 COOKIE_NAME = "drops_session"
-AUDIO_QUALITY = {"128": "128", "192": "192", "320": "0"}
-# Our own abort messages (progress hook / duration check) - never retryable,
-# retrying an oversized/too-long media just repeats the same failure.
-DOWNLOAD_ABORT_MESSAGES = {
-    "Download duration limit exceeded",
-    "Download size limit exceeded",
-    "Media duration limit exceeded",
-}
 logger = logging.getLogger("drops.web")
 
 
@@ -107,6 +102,7 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
     app = FastAPI(title="Drops Web API", lifespan=lifespan)
     app.state.settings = settings
     app.state.store = store
+    app.state.discogs = discogs
     app.state.executor = None
 
     app.add_middleware(
@@ -170,89 +166,75 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
             "quality": row["quality"],
             "created_at": row["created_at"],
         }
-        for key in ("title", "filename", "size", "error"):
+        for key in (
+            "title", "artist", "cover_url", "raw_title", "duration",
+            "label", "year", "country", "catalog_no", "discogs_url",
+            "bpm", "bpm_confidence", "source",
+            "filename", "size", "error",
+        ):
             if row[key] is not None:
                 result[key] = row[key]
+        if row["style"]:
+            result["style"] = json.loads(row["style"])
         if row["status"] == "ready":
             result["file_url"] = f"/api/v1/downloads/{row['id']}/file"
         return result
 
-    def download(job_id: str, url: str, quality: str) -> None:
+    def process_job(job_id: str, url: str, quality: str) -> None:
         job_dir = jobs_dir / job_id
         job_dir.mkdir(mode=0o700)
         started = time.monotonic()
+        row = store.get_job_by_id(job_id)
+        artist = row["artist"] if row else None
+        title = row["title"] if row else None
+        duration = row["duration"] if row else None
 
-        def progress(event: dict) -> None:
-            if time.monotonic() - started > settings.max_duration_seconds:
-                raise yt_dlp.utils.DownloadError("Download duration limit exceeded")
-            downloaded = int(event.get("downloaded_bytes") or 0)
-            total = int(event.get("total_bytes") or event.get("total_bytes_estimate") or 0)
-            if max(downloaded, total) > settings.max_file_bytes:
-                raise yt_dlp.utils.DownloadError("Download size limit exceeded")
-
-        def duration_filter(info: dict, *, incomplete: bool):
-            duration = int(info.get("duration") or 0)
-            if duration > settings.max_duration_seconds:
-                return "Media duration limit exceeded"
-            return None
+        if artist and title:
+            store.update_job(job_id, status="enriching")
+            enrichment = discogs.enrich(artist, title)
+            if enrichment:
+                update = {
+                    "label": enrichment.get("label"),
+                    "year": enrichment.get("year"),
+                    "country": enrichment.get("country"),
+                    "catalog_no": enrichment.get("catalog_no"),
+                    "style": json.dumps(enrichment.get("styles") or []),
+                    "discogs_url": enrichment.get("discogs_url"),
+                }
+                if enrichment.get("cover_url"):
+                    update["cover_url"] = enrichment["cover_url"]
+                store.update_job(job_id, **update)
 
         try:
             store.update_job(job_id, status="downloading")
-            options = {
-                "format": "bestaudio/best",
-                "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": AUDIO_QUALITY[quality]}],
-                "outtmpl": str(job_dir / "source.%(ext)s"),
-                "quiet": True,
-                "no_warnings": True,
-                "noplaylist": True,
-                "max_filesize": settings.max_file_bytes,
-                "match_filter": duration_filter,
-                "socket_timeout": 30,
-                "progress_hooks": [progress],
-            }
-            options["extractor_args"] = ytdlp_extractor_args()
-            cookies = ytdlp_cookiefile()
-            if cookies:
-                options["cookiefile"] = cookies
-            info = None
-            last_extract_error: yt_dlp.utils.DownloadError | None = None
-            for attempt in range(1, 4):
-                try:
-                    with YTDLP_LOCK, yt_dlp.YoutubeDL(options) as ydl:
-                        info = ydl.extract_info(url, download=True)
-                    break
-                except yt_dlp.utils.DownloadError as exc:
-                    last_extract_error = exc
-                    for leftover in job_dir.iterdir():
-                        if leftover.is_file():
-                            leftover.unlink(missing_ok=True)
-                    if str(exc) in DOWNLOAD_ABORT_MESSAGES or attempt == 3:
-                        raise
-                    # YouTube's bot-check is intermittent per player client/IP;
-                    # a short retry often clears it without needing cookies.
-                    logger.warning("download retrying job_id=%s attempt=%s", job_id, attempt)
-                    time.sleep(1)
-            if info is None:
-                raise last_extract_error
+            info, source = download_multi_source(job_dir, job_id, url, artist, title, duration, quality, settings, started, proxy=ytdlp_proxy())
             if int(info.get("duration") or 0) > settings.max_duration_seconds:
                 raise yt_dlp.utils.DownloadError("Media duration limit exceeded")
             candidates = [path for path in job_dir.iterdir() if path.is_file() and not path.name.endswith((".part", ".ytdl"))]
             if len(candidates) != 1:
                 raise RuntimeError("Downloaded artifact missing")
-            source = candidates[0]
-            if source.stat().st_size > settings.max_file_bytes:
+            source_file = candidates[0]
+            if source_file.stat().st_size > settings.max_file_bytes:
                 raise yt_dlp.utils.DownloadError("Download size limit exceeded")
-            filename = safe_filename(str(info.get("title") or "audio"), "mp3")
+            filename = safe_filename(str(info.get("title") or title or "audio"), "mp3")
             artifact = job_dir / filename
-            if source != artifact:
-                source.replace(artifact)
+            if source_file != artifact:
+                source_file.replace(artifact)
+            bpm_result = None
+            try:
+                bpm_result = analyze_bpm(artifact, max_seconds=180)
+            except Exception as exc:
+                logger.info("bpm skip job_id=%s detail=%r", job_id, str(exc)[:200])
             store.update_job(
                 job_id,
                 status="ready",
-                title=str(info.get("title") or "audio")[:200],
+                title=str(info.get("title") or title or "audio")[:200],
                 filename=filename,
                 file_path=str(artifact),
                 size=artifact.stat().st_size,
+                source=source,
+                bpm=bpm_result["bpm"] if bpm_result else None,
+                bpm_confidence=bpm_result.get("bpm_confidence") if bpm_result else None,
                 expires_at=time.time() + settings.artifact_ttl_seconds,
             )
         except yt_dlp.utils.DownloadError as exc:
@@ -366,6 +348,7 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
         if request.quality not in AUDIO_QUALITY:
             raise HTTPException(status_code=400, detail="Invalid quality")
         job_id = str(uuid.uuid4())
+        recognized = resolve_track(request.url)
         accepted = store.create_job_if_capacity(
             job_id,
             owner,
@@ -374,11 +357,16 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
             request.quality,
             settings.max_duration_seconds + settings.artifact_ttl_seconds,
             settings.max_queued + settings.max_concurrent,
+            title=recognized.get("title"),
+            artist=recognized.get("artist"),
+            cover_url=recognized.get("cover_url"),
+            raw_title=recognized.get("raw_title"),
+            duration=recognized.get("duration"),
         )
         if not accepted:
             raise HTTPException(status_code=429, detail="Download queue full")
-        app.state.executor.submit(download, job_id, request.url, request.quality)
-        return {"id": job_id, "status": "queued"}
+        app.state.executor.submit(process_job, job_id, request.url, request.quality)
+        return public_job(store.get_job(job_id, owner))
 
     @app.get("/api/v1/downloads/{job_id}")
     def get_download(job_id: str, owner: str = Depends(current_owner)):
