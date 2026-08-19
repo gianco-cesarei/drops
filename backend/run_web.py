@@ -15,9 +15,18 @@ logger = logging.getLogger("drops.run_web")
 # Path baked into the Docker image (see Dockerfile) when the bgutil-ytdlp-pot-provider
 # HTTP server is bundled. Absent in local/dev runs - that's fine, this whole step
 # is best-effort.
-BGUTIL_SERVER_ENTRY = "/opt/bgutil-server/build/main.js"
+BGUTIL_SERVER_DIR = "/opt/bgutil-server"
+BGUTIL_SERVER_ENTRY = f"{BGUTIL_SERVER_DIR}/build/main.js"
 BGUTIL_PORT = 4416
 BGUTIL_READY_TIMEOUT_SECONDS = 10.0
+
+
+def _log_bgutil_server_dir_contents() -> None:
+    for path in (BGUTIL_SERVER_DIR, f"{BGUTIL_SERVER_DIR}/build"):
+        try:
+            logger.info("bgutil pot provider: contenuto di %s: %r", path, os.listdir(path))
+        except OSError as exc:
+            logger.info("bgutil pot provider: impossibile leggere %s (%s)", path, exc)
 
 
 def start_bgutil_pot_provider() -> None:
@@ -32,14 +41,30 @@ def start_bgutil_pot_provider() -> None:
     """
     if not os.path.isfile(BGUTIL_SERVER_ENTRY):
         logger.info("bgutil pot provider: %s non trovato nell'immagine, PO token disabilitato", BGUTIL_SERVER_ENTRY)
+        _log_bgutil_server_dir_contents()
         return
     try:
-        subprocess.Popen(["node", BGUTIL_SERVER_ENTRY])
+        # cwd=BGUTIL_SERVER_DIR: the server resolves its own node_modules
+        # relative to where it's run from. stdout+stderr captured (not
+        # inherited) so a crash's actual output can be logged below instead
+        # of silently vanishing.
+        process = subprocess.Popen(
+            ["node", BGUTIL_SERVER_ENTRY], cwd=BGUTIL_SERVER_DIR,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        )
     except OSError as exc:
-        logger.warning("bgutil pot provider: avvio fallito (%s), PO token disabilitato", exc)
+        logger.warning("bgutil pot provider: avvio fallito - %s: %s, PO token disabilitato", type(exc).__name__, exc)
         return
     deadline = time.monotonic() + BGUTIL_READY_TIMEOUT_SECONDS
     while time.monotonic() < deadline:
+        exit_code = process.poll()
+        if exit_code is not None:
+            output = process.stdout.read() if process.stdout else ""
+            logger.warning(
+                "bgutil pot provider: processo terminato subito (exit=%s), PO token disabilitato. Output:\n%s",
+                exit_code, output.strip() or "(nessun output)",
+            )
+            return
         try:
             with socket.create_connection(("127.0.0.1", BGUTIL_PORT), timeout=0.5):
                 pass

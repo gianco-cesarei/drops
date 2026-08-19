@@ -35,15 +35,18 @@ class ScoreCandidateTest(unittest.TestCase):
         entry = {"title": "Four Tet - Baby", "uploader": "someone-reposting"}
         self.assertGreaterEqual(score_candidate("Four Tet", "Baby", entry), 0.6)
 
+    def test_token_overlap_matches_reordered_noise_and_catalog_no(self):
+        entry = {"title": "TEXT01 Four Tet - Baby (Vinyl Cut)", "uploader": "Text Records"}
+        self.assertGreaterEqual(score_candidate("Four Tet", "Baby", entry), 0.6)
+
     def test_unrelated_entry_scores_low(self):
         entry = {"title": "Totally Different Song", "uploader": "Nobody"}
-        self.assertLess(score_candidate("Four Tet", "Baby", entry), 0.5)
+        self.assertLess(score_candidate("Four Tet", "Baby", entry), 0.4)
 
 
 class FindSoundcloudMatchTest(unittest.TestCase):
-    def test_returns_none_without_artist_or_title(self):
-        self.assertIsNone(find_soundcloud_match(None, "Baby", None))
-        self.assertIsNone(find_soundcloud_match("Four Tet", None, None))
+    def test_returns_none_without_any_metadata(self):
+        self.assertIsNone(find_soundcloud_match(None, None, None, raw_title=None))
 
     def test_returns_none_when_search_raises(self):
         with patch("download_engine.yt_dlp.YoutubeDL", side_effect=RuntimeError("boom")):
@@ -63,6 +66,17 @@ class FindSoundcloudMatchTest(unittest.TestCase):
             result = find_soundcloud_match("Four Tet", "Baby", 245)
         self.assertEqual(result, "https://soundcloud.com/fourtet/baby")
 
+    def test_duration_close_match_accepts_candidate_with_lower_similarity(self):
+        # Within ±5s duration, score >= 0.4 is accepted as confirmed by duration
+        entries = [{"title": "TEXT001 Baby Extended", "uploader": "Unknown", "duration": 243, "webpage_url": "https://soundcloud.com/x/close-dur"}]
+        fake_ydl = MagicMock()
+        fake_ydl.__enter__.return_value = fake_ydl
+        fake_ydl.__exit__.return_value = False
+        fake_ydl.extract_info.return_value = {"entries": entries}
+        with patch("download_engine.yt_dlp.YoutubeDL", return_value=fake_ydl):
+            result = find_soundcloud_match("Four Tet", "Baby", 245)
+        self.assertEqual(result, "https://soundcloud.com/x/close-dur")
+
     def test_returns_none_when_no_candidate_within_duration_tolerance(self):
         entries = [{"title": "Baby", "uploader": "Four Tet", "duration": 400, "webpage_url": "https://soundcloud.com/x/wrong"}]
         fake_ydl = MagicMock()
@@ -72,7 +86,7 @@ class FindSoundcloudMatchTest(unittest.TestCase):
         with patch("download_engine.yt_dlp.YoutubeDL", return_value=fake_ydl):
             self.assertIsNone(find_soundcloud_match("Four Tet", "Baby", 245))
 
-    def test_skips_duration_gate_when_duration_unknown(self):
+    def test_duration_unknown_requires_higher_threshold(self):
         entries = [{"title": "Baby", "uploader": "Four Tet", "duration": 9999, "webpage_url": "https://soundcloud.com/fourtet/baby"}]
         fake_ydl = MagicMock()
         fake_ydl.__enter__.return_value = fake_ydl
@@ -81,6 +95,20 @@ class FindSoundcloudMatchTest(unittest.TestCase):
         with patch("download_engine.yt_dlp.YoutubeDL", return_value=fake_ydl):
             result = find_soundcloud_match("Four Tet", "Baby", None)
         self.assertEqual(result, "https://soundcloud.com/fourtet/baby")
+
+    def test_searches_multiple_queries_and_raw_title(self):
+        fake_ydl = MagicMock()
+        fake_ydl.__enter__.return_value = fake_ydl
+        fake_ydl.__exit__.return_value = False
+        fake_ydl.extract_info.side_effect = [
+            {"entries": []},
+            {"entries": []},
+            {"entries": [{"title": "Baby", "uploader": "Four Tet", "duration": 245, "webpage_url": "https://soundcloud.com/fourtet/baby"}]},
+        ]
+        with patch("download_engine.yt_dlp.YoutubeDL", return_value=fake_ydl):
+            result = find_soundcloud_match("Four Tet", "Baby", 245, raw_title="TEXT001 - Baby")
+        self.assertEqual(result, "https://soundcloud.com/fourtet/baby")
+        self.assertEqual(fake_ydl.extract_info.call_count, 3)
 
     def test_returns_none_when_best_score_below_threshold(self):
         entries = [{"title": "Not Really Related", "uploader": "someone", "duration": 245, "webpage_url": "https://soundcloud.com/x/y"}]
@@ -232,7 +260,7 @@ class DownloadMultiSourceTest(unittest.TestCase):
         with patch("download_engine.find_soundcloud_match") as find_match, \
              patch("download_engine.attempt_download", return_value={"title": "Track", "duration": 10}):
             download_multi_source(self.job_dir, "job-1", "https://youtu.be/native", None, None, None, "320", FakeSettings(), __import__("time").monotonic())
-        find_match.assert_called_once_with(None, None, None)
+        find_match.assert_called_once_with(None, None, None, raw_title=None)
 
     def test_proxy_only_reaches_native_attempt_not_soundcloud(self):
         calls = []

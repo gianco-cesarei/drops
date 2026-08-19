@@ -16,10 +16,16 @@ RUN test -n "$PUBLIC_API_URL" \
     && grep -R --fixed-strings --quiet "$PUBLIC_API_URL" dist
 
 # Official, upstream-maintained image for the free PO token HTTP server
-# (bgutil-ytdlp-pot-provider) - node + compiled server + its own node_modules,
-# built for this exact node runtime. We only copy files out of it below;
-# nothing from this stage runs directly.
+# (bgutil-ytdlp-pot-provider) - the compiled server + its own node_modules.
+# We only copy files out of it below; nothing from this stage runs directly.
 FROM brainicism/bgutil-ytdlp-pot-provider:latest AS bgutil
+
+# Node runtime, taken from a Debian/glibc image compatible with python:3.12-slim
+# below - NOT from the bgutil image above, whose base isn't guaranteed
+# glibc-compatible with python:3.12-slim (a node binary from an incompatible
+# base fails to exec at all, degrading straight to "PO token disabled" with
+# no build-time signal). node:22-slim is bookworm-based, matching python:3.12-slim.
+FROM node:22-slim AS nodert
 
 FROM python:3.12-slim AS api
 
@@ -39,10 +45,15 @@ RUN apt-get update \
 # Node runtime + the bgutil HTTP server itself (free PO token provider,
 # helps yt-dlp dodge YouTube's bot-check - see run_web.py, which starts this
 # as a background process, and media_core.py, which wires yt-dlp to it once
-# it's confirmed up). Copied whole from the upstream image rather than built
-# here, so the node binary and its node_modules are guaranteed to match.
-COPY --from=bgutil /usr/local/bin/node /usr/local/bin/node
+# it's confirmed up). The compiled server (JS + its node_modules) comes from
+# the upstream bgutil image; the node binary that runs it comes from a
+# glibc-compatible stage instead (see the nodert stage above).
+COPY --from=nodert /usr/local/bin/node /usr/local/bin/node
 COPY --from=bgutil --chown=drops:drops /app /opt/bgutil-server
+
+# Build fails loudly here if node can't run on this base, instead of the
+# app silently degrading to "PO token disabled" at container startup.
+RUN node --version
 
 WORKDIR /app
 

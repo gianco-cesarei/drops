@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 
 import yt_dlp
 
-from media_core import YTDLP_LOCK, ytdlp_cookiefile, ytdlp_extractor_args
+from media_core import YTDLP_LOCK, strip_noise, ytdlp_cookiefile, ytdlp_extractor_args
 
 logger = logging.getLogger("drops.download")
 
@@ -28,12 +28,10 @@ DOWNLOAD_ABORT_MESSAGES = {
     "Media duration limit exceeded",
 }
 
-SOUNDCLOUD_SEARCH_COUNT = 5
+SOUNDCLOUD_SEARCH_COUNT = 20
 DURATION_TOLERANCE_SECONDS = 15
-# Conservative on purpose: the spec's hard rule is "never a wrong match" - a
-# missed-but-real SoundCloud match just falls through to the native source,
-# which is always a safe outcome; a false-positive match is not.
-SIMILARITY_THRESHOLD = 0.6
+DURATION_CLOSE_TOLERANCE_SECONDS = 5
+SIMILARITY_THRESHOLD = 0.5
 
 
 def _normalize(value: str | None) -> str:
@@ -44,49 +42,116 @@ def similarity(a: str | None, b: str | None) -> float:
     return difflib.SequenceMatcher(None, _normalize(a), _normalize(b)).ratio()
 
 
+def _token_overlap(query: str, target: str) -> float:
+    query_words = set(_normalize(query).split())
+    if not query_words:
+        return 0.0
+    target_words = set(_normalize(target).split())
+    return len(query_words & target_words) / len(query_words)
+
+
 def score_candidate(artist: str | None, title: str | None, entry: dict[str, Any]) -> float:
     candidate_title = str(entry.get("title") or "")
     candidate_uploader = str(entry.get("uploader") or "")
     combined_query = f"{artist or ''} {title or ''}".strip()
-    scores = [similarity(title, candidate_title), similarity(combined_query, candidate_title)]
+    candidate_combined = f"{candidate_title} {candidate_uploader}".strip()
+    scores = [
+        similarity(title, candidate_title),
+        similarity(combined_query, candidate_title),
+        _token_overlap(combined_query, candidate_combined),
+        _token_overlap(title, candidate_title) if title else 0.0,
+    ]
     if artist:
         scores.append((similarity(title, candidate_title) + similarity(artist, candidate_uploader)) / 2)
+        scores.append((_token_overlap(title, candidate_title) + _token_overlap(artist, candidate_uploader)) / 2)
     return max(scores)
 
 
-def find_soundcloud_match(artist: str | None, title: str | None, duration: int | None) -> str | None:
-    """Search SoundCloud for a track matching artist+title, gated by duration when known.
-
-    Not extract_flat: we need each candidate's real duration for the +/-15s
-    gate, which flat search results don't reliably carry.
-    """
-    if not artist or not title:
+def find_soundcloud_match(
+    artist: str | None,
+    title: str | None,
+    duration: int | None,
+    raw_title: str | None = None,
+) -> str | None:
+    """Search SoundCloud for a track matching artist+title/raw_title, gated by duration when known."""
+    if not artist and not title and not raw_title:
         return None
-    query = f"{artist} {title}".strip()
+
+    queries: list[str] = []
+    seen_q: set[str] = set()
+    for candidate_q in [
+        f"{artist} {title}".strip() if artist and title else None,
+        title.strip() if title else None,
+        strip_noise(raw_title) if raw_title else None,
+    ]:
+        if candidate_q:
+            norm_q = _normalize(candidate_q)
+            if norm_q and norm_q not in seen_q:
+                seen_q.add(norm_q)
+                queries.append(candidate_q)
+
+    if not queries:
+        return None
+
     options = {
         "quiet": True, "no_warnings": True,
         "socket_timeout": 15, "extractor_args": ytdlp_extractor_args(),
     }
-    try:
-        with YTDLP_LOCK, yt_dlp.YoutubeDL(options) as ydl:
-            result = ydl.extract_info(f"scsearch{SOUNDCLOUD_SEARCH_COUNT}:{query}", download=False)
-    except Exception as exc:
-        logger.info("soundcloud search fallita query=%r detail=%r", query, str(exc)[:200])
-        return None
+
+    all_entries: dict[str, dict[str, Any]] = {}
+    for query in queries:
+        try:
+            with YTDLP_LOCK, yt_dlp.YoutubeDL(options) as ydl:
+                result = ydl.extract_info(f"scsearch{SOUNDCLOUD_SEARCH_COUNT}:{query}", download=False)
+            for entry in (result or {}).get("entries") or []:
+                if not entry:
+                    continue
+                url = entry.get("webpage_url") or entry.get("url")
+                if url and url not in all_entries:
+                    all_entries[url] = entry
+        except Exception as exc:
+            logger.info("soundcloud search fallita query=%r detail=%r", query, str(exc)[:200])
+
     best_url, best_score = None, 0.0
-    for entry in (result or {}).get("entries") or []:
-        if not entry:
-            continue
+    scored_candidates = []
+
+    for url, entry in all_entries.items():
+        cand_title = entry.get("title")
+        cand_duration = entry.get("duration")
+
         if duration is not None:
-            candidate_duration = entry.get("duration")
-            if candidate_duration is None or abs(candidate_duration - duration) > DURATION_TOLERANCE_SECONDS:
+            if cand_duration is None or abs(cand_duration - duration) > DURATION_TOLERANCE_SECONDS:
                 continue
+
         score = score_candidate(artist, title, entry)
-        if score > best_score:
-            best_score, best_url = score, entry.get("webpage_url") or entry.get("url")
-    if best_url and best_score >= SIMILARITY_THRESHOLD:
-        return best_url
-    return None
+        scored_candidates.append((url, cand_title, cand_duration, score))
+
+        # Threshold rules:
+        # If duration close (within ±5s): accept score >= 0.4
+        # If duration known (within ±15s): accept score >= 0.5
+        # If duration unknown: accept score >= 0.55
+        if duration is not None and cand_duration is not None and abs(cand_duration - duration) <= DURATION_CLOSE_TOLERANCE_SECONDS:
+            min_threshold = 0.4
+        elif duration is not None:
+            min_threshold = SIMILARITY_THRESHOLD
+        else:
+            min_threshold = 0.55
+
+        if score >= min_threshold and score > best_score:
+            best_score, best_url = score, url
+
+    if scored_candidates:
+        top_candidates = sorted(scored_candidates, key=lambda x: x[3], reverse=True)[:5]
+        logger.info(
+            "soundcloud candidates queries=%r duration=%s total=%d top=%s chosen=%s (score=%.2f)",
+            queries, duration, len(scored_candidates),
+            [(c[1], c[2], round(c[3], 2)) for c in top_candidates],
+            best_url, best_score,
+        )
+    else:
+        logger.info("soundcloud no candidates found for queries=%r duration=%s", queries, duration)
+
+    return best_url
 
 
 def attempt_download(job_dir: Path, url: str, quality: str, settings, started: float, *, proxy: str | None = None) -> dict[str, Any]:
@@ -160,9 +225,10 @@ def _native_source_label(url: str) -> str:
 def download_multi_source(
     job_dir: Path, job_id: str, native_url: str, artist: str | None, title: str | None,
     duration: int | None, quality: str, settings, started: float, *, proxy: str | None = None,
+    raw_title: str | None = None,
 ) -> tuple[dict[str, Any], str]:
     """SoundCloud first (only if it's a confident match), native source (YouTube) always last."""
-    match_url = find_soundcloud_match(artist, title, duration)
+    match_url = find_soundcloud_match(artist, title, duration, raw_title=raw_title)
     if match_url:
         try:
             info = attempt_download(job_dir, match_url, quality, settings, started)

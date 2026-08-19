@@ -137,7 +137,10 @@ def _strip_noise(raw: str) -> str:
         # metadata tags (record label, availability, quality) rather than
         # part of the actual title - always drop them. Parenthesised groups
         # are kept unless they match a known noise token (e.g. "Original Mix"
-        # is boilerplate; a remixer's name in parens is meaningful and stays).
+def strip_noise(raw: str) -> str:
+    """Strip boilerplate noise like (Official Video), [Premiere], etc."""
+    def _drop_if_noise(match: re.Match) -> str:
+        full = match.group(0)
         if full.startswith("["):
             return ""
         inner = full[1:-1].strip().lower()
@@ -151,9 +154,12 @@ def _strip_noise(raw: str) -> str:
     return re.sub(r"\s{2,}", " ", cleaned).strip(" -–—")
 
 
+_strip_noise = strip_noise
+
+
 def parse_artist_title(raw_title: str, fallback_artist: str | None = None) -> tuple[str | None, str]:
     """Best-effort "Artist - Title" split, with noise like (Official Video) stripped first."""
-    cleaned = _strip_noise(raw_title)
+    cleaned = strip_noise(raw_title)
     parts = _SPLIT_RE.split(cleaned, maxsplit=1)
     if len(parts) == 2 and parts[0].strip() and parts[1].strip():
         return parts[0].strip(), parts[1].strip()
@@ -225,5 +231,11 @@ def resolve_track(url: str) -> dict:
     if oembed and oembed.get("title"):
         raw_title = str(oembed["title"])
         artist, title = parse_artist_title(raw_title, oembed.get("author_name"))
-        return {"title": title, "artist": artist, "raw_title": raw_title, "cover_url": oembed.get("thumbnail_url"), "duration": None}
+        duration = None
+        if host in {"youtube.com", "youtu.be", "music.youtube.com"} or host.endswith((".youtube.com", ".youtu.be")):
+            try:
+                duration = _resolve_via_ytdlp(url).get("duration")
+            except Exception:
+                duration = None
+        return {"title": title, "artist": artist, "raw_title": raw_title, "cover_url": oembed.get("thumbnail_url"), "duration": duration}
     return _resolve_via_ytdlp(url)
