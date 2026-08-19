@@ -210,7 +210,7 @@ describe('autenticazione App', () => {
     expect(screen.getByRole('link', { name: 'Apri Signal A su YouTube' })).toHaveAttribute('target', '_blank')
     
     // Attiva selezione tracce
-    await userEvent.click(screen.getByRole('button', { name: '☑ Seleziona tracce' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Seleziona manualmente' }))
     expect(screen.getAllByRole('checkbox')).toHaveLength(2)
     
     // Seleziona la prima traccia

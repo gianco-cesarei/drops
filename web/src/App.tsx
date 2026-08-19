@@ -310,17 +310,31 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
 
   return (
     <main className="spotify-workspace">
-      <div className="spotify-toolbar">
-        <div className="spotify-toolbar-left">
-          <div className="spotify-account">
-            <span className="status-dot" />
-            <span>Spotify collegato:</span>
-            <strong>{status.display_name}</strong>
-          </div>
+      <div className="spotify-header-hero">
+        <div className="spotify-account-heading">
+          <span className="status-dot large" />
+          <h1 className="spotify-account-title">
+            <span className="spotify-account-sub">Spotify collegato</span>
+            <span className="spotify-account-name">{status.display_name}</span>
+          </h1>
+        </div>
+      </div>
+
+      <div className="spotify-toolbar-compact">
+        <div className="spotify-toolbar-actions-left">
+          <button
+            type="button"
+            className={`spotify-btn-underline ${selectMode ? 'active' : ''}`}
+            onClick={() => { setSelectMode(!selectMode); if (selectMode) setSelected(new Set()) }}
+          >
+            {selectMode ? 'Annulla selezione' : 'Seleziona manualmente'}
+          </button>
+          
           <div className="spotify-toggle" role="group" aria-label="Libreria Spotify">
             <button className={mode === 'liked' ? 'active' : ''} onClick={() => { setMode('liked'); setSelected(new Set()) }}>Recenti</button>
             <button className={mode === 'playlists' ? 'active' : ''} onClick={() => { setMode('playlists'); setSelected(new Set()) }}>Playlist</button>
           </div>
+
           {mode === 'playlists' && (
             <div className="spotify-playlist-select-wrap">
               <select
@@ -331,14 +345,15 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
               >
                 {playlists.map((playlist) => (
                   <option key={playlist.id} value={playlist.id}>
-                    {playlist.name} ({playlist.tracks_total})
+                    {playlist.name} ({playlist.tracks_total} tracce)
                   </option>
                 ))}
               </select>
             </div>
           )}
         </div>
-        <div className="spotify-toolbar-right">
+
+        <div className="spotify-toolbar-actions-right">
           <div className="spotify-search-wrap">
             <span className="spotify-search-icon" aria-hidden="true">🔍</span>
             <input
@@ -350,34 +365,31 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+
+          <div className="spotify-stats-pill">
+            {selectMode ? (
+              <strong>{selected.size} / {visibleTracks.length} selezionate</strong>
+            ) : (
+              <span>{visibleTracks.length} {visibleTracks.length === 1 ? 'traccia' : 'tracce'}{total > visibleTracks.length && mode === 'liked' ? ` di ${total}` : ''}</span>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="spotify-subbar">
-        <div className="spotify-subbar-left">
-          <button
-            type="button"
-            className={`spotify-mode-btn ${selectMode ? 'active' : ''}`}
-            onClick={() => { setSelectMode(!selectMode); if (selectMode) setSelected(new Set()) }}
-          >
-            {selectMode ? 'Chiudi selezione' : '☑ Seleziona tracce'}
-          </button>
-          {selectMode && (
-            <>
-              <button
-                type="button"
-                className="spotify-mode-btn secondary"
-                onClick={() => toggleSelectAll(visibleTracks)}
-              >
-                {selected.size === visibleTracks.length ? 'Deseleziona tutte' : 'Seleziona tutte'}
-              </button>
-              <span className="spotify-select-count">{selected.size} selezionate</span>
-            </>
-          )}
-        </div>
-        <div className="spotify-subbar-actions">
-          {selectMode && selected.size > 0 && (
-            <>
+      {selectMode && (
+        <div className="spotify-selection-bar">
+          <div className="spotify-selection-tools">
+            <button
+              type="button"
+              className="spotify-mode-btn secondary"
+              onClick={() => toggleSelectAll(visibleTracks)}
+            >
+              {selected.size === visibleTracks.length ? 'Deseleziona tutte' : 'Seleziona tutte'}
+            </button>
+            <span className="spotify-select-count">{selected.size} di {visibleTracks.length} selezionate</span>
+          </div>
+          {selected.size > 0 && (
+            <div className="spotify-selection-actions">
               <button
                 type="button"
                 className="primary spotify-action-btn"
@@ -392,14 +404,10 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
               >
                 ↓ Scarica selezione ({selected.size})
               </button>
-            </>
+            </div>
           )}
-          <span className="spotify-stats">
-            {visibleTracks.length} {visibleTracks.length === 1 ? 'traccia' : 'tracce'}
-            {total > visibleTracks.length && mode === 'liked' ? ` di ${total}` : ''}
-          </span>
         </div>
-      </div>
+      )}
 
       {error && <div className="alert" role="alert">{error}</div>}
 
