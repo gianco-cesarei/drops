@@ -15,20 +15,42 @@ const terminalStatuses = new Set(['completed', 'complete', 'ready', 'failed', 'e
 const readyStatuses = new Set(['completed', 'complete', 'ready'])
 const failedStatuses = new Set(['failed', 'error', 'cancelled'])
 const browserNavigate = (to: string) => window.location.assign(to)
+const USER_CACHE_KEY = 'drops.user.v1'
+
+function getCachedUser(): User | null {
+  try {
+    const raw = typeof window !== 'undefined' ? window.localStorage.getItem(USER_CACHE_KEY) : null
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
 
 export default function App({ section = 'login', navigate = browserNavigate }: { section?: PrivateSection; navigate?: (to: string) => void }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [checking, setChecking] = useState(true)
+  const [user, setUser] = useState<User | null>(() => getCachedUser())
+  const [checking, setChecking] = useState(() => !getCachedUser())
   const [error, setError] = useState('')
   const [logoutRedirecting, setLogoutRedirecting] = useState(false)
 
   const handleError = useCallback((cause: unknown) => {
-    if (cause instanceof ApiError && cause.status === 401) setUser(null)
+    if (cause instanceof ApiError && cause.status === 401) {
+      setUser(null)
+      try { window.localStorage.removeItem(USER_CACHE_KEY) } catch {}
+    }
     setError(cause instanceof Error ? cause.message : 'Errore imprevisto.')
   }, [])
 
   useEffect(() => {
-    api.me().then(setUser).catch(() => setUser(null)).finally(() => setChecking(false))
+    api.me()
+      .then((u) => {
+        setUser(u)
+        try { window.localStorage.setItem(USER_CACHE_KEY, JSON.stringify(u)) } catch {}
+      })
+      .catch(() => {
+        setUser(null)
+        try { window.localStorage.removeItem(USER_CACHE_KEY) } catch {}
+      })
+      .finally(() => setChecking(false))
   }, [])
 
   useEffect(() => {

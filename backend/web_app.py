@@ -105,7 +105,14 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
     def issue_session_token(owner: str) -> str:
         return session_serializer.dumps({"username": owner, "iat": int(time.time())})
 
-    def cleanup() -> None:
+    _last_cleanup = 0.0
+
+    def cleanup(force: bool = False) -> None:
+        nonlocal _last_cleanup
+        now = time.time()
+        if not force and now - _last_cleanup < 10:
+            return
+        _last_cleanup = now
         for row in store.expired_artifacts():
             job_dir = (jobs_dir / str(row["id"])).resolve()
             if job_dir.parent == jobs_dir.resolve():
@@ -168,25 +175,25 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
         # free tier wipes DROPS_WEB_STATE_DIR (an ephemeral /tmp) on every
         # redeploy, which used to invalidate every session instantly.
         if not drops_session:
-            cleanup()
+            cleanup(force=True)
             logger.info("auth rejected reason=cookie_missing")
             raise HTTPException(status_code=401, detail="Authentication required")
         try:
             payload = session_serializer.loads(drops_session, max_age=settings.session_ttl_seconds)
         except SignatureExpired:
-            cleanup()
+            cleanup(force=True)
             logger.info("auth rejected reason=cookie_expired")
             raise HTTPException(status_code=401, detail="Invalid or expired session")
         except BadSignature:
-            cleanup()
+            cleanup(force=True)
             logger.info("auth rejected reason=cookie_invalid")
             raise HTTPException(status_code=401, detail="Invalid or expired session")
         owner = payload.get("username")
         if not owner:
-            cleanup()
+            cleanup(force=True)
             logger.info("auth rejected reason=cookie_invalid")
             raise HTTPException(status_code=401, detail="Invalid or expired session")
-        cleanup()
+        cleanup(force=True)
         return owner
 
     def current_owner(response: Response, owner: str = Depends(verify_session)) -> str:
