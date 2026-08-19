@@ -1006,10 +1006,25 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
       <div><span className="eyebrow">DOWNLOAD PRIVATO</span><p className="lead">Area personale di {who}. Incolla uno o più link e aggiungili alla coda.</p></div>
       <form onSubmit={handleAdd} className="download-form">
         <label htmlFor="download-url">Link brano, playlist o set</label>
-        <textarea id="download-url" className="download-textarea" placeholder={'Un link per riga · YouTube o SoundCloud\nLe playlist e i set chiedono conferma delle tracce'} value={input} onChange={(event) => setInput(event.target.value)} spellCheck={false} rows={3} />
+        <textarea
+          id="download-url"
+          className="download-textarea"
+          placeholder={'Un link per riga · YouTube o SoundCloud\nLe playlist e i set chiedono conferma delle tracce'}
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && input.trim()) {
+              e.preventDefault()
+              const form = e.currentTarget.form
+              if (form) form.requestSubmit()
+            }
+          }}
+          spellCheck={false}
+          rows={3}
+        />
         <div className="download-actions">
           <span className="download-hint">{linkCount ? `${linkCount} link rilevati` : 'Un link per riga · playlist supportate'}</span>
-          <button className="primary" disabled={busy || !input.trim()}>{busy ? 'Analisi…' : 'Aggiungi alla coda'}</button>
+          <button type="submit" className="primary" disabled={busy || !input.trim()}>{busy ? 'Analisi…' : 'Aggiungi alla coda'}</button>
         </div>
       </form>
       {error && <div className="alert" role="alert">{error}</div>}
@@ -1034,7 +1049,7 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
               📦 Scarica Pacchetto (.ZIP)
             </button>
           )}
-          {history.length > 0 && <button className="dl-clear" onClick={() => setHistory([])}>Svuota</button>}
+          {history.length > 0 && <button type="button" className="dl-clear" onClick={() => { setHistory([]); saveHistory([]) }}>Svuota</button>}
         </div>
       </div>
       {history.length === 0
