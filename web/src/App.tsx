@@ -119,6 +119,48 @@ function PrivatePlaceholder({ section }: { section: PrivateSection }) {
   return <main className="private-placeholder"><span className="development-badge">Private development shell</span><h1 className="sr-only">{labels[section]}</h1><p>Strumento non implementato in questa milestone.</p></main>
 }
 
+const globalAudio = typeof Audio !== 'undefined' ? new Audio() : null
+
+function useAudioPlayer() {
+  const [playingUrl, setPlayingUrl] = useState<string | null>(null)
+
+  const toggle = useCallback((url: string) => {
+    if (!globalAudio) return
+    if (globalAudio.src === url && !globalAudio.paused) {
+      globalAudio.pause()
+      setPlayingUrl(null)
+    } else {
+      globalAudio.pause()
+      globalAudio.src = url
+      globalAudio.play().then(() => setPlayingUrl(url)).catch(() => setPlayingUrl(null))
+      globalAudio.onended = () => setPlayingUrl(null)
+      globalAudio.onerror = () => setPlayingUrl(null)
+    }
+  }, [])
+
+  return { playingUrl, toggle }
+}
+
+function exportCrate(items: (HistoryItem | SpotifyTrack)[], name = 'drops-crate') {
+  if (!items.length) return
+  const m3u8 = [
+    '#EXTM3U',
+    ...items.map((it) => {
+      const title = 'title' in it ? it.title : ''
+      const artist = 'artist' in it ? it.artist : 'artists' in it ? it.artists.join(', ') : ''
+      const file = 'id' in it && typeof it.id === 'string' && !it.id.startsWith('spotify-') ? api.fileUrl(it.id) : ''
+      return `#EXTINF:-1,${artist ? `${artist} - ` : ''}${title}\n${file}`
+    }),
+  ].join('\n')
+  const blob = new Blob([m3u8], { type: 'audio/x-mpegurl' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${name}-${new Date().toISOString().slice(0, 10)}.m3u8`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void; error: string }) {
   const [status, setStatus] = useState<{ connected: boolean; display_name: string | null } | null>(null)
   const [mode, setMode] = useState<'liked' | 'playlists'>('liked')
@@ -135,6 +177,7 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
   const [pendingLabels, setPendingLabels] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const discogsRequested = useRef(new Set<string>())
+  const { playingUrl, toggle: toggleAudio } = useAudioPlayer()
 
   useEffect(() => { api.spotifyStatus().then(setStatus).catch(onError) }, [onError])
   useEffect(() => {
@@ -217,8 +260,25 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
     setDlState((cur) => ({ ...cur, [track.id]: 'queued' }))
     try {
       const url = soundcloudUrl(track)
-      await api.createDownload(url)
+      const created = await api.createDownload(url)
       setDlState((cur) => ({ ...cur, [track.id]: 'done' }))
+      if (created.id) {
+        const hist = loadHistory()
+        if (!hist.some((h) => h.id === created.id)) {
+          saveHistory([
+            {
+              id: created.id,
+              title: created.title || track.title,
+              artist: created.artist || track.artists.join(', '),
+              coverUrl: created.coverUrl || track.cover_url || undefined,
+              source: created.source || undefined,
+              bpm: created.bpm || (track.bpm ? Math.round(track.bpm) : undefined),
+              ts: Date.now(),
+            },
+            ...hist,
+          ])
+        }
+      }
     } catch {
       setDlState((cur) => ({ ...cur, [track.id]: 'error' }))
     }
@@ -285,10 +345,22 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
           <button className={modeView === 'labels' ? 'active' : ''} onClick={() => { setModeView('labels'); setSelectedLabel(null) }}>Label</button>
           <button className={modeView === 'bpm' ? 'active' : ''} onClick={() => { setModeView('bpm'); setSelectedLabel(null) }}>BPM</button>
         </div>
-        <span className="spotify-stats">
-          {visibleTracks.length} {visibleTracks.length === 1 ? 'traccia' : 'tracce'}
-          {total > visibleTracks.length && mode === 'liked' ? ` di ${total}` : ''}
-        </span>
+        <div className="spotify-subbar-actions">
+          <span className="spotify-stats">
+            {visibleTracks.length} {visibleTracks.length === 1 ? 'traccia' : 'tracce'}
+            {total > visibleTracks.length && mode === 'liked' ? ` di ${total}` : ''}
+          </span>
+          {visibleTracks.length > 0 && (
+            <button
+              type="button"
+              className="spotify-export-btn"
+              onClick={() => exportCrate(visibleTracks, `spotify-${mode}`)}
+              title="Esporta playlist in formato .m3u8 per Rekordbox / Traktor"
+            >
+              📥 Esporta Crate (.m3u8)
+            </button>
+          )}
+        </div>
       </div>
 
       {error && <div className="alert" role="alert">{error}</div>}
@@ -304,6 +376,8 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
             tracks={visibleTracks}
             mode="recent"
             dlState={dlState}
+            playingUrl={playingUrl}
+            onToggleAudio={toggleAudio}
             onDownload={handleDownloadTrack}
             onCalculateBpm={calculateSingleBpm}
           />
@@ -322,6 +396,8 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
             selected={selected}
             bpmState={bpmState}
             dlState={dlState}
+            playingUrl={playingUrl}
+            onToggleAudio={toggleAudio}
             onToggle={toggleSelected}
             onDownload={handleDownloadTrack}
             onCalculateBpm={calculateSingleBpm}
@@ -332,6 +408,8 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
           tracks={visibleTracks}
           mode="recent"
           dlState={dlState}
+          playingUrl={playingUrl}
+          onToggleAudio={toggleAudio}
           onDownload={handleDownloadTrack}
           onCalculateBpm={calculateSingleBpm}
         />
@@ -356,6 +434,8 @@ function TrackGroups({
   selected,
   bpmState,
   dlState,
+  playingUrl,
+  onToggleAudio,
   onToggle,
   onDownload,
   onCalculateBpm,
@@ -365,6 +445,8 @@ function TrackGroups({
   selected?: Set<string>
   bpmState?: Record<string, 'queued' | 'running' | 'error'>
   dlState?: Record<string, 'queued' | 'done' | 'error'>
+  playingUrl?: string | null
+  onToggleAudio?: (url: string) => void
   onToggle?: (id: string) => void
   onDownload?: (track: SpotifyTrack) => void
   onCalculateBpm?: (track: SpotifyTrack) => void
@@ -409,6 +491,8 @@ function TrackGroups({
           disabled={!(selected?.has(track.id) ?? false) && (selected?.size ?? 0) >= 3}
           bpmStatus={bpmState?.[track.id]}
           dlStatus={dlState?.[track.id]}
+          playing={playingUrl === track.preview_url}
+          onToggleAudio={onToggleAudio}
           onToggle={onToggle}
           onDownload={onDownload}
           onCalculateBpm={onCalculateBpm}
@@ -429,6 +513,65 @@ function TrackGroups({
   )
 }
 
+function PlatformLinks({ query, discogsUrl, title }: { query: string; discogsUrl?: string | null; title: string }) {
+  return (
+    <nav className="track-links" aria-label={`Ascolta ${title}`}>
+      <a
+        href={`https://www.youtube.com/results?search_query=${query}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Apri ${title} su YouTube`}
+        title="YouTube"
+        className="track-platform-icon track-icon-yt"
+      >
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+      </a>
+      <a
+        href={`https://soundcloud.com/search?q=${query}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Apri ${title} su SoundCloud`}
+        title="SoundCloud"
+        className="track-platform-icon track-icon-sc"
+      >
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M11.56 8.87V17h9.72c1.5 0 2.72-1.22 2.72-2.72s-1.22-2.72-2.72-2.72c-.22 0-.44.03-.64.08-.22-1.57-1.57-2.77-3.2-2.77-.45 0-.87.09-1.26.25C15.65 7.42 14.07 6.2 12.2 6.2c-.22 0-.43.02-.64.06v2.61zm-1.85-.3V17H8.25V9.41c-.48.24-.9.57-1.24.97V17H5.55v-5.26c-.39.63-.61 1.37-.61 2.16 0 .04 0 .07.01.11H3.5C2.67 14.01 2 14.68 2 15.5S2.67 17 3.5 17h.8v-2.89H3.5c-.28 0-.5-.22-.5-.5s.22-.5.5-.5h1.45v3.89H1.4v.01H1.2C.54 17.01 0 17.55 0 18.21s.54 1.2 1.2 1.2h20.08c2.05 0 3.72-1.67 3.72-3.72s-1.67-3.72-3.72-3.72c-.17 0-.34.01-.5.04C20.35 9.87 18.52 8.2 16.32 8.2c-.75 0-1.46.2-2.07.54-.75-1.04-1.97-1.72-3.36-1.72-.4 0-.79.06-1.18.15z"/></svg>
+      </a>
+      <a
+        href={`https://www.beatport.com/search?q=${query}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Apri ${title} su Beatport`}
+        title="Beatport"
+        className="track-platform-icon track-icon-bp"
+      >
+        <span>BP</span>
+      </a>
+      <a
+        href={`https://bandcamp.com/search?q=${query}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Apri ${title} su Bandcamp`}
+        title="Bandcamp"
+        className="track-platform-icon track-icon-bc"
+      >
+        <span>BC</span>
+      </a>
+      {discogsUrl && (
+        <a
+          href={discogsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Apri ${title} su Discogs`}
+          title="Discogs"
+          className="track-platform-icon track-icon-dg"
+        >
+          <span>DG</span>
+        </a>
+      )}
+    </nav>
+  )
+}
+
 function TrackRow({
   track,
   selectable,
@@ -436,6 +579,8 @@ function TrackRow({
   disabled,
   bpmStatus,
   dlStatus,
+  playing,
+  onToggleAudio,
   onToggle,
   onDownload,
   onCalculateBpm,
@@ -446,18 +591,13 @@ function TrackRow({
   disabled?: boolean
   bpmStatus?: string
   dlStatus?: 'queued' | 'done' | 'error'
+  playing?: boolean
+  onToggleAudio?: (url: string) => void
   onToggle?: (id: string) => void
   onDownload?: (track: SpotifyTrack) => void
   onCalculateBpm?: (track: SpotifyTrack) => void
 }) {
   const query = encodeURIComponent(`${track.artists[0] || ''} ${track.title}`.trim())
-  const links = [
-    { label: 'YT', name: 'YouTube', href: `https://www.youtube.com/results?search_query=${query}` },
-    { label: 'SC', name: 'SoundCloud', href: `https://soundcloud.com/search?q=${query}` },
-    { label: 'BP', name: 'Beatport', href: `https://www.beatport.com/search?q=${query}` },
-    { label: 'BC', name: 'Bandcamp', href: `https://bandcamp.com/search?q=${query}` },
-    ...(track.discogs_url ? [{ label: 'DG', name: 'Discogs', href: track.discogs_url }] : []),
-  ]
   return (
     <article className={`spotify-track-card ${checked ? 'selected' : ''}`}>
       {selectable && (
@@ -470,69 +610,57 @@ function TrackRow({
           onChange={() => onToggle?.(track.id)}
         />
       )}
-      <div className="track-cover" aria-hidden="true">
+      <div
+        className={`track-cover ${track.preview_url ? 'is-playable' : ''} ${playing ? 'is-playing' : ''}`}
+        onClick={() => track.preview_url && onToggleAudio?.(track.preview_url)}
+        title={track.preview_url ? (playing ? 'Pausa anteprima' : 'Ascolta anteprima (30s)') : undefined}
+      >
         {track.cover_url ? <img src={track.cover_url} alt="" loading="lazy" /> : <span>♪</span>}
+        {track.preview_url && <span className="cover-play-badge">{playing ? '⏸' : '▶'}</span>}
       </div>
       <div className="track-main">
         <div className="track-title-row">
           <strong className="track-title" title={track.title}>{track.title}</strong>
+          <div className="track-bpm-badge">
+            {track.bpm != null ? (
+              <span className="track-chip track-chip-bpm"><b>{Math.round(track.bpm)}</b> <small>BPM</small></span>
+            ) : bpmStatus === 'queued' || bpmStatus === 'running' ? (
+              <span className="track-chip track-chip-bpm calculating">… BPM</span>
+            ) : (
+              <button
+                type="button"
+                className="track-chip-bpm-btn"
+                title="Calcola BPM rapido con download audio"
+                onClick={() => onCalculateBpm?.(track)}
+              >
+                + BPM
+              </button>
+            )}
+          </div>
         </div>
-        <div className="track-sub-row">
+        <div className="track-meta-line">
           <span className="track-artist">{track.artists.join(', ')}</span>
-          {track.album && <span className="track-album-dot">·</span>}
+          {track.album && <span className="track-dot">·</span>}
           {track.album && <span className="track-album-name">{track.album}</span>}
-        </div>
-        <div className="track-chips">
           {track.label && <span className="track-chip track-chip-label">{track.label}</span>}
           {track.year && <span className="track-chip track-chip-year">{track.year}</span>}
           {track.styles?.[0] && <span className="track-chip track-chip-style">{track.styles[0]}</span>}
         </div>
       </div>
-      <div className="track-meta-side">
-        <div className="track-bpm-badge">
-          {track.bpm != null ? (
-            <span className="track-chip track-chip-bpm"><b>{Math.round(track.bpm)}</b> <small>BPM</small></span>
-          ) : bpmStatus === 'queued' || bpmStatus === 'running' ? (
-            <span className="track-chip track-chip-bpm calculating">… BPM</span>
-          ) : (
-            <button
-              type="button"
-              className="track-chip-bpm-btn"
-              title="Calcola BPM"
-              onClick={() => onCalculateBpm?.(track)}
-            >
-              + BPM
-            </button>
-          )}
-        </div>
+      <div className="track-actions-bar">
         <time className="track-date" dateTime={track.added_at ?? undefined}>
           {formatSpotifyDate(track.added_at)}
         </time>
-      </div>
-      <div className="track-actions-bar">
         <button
           type="button"
           className={`track-dl-btn ${dlStatus === 'done' ? 'done' : dlStatus === 'queued' ? 'busy' : ''}`}
           disabled={dlStatus === 'queued' || dlStatus === 'done'}
           onClick={() => onDownload?.(track)}
-          title="Scarica con motore Drops"
+          title="Scarica con motore Drops e salva in Coda"
         >
           {dlStatus === 'done' ? '✓ In coda' : dlStatus === 'queued' ? '…' : '↓ Scarica'}
         </button>
-        <nav className="track-links" aria-label={`Ascolta ${track.title}`}>
-          {links.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Apri ${track.title} su ${link.name}`}
-              title={link.name}
-            >
-              {link.label}
-            </a>
-          ))}
-        </nav>
+        <PlatformLinks query={query} discogsUrl={track.discogs_url} title={track.title} />
       </div>
     </article>
   )
@@ -809,6 +937,7 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
   const linkCount = input.split(/\r?\n/).map((x) => x.trim()).filter(Boolean).length
   const activeCount = queue.filter((j) => !readyStatuses.has(j.status) && !failedStatuses.has(j.status)).length
   const who = user.name ?? user.username ?? 'utente'
+  const { playingUrl, toggle: toggleAudio } = useAudioPlayer()
 
   return <main className="shell"><div className="workspace">
     <section className="card hero-card download-hero">
@@ -830,10 +959,32 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
       )}
     </section>
     <aside className="card status-card">
-      <div className="dl-history-head"><span className="eyebrow">Scaricati</span>{history.length > 0 && <button className="dl-clear" onClick={() => setHistory([])}>Svuota</button>}</div>
+      <div className="dl-history-head">
+        <span className="eyebrow">Scaricati</span>
+        <div className="dl-history-actions">
+          {history.length > 0 && (
+            <button
+              type="button"
+              className="dl-export-btn"
+              onClick={() => exportCrate(history, 'drops-downloads')}
+              title="Esporta playlist in formato .m3u8 per Rekordbox / Traktor"
+            >
+              📥 Crate (.m3u8)
+            </button>
+          )}
+          {history.length > 0 && <button className="dl-clear" onClick={() => setHistory([])}>Svuota</button>}
+        </div>
+      </div>
       {history.length === 0
         ? <div className="empty"><span>♪</span><p>Nessun download</p><small>I brani scaricati restano qui su questo browser.</small></div>
-        : <div className="dl-history">{history.map((item) => <HistoryRow key={item.id} item={item} />)}</div>}
+        : <div className="dl-history">{history.map((item) => (
+            <HistoryRow
+              key={item.id}
+              item={item}
+              playing={playingUrl === api.fileUrl(item.id)}
+              onToggleAudio={toggleAudio}
+            />
+          ))}</div>}
     </aside>
   </div>
   {preview && <PlaylistDialog data={preview.data} onConfirm={(urls) => { preview.resolve(urls); setPreview(null) }} onCancel={() => { preview.resolve(null); setPreview(null) }} />}
@@ -857,10 +1008,28 @@ function QueueRow({ job }: { job: QueueJob }) {
   )
 }
 
-function HistoryRow({ item }: { item: HistoryItem }) {
+function HistoryRow({
+  item,
+  playing,
+  onToggleAudio,
+}: {
+  item: HistoryItem
+  playing?: boolean
+  onToggleAudio?: (url: string) => void
+}) {
+  const fileUrl = api.fileUrl(item.id)
   return (
     <div className="dl-hist">
-      <div className="dl-job-cover" aria-hidden="true">{item.coverUrl ? <img src={item.coverUrl} alt="" /> : <span>♪</span>}</div>
+      <div
+        className={`dl-job-cover is-playable ${playing ? 'is-playing' : ''}`}
+        onClick={() => onToggleAudio?.(fileUrl)}
+        title={playing ? 'Pausa anteprima' : 'Ascolta brano'}
+        role="button"
+        tabIndex={0}
+      >
+        {item.coverUrl ? <img src={item.coverUrl} alt="" /> : <span>♪</span>}
+        <span className="cover-play-badge">{playing ? '⏸' : '▶'}</span>
+      </div>
       <div className="dl-job-main">
         <div className="dl-job-title">{item.title}</div>
         {item.artist && <div className="dl-job-detail">{item.artist}</div>}
@@ -869,7 +1038,7 @@ function HistoryRow({ item }: { item: HistoryItem }) {
           {item.source && <span className="dl-hist-source">fonte: {item.source}</span>}
         </div>
       </div>
-      <a className="dl-hist-dl" href={api.fileUrl(item.id)} download title={`Scarica ${item.title}`} aria-label={`Scarica ${item.title}`}>↓</a>
+      <a className="dl-hist-dl" href={fileUrl} download title={`Scarica ${item.title}`} aria-label={`Scarica ${item.title}`}>↓</a>
     </div>
   )
 }

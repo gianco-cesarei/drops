@@ -38,6 +38,7 @@ export type SpotifyTrack = {
   styles?: string[]
   catalog_no?: string | null
   discogs_url?: string | null
+  preview_url?: string | null
 }
 
 export type SpotifyPlaylist = { id: string; name: string; tracks_total: number }

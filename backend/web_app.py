@@ -18,9 +18,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 
+import urllib.request
 from bpm_analyzer import analyze_bpm
 from download_engine import AUDIO_QUALITY, download_multi_source
-from media_core import is_supported_url, resolve_track, safe_filename, ytdlp_cookiefile, ytdlp_extractor_args, ytdlp_proxy
+from media_core import is_supported_url, resolve_track, safe_filename, tag_audio_file, ytdlp_cookiefile, ytdlp_extractor_args, ytdlp_proxy
 from spotify_agent import SpotifyAgentError, WebSpotifyClient
 from discogs_agent import DiscogsClient
 from bpm_jobs import BpmJobManager
@@ -272,6 +273,35 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
                 bpm_result = analyze_bpm(artifact, max_seconds=180)
             except Exception as exc:
                 logger.info("bpm skip job_id=%s detail=%r", job_id, str(exc)[:200])
+
+            try:
+                cover_data = None
+                cover_url_to_fetch = (enrichment.get("cover_url") if enrichment else None) or (row.get("cover_url") if row else None)
+                if cover_url_to_fetch:
+                    try:
+                        req = urllib.request.Request(cover_url_to_fetch, headers={"User-Agent": "Drops/1.0"})
+                        with urllib.request.urlopen(req, timeout=5) as resp:
+                            cover_data = resp.read()
+                    except Exception as c_exc:
+                        logger.info("cover download skip detail=%r", str(c_exc)[:100])
+
+                genre_str = None
+                if enrichment and enrichment.get("styles"):
+                    genre_str = ", ".join(enrichment["styles"][:3])
+
+                tag_audio_file(
+                    artifact,
+                    title=str(info.get("title") or title or "audio")[:200],
+                    artist=artist,
+                    label=enrichment.get("label") if enrichment else None,
+                    year=enrichment.get("year") if enrichment else None,
+                    genre=genre_str,
+                    bpm=bpm_result["bpm"] if bpm_result else None,
+                    cover_data=cover_data,
+                )
+            except Exception as tag_exc:
+                logger.info("id3 tagging skip detail=%r", str(tag_exc)[:100])
+
             store.update_job(
                 job_id,
                 status="ready",

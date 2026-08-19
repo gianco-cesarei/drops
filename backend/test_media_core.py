@@ -273,5 +273,28 @@ class ResolveTrackTest(unittest.TestCase):
         self.assertIsNone(result["duration"])
 
 
+class TagAudioFileTest(unittest.TestCase):
+    def test_tag_audio_file_writes_tags(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mp3_path = Path(tmpdir) / "test.mp3"
+            # Write dummy MP3 header frames
+            mp3_path.write_bytes(b"\xff\xfb\x90d\x00\x00\x00\x00" * 20)
+            res = media_core.tag_audio_file(
+                mp3_path,
+                title="Hoodlum",
+                artist="Traumer",
+                album="Gett Traum 001",
+                label="Desolat",
+                year=2018,
+                genre="Minimal",
+                bpm=124,
+                cover_data=b"\xff\xd8\xff\xe0" + b"\x00" * 30,
+            )
+            self.assertTrue(res)
+
+    def test_tag_audio_file_handles_missing_file_gracefully(self):
+        self.assertFalse(media_core.tag_audio_file(Path("/nonexistent/file.mp3")))
+
+
 if __name__ == "__main__":
     unittest.main()

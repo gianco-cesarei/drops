@@ -241,3 +241,64 @@ def resolve_track(url: str) -> dict:
         artist, title = parse_artist_title(raw_title, oembed.get("author_name"))
         return {"title": title, "artist": artist, "raw_title": raw_title, "cover_url": oembed.get("thumbnail_url"), "duration": None}
     return _resolve_via_ytdlp(url)
+
+
+def tag_audio_file(
+    file_path: Path | str,
+    *,
+    title: str | None = None,
+    artist: str | None = None,
+    album: str | None = None,
+    label: str | None = None,
+    year: int | None = None,
+    genre: str | None = None,
+    bpm: float | int | None = None,
+    cover_data: bytes | None = None,
+    cover_mime: str = "image/jpeg",
+) -> bool:
+    """Write ID3v2.3 tags and embedded cover art to an MP3 file via mutagen."""
+    try:
+        from mutagen.id3 import ID3, TIT2, TPE1, TALB, TPUB, TDRC, TCON, TBPM, APIC, ID3NoHeaderError
+    except ImportError:
+        logger.info("mutagen non installato, skip scrittura tag ID3")
+        return False
+
+    target = Path(file_path)
+    if not target.exists() or target.suffix.lower() != ".mp3":
+        return False
+
+    try:
+        try:
+            tags = ID3(target)
+        except ID3NoHeaderError:
+            tags = ID3()
+
+        if title:
+            tags["TIT2"] = TIT2(encoding=3, text=str(title))
+        if artist:
+            tags["TPE1"] = TPE1(encoding=3, text=str(artist))
+        if album:
+            tags["TALB"] = TALB(encoding=3, text=str(album))
+        if label:
+            tags["TPUB"] = TPUB(encoding=3, text=str(label))
+        if year:
+            tags["TDRC"] = TDRC(encoding=3, text=str(year))
+        if genre:
+            tags["TCON"] = TCON(encoding=3, text=str(genre))
+        if bpm:
+            tags["TBPM"] = TBPM(encoding=3, text=str(int(round(float(bpm)))))
+
+        if cover_data:
+            tags["APIC"] = APIC(
+                encoding=3,
+                mime=cover_mime,
+                type=3,  # Front cover
+                desc="Cover",
+                data=cover_data,
+            )
+
+        tags.save(target, v2_version=3)
+        return True
+    except Exception as exc:
+        logger.warning("tag_audio_file fallito per %s detail=%r", target.name, str(exc)[:200])
+        return False
