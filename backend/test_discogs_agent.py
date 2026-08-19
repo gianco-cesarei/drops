@@ -111,6 +111,16 @@ class DiscogsAgentTest(unittest.TestCase):
             with patch.object(client, "_get", side_effect=DiscogsAgentError("down")):
                 self.assertIsNone(client.enrich("Artist", "Track"))
 
+    def test_bare_timeout_error_from_urlopen_degrades_to_null(self):
+        # A stalled connection can raise a bare TimeoutError (not
+        # urllib.error.URLError) - _get()'s except (URLError, JSONDecodeError)
+        # alone wouldn't catch this, so it must not escape enrich() either.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(os.environ, {"DISCOGS_TOKEN": "test-token"}):
+                client = DiscogsClient(Path(temp_dir))
+                with patch("discogs_agent.urllib.request.urlopen", side_effect=TimeoutError("timed out")):
+                    self.assertIsNone(client.enrich("Artist", "Track"))
+
 
 if __name__ == "__main__":
     unittest.main()

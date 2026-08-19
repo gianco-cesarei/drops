@@ -121,6 +121,13 @@ class DiscogsClient:
         except (urllib.error.URLError, json.JSONDecodeError) as exc:
             logger.warning("discogs request unreachable path=%s error=%s", path, exc)
             raise DiscogsAgentError("Discogs non raggiungibile") from exc
+        except Exception as exc:
+            # Mirrors media_core._oembed's fix for the same bug class: a stalled
+            # connection can raise a bare TimeoutError (not URLError), and other
+            # http.client exceptions aren't OSError subclasses either, so urllib
+            # doesn't wrap them - they'd otherwise escape _get() uncaught.
+            logger.warning("discogs request fallita in modo inatteso path=%s error=%r", path, str(exc)[:200])
+            raise DiscogsAgentError("Discogs request fallita in modo inatteso") from exc
         cache_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
         return payload
 

@@ -191,7 +191,11 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
 
         if artist and title:
             store.update_job(job_id, status="enriching")
-            enrichment = discogs.enrich(artist, title)
+            try:
+                enrichment = discogs.enrich(artist, title)
+            except Exception as exc:
+                logger.info("discogs enrich skip job_id=%s detail=%r", job_id, str(exc)[:200])
+                enrichment = None
             if enrichment:
                 update = {
                     "label": enrichment.get("label"),
@@ -233,6 +237,7 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
                 file_path=str(artifact),
                 size=artifact.stat().st_size,
                 source=source,
+                duration=int(info.get("duration") or 0) or None,
                 bpm=bpm_result["bpm"] if bpm_result else None,
                 bpm_confidence=bpm_result.get("bpm_confidence") if bpm_result else None,
                 expires_at=time.time() + settings.artifact_ttl_seconds,
