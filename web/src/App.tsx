@@ -268,21 +268,18 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
       const created = await api.createDownload(url)
       setDlState((cur) => ({ ...cur, [track.id]: 'done' }))
       if (created.id) {
-        const hist = loadHistory()
-        if (!hist.some((h) => h.id === created.id)) {
-          saveHistory([
-            {
-              id: created.id,
-              title: created.title || track.title,
-              artist: created.artist || track.artists.join(', '),
-              coverUrl: created.coverUrl || track.cover_url || undefined,
-              source: created.source || undefined,
-              bpm: created.bpm || (track.bpm ? Math.round(track.bpm) : undefined),
-              ts: Date.now(),
-            },
-            ...hist,
-          ])
-        }
+        addQueueJob({
+          key: makeKey(),
+          id: created.id,
+          url,
+          status: created.status || 'queued',
+          progress: created.progress ?? 0,
+          optimistic: 10,
+          title: created.title || track.title,
+          artist: created.artist || track.artists.join(', '),
+          coverUrl: created.coverUrl || track.cover_url || undefined,
+          source: created.source || undefined,
+        })
       }
     } catch {
       setDlState((cur) => ({ ...cur, [track.id]: 'error' }))
@@ -758,6 +755,7 @@ type HistoryItem = {
 }
 
 const HISTORY_KEY = 'drops.downloads.history.v1'
+const QUEUE_KEY = 'drops.downloads.queue.v1'
 
 function loadHistory(): HistoryItem[] {
   try {
@@ -774,7 +772,34 @@ function saveHistory(items: HistoryItem[]) {
   try {
     window.localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, 100)))
   } catch {
-    /* storage non disponibile: la lista resta solo in memoria */
+    /* storage non disponibile */
+  }
+}
+
+function loadQueue(): QueueJob[] {
+  try {
+    const raw = window.localStorage.getItem(QUEUE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? (parsed.filter((x) => x && typeof (x as QueueJob).key === 'string' && !terminalStatuses.has((x as QueueJob).status)) as QueueJob[]) : []
+  } catch {
+    return []
+  }
+}
+
+function saveQueue(jobs: QueueJob[]) {
+  try {
+    const pending = jobs.filter((j) => !terminalStatuses.has(j.status))
+    window.localStorage.setItem(QUEUE_KEY, JSON.stringify(pending.slice(0, 100)))
+  } catch {
+    /* storage non disponibile */
+  }
+}
+
+function addQueueJob(job: QueueJob) {
+  const current = loadQueue()
+  if (!current.some((j) => j.id === job.id && job.id)) {
+    saveQueue([job, ...current])
   }
 }
 
@@ -816,7 +841,7 @@ function queueStatusLabel(status: string): string {
 
 function Download({ user, onError, error, setError }: { user: User; onError: (error: unknown) => void; error: string; setError: (value: string) => void }) {
   const [input, setInput] = useState('')
-  const [queue, setQueue] = useState<QueueJob[]>([])
+  const [queue, setQueue] = useState<QueueJob[]>(() => loadQueue())
   const [history, setHistory] = useState<HistoryItem[]>(() => loadHistory())
   const [busy, setBusy] = useState(false)
   const [preview, setPreview] = useState<{ data: PlaylistPreview; resolve: (urls: string[] | null) => void } | null>(null)
@@ -826,6 +851,7 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
   void onError
 
   useEffect(() => { saveHistory(history) }, [history])
+  useEffect(() => { saveQueue(queue) }, [queue])
 
   const hasActive = queue.some((j) => !readyStatuses.has(j.status) && !failedStatuses.has(j.status))
 
