@@ -178,38 +178,43 @@ export function DiscoveryEnvironment({ items }: { items: DiscoveryItem[] }) {
 function DiscoveryCard({ item }: { item: DiscoveryItem }) {
   const source = item.sources.find((entry) => entry.kind === 'original') ?? item.sources[0]
   const kicker = item.kicker ?? (item.tags.includes('guida') ? 'Guida' : categoryLabels[item.type])
+  const locationShort = item.primaryLocation.name.split(',')[0]
+
   return (
-    <article className="discovery-card">
-      <a href={`/item/${item.slug}`} className="card-cover-link" tabIndex={-1} aria-hidden="true">
+    <article className="discovery-card poster-card">
+      <div className="card-bg-wrap">
         {item.coverUrl ? (
-          <img src={item.coverUrl} alt={item.title} className="card-cover-image" loading="lazy" />
+          <img src={item.coverUrl} alt={item.title} className="card-bg-image" loading="lazy" />
         ) : (
-          <div className={`card-cover-placeholder type-${item.type.toLowerCase()}`}>
-            <span className="placeholder-kicker">{kicker}</span>
+          <div className={`card-bg-placeholder type-${item.type.toLowerCase()}`}>
             <span className="placeholder-brand">Drops</span>
           </div>
         )}
-      </a>
-      <div className="card-content">
-        <div className="card-meta">
+        <div className="card-gradient-overlay" />
+      </div>
+
+      <div className="card-poster-content">
+        <div className="card-top-row">
           <span className="content-badge">{kicker}</span>
-          <time>{new Intl.DateTimeFormat('it', { dateStyle: 'medium' }).format(new Date(item.publishedAt))}</time>
+          <span className="card-location-pill">📍 {locationShort}</span>
         </div>
-        <h2>
-          <a href={`/item/${item.slug}`}>{item.title}</a>
-        </h2>
-        <p>{item.summary}</p>
-        <div className="card-details">
-          <span>📍 {item.primaryLocation.name}</span>
-          <span>{item.tags.slice(0, 2).join(' · ')}</span>
-        </div>
-        <div className="card-actions">
-          <a className="card-read-btn" href={`/item/${item.slug}`}>
-            Leggi articolo →
-          </a>
-          <a className="card-source-link" href={source.url} target="_blank" rel="noreferrer" title={`Apri ${source.label}`}>
-            {source.label} ↗
-          </a>
+
+        <div className="card-bottom-content">
+          <time className="card-date">
+            {new Intl.DateTimeFormat('it', { dateStyle: 'medium' }).format(new Date(item.publishedAt))}
+          </time>
+          <h2 className="card-title">
+            <a href={`/item/${item.slug}`}>{item.title}</a>
+          </h2>
+          <p className="card-summary">{item.summary}</p>
+          <div className="card-actions">
+            <a className="card-read-btn" href={`/item/${item.slug}`}>
+              Leggi articolo →
+            </a>
+            <a className="card-source-link" href={source.url} target="_blank" rel="noreferrer" title={`Apri ${source.label}`}>
+              {source.label} ↗
+            </a>
+          </div>
         </div>
       </div>
     </article>
@@ -438,23 +443,21 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
 
   // Initialize Leaflet real geographic map on mount
   useEffect(() => {
-    if (!mapElement || typeof window === 'undefined') return
+    const el = document.getElementById('europe-leaflet-map')
+    if (!el || typeof window === 'undefined') return
 
-    let isMounted = true
     let leafletMap: any = null
 
-    import('leaflet').then((L) => {
-      if (!isMounted || !mapElement) return
-
-      // Clean up previous instance if any
+    import('leaflet').then((LModule) => {
+      const L = LModule.default || LModule
       // @ts-expect-error internal check
-      if (mapElement._leaflet_id) {
+      if (el._leaflet_id) {
         // @ts-expect-error internal cleanup
-        mapElement._leaflet_id = null
+        el._leaflet_id = null
       }
 
       // Center on Central Europe (Milan/Zurich/Munich latitude) with maxBounds on Europe
-      leafletMap = L.map(mapElement, {
+      leafletMap = L.map(el, {
         center: [48.5, 12.0],
         zoom: 4.5,
         minZoom: 3.5,
@@ -509,12 +512,11 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
     })
 
     return () => {
-      isMounted = false
       if (leafletMap) {
         leafletMap.remove()
       }
     }
-  }, [mapElement, allCities])
+  }, [allCities])
 
   return (
     <div className="environment-layout">
