@@ -137,8 +137,16 @@ export const api = {
     }, 'login').then(unwrapUser),
   me: () => request<User | { user: User }>('/api/v1/auth/me', {}, 'session').then(unwrapUser),
   logout: () => request<void>('/api/v1/auth/logout', { method: 'POST' }),
-  createDownload: (url: string) =>
-    request<unknown>('/api/v1/downloads', { method: 'POST', body: JSON.stringify({ url }) }).then(normalizeJob),
+  createDownload: (url: string, meta?: { artist?: string; title?: string; cover_url?: string | null }) =>
+    request<unknown>('/api/v1/downloads', {
+      method: 'POST',
+      body: JSON.stringify({
+        url,
+        ...(meta?.artist ? { artist: meta.artist } : {}),
+        ...(meta?.title ? { title: meta.title } : {}),
+        ...(meta?.cover_url ? { cover_url: meta.cover_url } : {}),
+      }),
+    }).then(normalizeJob),
   getDownload: (id: string) => request<unknown>(`/api/v1/downloads/${encodeURIComponent(id)}`).then(normalizeJob),
   fileUrl: (id: string) => `${apiUrl()}/api/v1/downloads/${encodeURIComponent(id)}/file`,
   resolvePlaylist: (url: string) =>

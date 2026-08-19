@@ -265,7 +265,11 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
     setDlState((cur) => ({ ...cur, [track.id]: 'queued' }))
     try {
       const url = soundcloudUrl(track)
-      const created = await api.createDownload(url)
+      const created = await api.createDownload(url, {
+        artist: track.artists[0] ?? '',
+        title: track.title,
+        cover_url: track.cover_url,
+      })
       setDlState((cur) => ({ ...cur, [track.id]: 'done' }))
       if (created.id) {
         addQueueJob({

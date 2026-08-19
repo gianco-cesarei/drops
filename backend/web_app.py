@@ -40,6 +40,9 @@ class LoginRequest(BaseModel):
 class WebDownloadRequest(BaseModel):
     url: str
     quality: str = "320"
+    artist: str | None = None
+    title: str | None = None
+    cover_url: str | None = None
 
 
 class PlaylistResolveRequest(BaseModel):
@@ -435,9 +438,9 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
             request.quality,
             settings.max_duration_seconds + settings.artifact_ttl_seconds,
             settings.max_queued + settings.max_concurrent,
-            title=recognized.get("title"),
-            artist=recognized.get("artist"),
-            cover_url=recognized.get("cover_url"),
+            title=request.title or recognized.get("title"),
+            artist=request.artist or recognized.get("artist"),
+            cover_url=request.cover_url or recognized.get("cover_url"),
             raw_title=recognized.get("raw_title"),
             duration=recognized.get("duration"),
         )
