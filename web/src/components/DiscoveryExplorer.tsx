@@ -378,12 +378,8 @@ const EUROPEAN_CITIES_BASE = [
 export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
   const state = useArchiveState(false)
   const [activeCity, setActiveCity] = useState<string | null>(null)
-  const [zoomIndex, setZoomIndex] = useState(1) // Default 1.2 (level 2 of 5)
-  const [pan, setPan] = useState({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
-
-  const zoom = ZOOM_LEVELS[zoomIndex]
+  const mapContainerRef = useState<HTMLDivElement | null>(null)
+  const [mapElement, setMapElement] = useState<HTMLDivElement | null>(null)
 
   const places = useMemo(() => {
     return filterItems(items, state.types).filter(
@@ -395,7 +391,6 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
   const allCities = useMemo(() => {
     const map = new Map<string, { name: string; countryCode: string; lat: number; lon: number; items: DiscoveryItem[] }>()
 
-    // 1. Initialize with European base cities
     EUROPEAN_CITIES_BASE.forEach((c) => {
       map.set(c.name.toLowerCase(), {
         name: c.name,
@@ -406,16 +401,13 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
       })
     })
 
-    // 2. Attach actual content items
     places.forEach((item) => {
       if (item.primaryLocation.kind === 'geographic') {
         const cityName = item.primaryLocation.name
         const key = cityName.toLowerCase()
 
-        // Find existing or create
         let entry = map.get(key)
         if (!entry) {
-          // Check partial match (e.g. "Berlin" matches "Berlino, Germania")
           const partialKey = Array.from(map.keys()).find((k) => k.includes(key.split(',')[0].trim()) || key.includes(k.split(',')[0].trim()))
           if (partialKey) entry = map.get(partialKey)
         }
@@ -444,38 +436,85 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
     return allCities.find((g) => g.name === activeCity) ?? null
   }, [activeCity, allCities])
 
-  // Mouse pan / drag handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.map-city-node')) return
-    setIsDragging(true)
-    setDragStart({ x: e.clientX - pan.x, y: e.clientY - dragStart.y ? e.clientY - pan.y : e.clientY - pan.y })
-  }
+  // Initialize Leaflet real geographic map on mount
+  useEffect(() => {
+    if (!mapElement || typeof window === 'undefined') return
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return
-    setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })
-  }
+    let isMounted = true
+    let leafletMap: any = null
 
-  const handleMouseUp = () => {
-    setIsDragging(false)
-  }
+    import('leaflet').then((L) => {
+      if (!isMounted || !mapElement) return
 
-  const zoomIn = () => setZoomIndex((idx) => Math.min(ZOOM_LEVELS.length - 1, idx + 1))
-  const zoomOut = () => setZoomIndex((idx) => Math.max(0, idx - 1))
-  const resetView = () => {
-    setZoomIndex(1)
-    setPan({ x: 0, y: 0 })
-    setActiveCity(null)
-  }
+      // Clean up previous instance if any
+      // @ts-expect-error internal check
+      if (mapElement._leaflet_id) {
+        // @ts-expect-error internal cleanup
+        mapElement._leaflet_id = null
+      }
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault()
-    if (e.deltaY < 0) {
-      zoomIn()
-    } else {
-      zoomOut()
+      // Center on Central Europe (Milan/Zurich/Munich latitude) with maxBounds on Europe
+      leafletMap = L.map(mapElement, {
+        center: [48.5, 12.0],
+        zoom: 4.5,
+        minZoom: 3.5,
+        maxZoom: 9,
+        zoomControl: true,
+        maxBounds: [
+          [32.0, -25.0], // South-West Europe/Canaries
+          [72.0, 45.0],  // North-East Scandinavia/Ural
+        ],
+        maxBoundsViscosity: 0.9,
+      })
+
+      // Real Geographic World Map with Country Borders & Cities (Light / Cream Carto Positron Tiles)
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap',
+        subdomains: 'abcd',
+        maxZoom: 19,
+      }).addTo(leafletMap)
+
+      // Add City Markers directly onto the map
+      allCities.forEach((city) => {
+        const count = city.items.length
+        const hasItems = count > 0
+        const cityName = city.name.split(',')[0].trim()
+
+        const radius = !hasItems ? 4 : count === 1 ? 8 : count === 2 ? 11 : Math.min(18, 12 + count * 2)
+
+        const markerHtml = `
+          <div class="leaflet-custom-city-pin ${hasItems ? 'is-active' : 'is-empty'}" data-city="${city.name}">
+            <div class="city-circle" style="width:${radius * 2}px;height:${radius * 2}px;">
+              ${count >= 2 ? `<span class="city-num">${count}</span>` : ''}
+            </div>
+            <span class="city-text">${cityName}</span>
+          </div>
+        `
+
+        const customIcon = L.divIcon({
+          className: 'leaflet-city-marker-wrap',
+          html: markerHtml,
+          iconSize: [80, 40],
+          iconAnchor: [40, 20],
+        })
+
+        const marker = L.marker([city.lat, city.lon], { icon: customIcon }).addTo(leafletMap)
+
+        if (hasItems) {
+          marker.on('click', () => {
+            setActiveCity(city.name)
+          })
+        }
+      })
+    })
+
+    return () => {
+      isMounted = false
+      if (leafletMap) {
+        leafletMap.remove()
+      }
     }
-  }
+  }, [mapElement, allCities])
 
   return (
     <div className="environment-layout">
@@ -497,187 +536,16 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
 
       <div className="environment-content">
         <div className="environment-toolbar">
-          <span className="shell-note">Mappa geografica europea · Clicca su un cerchio verde per aprire i contenuti della scena</span>
+          <span className="shell-note">Mappa geografica reale dell'Europa · Clicca su un cerchio verde per aprire i contenuti della città</span>
           <div className="map-meta-chips">
-            {/* 5-Step Discrete Zoom Controls */}
-            <div className="map-zoom-controls">
-              <button
-                type="button"
-                className="map-zoom-btn"
-                onClick={zoomOut}
-                disabled={zoomIndex === 0}
-                title="Riduci zoom"
-              >
-                −
-              </button>
-              <span className="map-zoom-step-indicator" title={`Livello ${zoomIndex + 1} di 5`}>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <span key={i} className={`zoom-tick ${i <= zoomIndex ? 'filled' : ''}`} />
-                ))}
-              </span>
-              <button
-                type="button"
-                className="map-zoom-btn"
-                onClick={zoomIn}
-                disabled={zoomIndex === ZOOM_LEVELS.length - 1}
-                title="Aumenta zoom"
-              >
-                +
-              </button>
-              <button type="button" className="map-zoom-btn map-reset-btn" onClick={resetView} title="Ripristina vista">
-                ↺ Reset
-              </button>
-            </div>
-            <span className="chip-pill">{activeCount} città attive</span>
-            <span className="chip-pill">{places.length} articoli</span>
+            <span className="chip-pill">{activeCount} città con scene attive</span>
+            <span className="chip-pill">{places.length} articoli mappati</span>
           </div>
         </div>
 
-        {/* Interactive Europe Map Viewport Shell */}
-        <section
-          className={`interactive-europe-map-shell ${isDragging ? 'is-grabbing' : ''}`}
-          aria-label="Mappa Europea dei Club e delle Scene"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onWheel={handleWheel}
-        >
-          <svg className="europe-vector-map" viewBox="0 0 900 580" preserveAspectRatio="xMidYMid meet">
-            <defs>
-              <pattern id="grid-pattern" width="30" height="30" patternUnits="userSpaceOnUse">
-                <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(0, 0, 0, 0.035)" strokeWidth="1" />
-              </pattern>
-            </defs>
-
-            {/* Clean Warm White / Cream Map Background */}
-            <rect width="900" height="580" fill="#f6f7f2" rx="16" />
-            <rect width="900" height="580" fill="url(#grid-pattern)" rx="16" />
-
-            {/* Zoomable / Pannable Landmass & City Layer */}
-            <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`} style={{ transformOrigin: '450px 290px', transition: isDragging ? 'none' : 'transform 0.22s ease-out' }}>
-              {/* High-Fidelity Geographic European Landmass with Clean Outlines */}
-              <g className="map-landmass-layer" fill="#e8ebe1" stroke="#9ba896" strokeWidth="1.2" strokeLinejoin="round">
-                {/* Portugal */}
-                <path d="M 125 390 L 142 385 L 140 440 L 152 465 L 140 472 L 120 460 L 122 410 Z" />
-                {/* Spain */}
-                <path d="M 142 385 L 235 365 L 265 372 L 270 415 L 245 450 L 220 480 L 180 482 L 152 465 L 140 440 Z" />
-                {/* France */}
-                <path d="M 235 365 L 285 305 L 320 295 L 350 300 L 375 320 L 360 365 L 335 410 L 285 420 L 265 372 Z" />
-                {/* United Kingdom & Scotland */}
-                <path d="M 235 240 L 260 195 L 280 200 L 295 240 L 305 275 L 285 295 L 255 295 L 240 270 Z" />
-                {/* Ireland */}
-                <path d="M 195 225 L 225 220 L 225 255 L 205 270 L 185 255 Z" />
-                {/* Belgium & Netherlands (Benelux) */}
-                <path d="M 320 295 L 345 275 L 360 270 L 365 295 L 345 305 Z" />
-                {/* Germany */}
-                <path d="M 365 295 L 435 275 L 450 305 L 440 360 L 385 365 L 370 320 Z" />
-                {/* Denmark */}
-                <path d="M 405 240 L 420 215 L 430 220 L 425 245 L 410 245 Z" />
-                {/* Norway & Sweden (Scandinavia) */}
-                <path d="M 425 180 L 445 110 L 490 85 L 530 115 L 505 220 L 460 245 L 435 210 Z" />
-                {/* Finland */}
-                <path d="M 530 115 L 585 105 L 600 170 L 560 205 L 525 190 Z" />
-                {/* Poland */}
-                <path d="M 450 305 L 545 285 L 560 330 L 485 350 L 440 335 Z" />
-                {/* Switzerland & Austria (Alpine Region) */}
-                <path d="M 370 365 L 465 355 L 475 385 L 380 395 Z" />
-                {/* Italy (Peninsula, Sicily & Sardinia) */}
-                <path d="M 375 395 L 435 390 L 475 440 L 520 480 L 535 500 L 515 515 L 475 470 L 440 450 L 415 435 L 375 400 Z" />
-                <path d="M 460 520 L 495 515 L 480 535 Z" />
-                <path d="M 390 440 L 405 440 L 400 470 L 385 465 Z" />
-                {/* Czechia, Slovakia, Hungary */}
-                <path d="M 450 335 L 540 330 L 535 385 L 465 380 Z" />
-                {/* Romania, Balkans & Greece */}
-                <path d="M 480 390 L 610 365 L 640 415 L 580 470 L 545 495 L 525 450 L 480 410 Z" />
-                {/* Baltic & Eastern Reach */}
-                <path d="M 545 285 L 680 250 L 710 340 L 610 365 L 560 330 Z" />
-              </g>
-
-              {/* ALL European Cities - Same Level on Ground */}
-              {allCities.map((g) => {
-                const { x, y } = projectCoords(g.lat, g.lon, 900, 580)
-                const count = g.items.length
-                const hasItems = count > 0
-                const isSelected = activeCity === g.name
-                const cityName = g.name.split(',')[0].trim()
-
-                // Proportional Circle Sizing based on content count (Static, non-vibrating)
-                // 0 items: radius 3.5 (subtle dot)
-                // 1 item: radius 7
-                // 2 items: radius 10
-                // 3+ items: radius 13 + count
-                const baseRadius = !hasItems ? 3.5 : count === 1 ? 7 : count === 2 ? 10 : Math.min(18, 12 + count * 2)
-
-                return (
-                  <g
-                    key={g.name}
-                    className={`map-city-node ${hasItems ? 'has-content' : 'is-empty'} ${isSelected ? 'is-selected' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (hasItems) {
-                        setActiveCity(isSelected ? null : g.name)
-                      }
-                    }}
-                    cursor={hasItems ? 'pointer' : 'default'}
-                    tabIndex={hasItems ? 0 : -1}
-                    role={hasItems ? 'button' : undefined}
-                    aria-label={hasItems ? `Visualizza ${count} contenuti per ${cityName}` : cityName}
-                    onKeyDown={(e) => {
-                      if (hasItems && e.key === 'Enter') setActiveCity(isSelected ? null : g.name)
-                    }}
-                  >
-                    {/* Circle Ground Level */}
-                    {!hasItems ? (
-                      // Empty baseline city dot
-                      <circle cx={x} cy={y} r={baseRadius} className="city-dot-empty" />
-                    ) : (
-                      // Active city with green concentric proportional circles (no vibration/pulsing)
-                      <g className="city-circle-group">
-                        {/* Outer Glow Halo */}
-                        <circle
-                          cx={x}
-                          cy={y}
-                          r={baseRadius + 6}
-                          className="city-outer-halo"
-                        />
-                        {/* Main Proportional Green Disk */}
-                        <circle
-                          cx={x}
-                          cy={y}
-                          r={baseRadius}
-                          className="city-main-disk"
-                        />
-                        {/* Inner Core */}
-                        <circle
-                          cx={x}
-                          cy={y}
-                          r={Math.max(2.5, baseRadius * 0.4)}
-                          className="city-inner-core"
-                        />
-                        {/* Count number inside circle if >= 2 */}
-                        {count >= 2 && (
-                          <text x={x} y={y + 3.5} textAnchor="middle" className="city-count-text">
-                            {count}
-                          </text>
-                        )}
-                      </g>
-                    )}
-
-                    {/* Static Clean City Label on the Ground */}
-                    <text
-                      x={x}
-                      y={y + (hasItems ? baseRadius + 11 : 10)}
-                      textAnchor="middle"
-                      className={`city-label-text ${hasItems ? 'active-label' : 'empty-label'}`}
-                    >
-                      {cityName}
-                    </text>
-                  </g>
-                )
-              })}
-            </g>
-          </svg>
+        {/* Real Leaflet Map Container Shell */}
+        <section className="interactive-europe-map-shell leaflet-shell-wrap" aria-label="Mappa Europea dei Club e delle Scene">
+          <div ref={setMapElement} className="leaflet-map-canvas" id="europe-leaflet-map" style={{ width: '100%', height: '560px' }} />
 
           {/* FLOATING OVERLAY DIALOG FOR SELECTED CITY (IN SOVRAPPRESSIONE) */}
           {selectedGroup && (

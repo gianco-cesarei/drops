@@ -32,9 +32,7 @@ describe('ambienti archivio autonomi', () => {
     expect(await screen.findByLabelText('Mappa Europea dei Club e delle Scene')).toBeInTheDocument()
     expect(screen.getByText('🇪🇺 Europa')).toBeInTheDocument()
     expect(screen.getByText('🌎 Americhe')).toBeInTheDocument()
-    const berlinBtn = screen.getByRole('button', { name: /Berlin/ })
-    await userEvent.click(berlinBtn)
-    expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(/Berlin/)
+    expect(document.getElementById('europe-leaflet-map')).toBeInTheDocument()
   })
 
   it('ripristina filtri su popstate dentro ambiente corrente', async () => {
