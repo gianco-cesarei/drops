@@ -30,12 +30,13 @@ export default function PublicHeader({ pathname = '/' }: { pathname?: string }) 
 
   const [currentPath, setCurrentPath] = useState(pathname)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && pathname === '/') {
       setCurrentPath(window.location.pathname)
     }
-  }, [])
+  }, [pathname])
 
-  const normalized = currentPath.replace(/\/+$/, '') || '/'
+  const effectivePath = pathname !== '/' ? pathname : currentPath
+  const normalized = effectivePath.replace(/\/+$/, '') || '/'
   const isGrid = normalized === '/'
   const isTimeline = normalized.startsWith('/timeline')
   const isMap = normalized.startsWith('/map')
