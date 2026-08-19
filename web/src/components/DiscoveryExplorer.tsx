@@ -109,81 +109,300 @@ type Density = typeof densityLevels[number]
 
 export function TimelineEnvironment({ items }: { items: DiscoveryItem[] }) {
   const state = useArchiveState(false)
-  const [density, setDensity] = useState<Density>('month')
-  const visible = useMemo(() => filterItems(items, state.types), [items, state.types])
-  const index = densityLevels.indexOf(density)
-  const years = [...new Set(visible.map((item) => new Date(item.publishedAt).getFullYear()))].sort((a, b) => b - a)
+  // Sort items based on originalPublishedAt (content reference date) or publishedAt
+  const getItemDate = (item: DiscoveryItem) => new Date(item.originalPublishedAt ?? item.publishedAt)
+  const visible = useMemo(() => {
+    return filterItems(items, state.types).sort((a, b) => getItemDate(b).getTime() - getItemDate(a).getTime())
+  }, [items, state.types])
+
+  const years = useMemo(() => {
+    return [...new Set(visible.map((item) => getItemDate(item).getFullYear()))].sort((a, b) => b - a)
+  }, [visible])
+
   return (
     <div className="environment-layout">
       <aside className="environment-rail">
-        <span className="rail-label">Anni</span>
-        <div className="rail-list">
-          {years.map((year) => <a key={year} href={`#year-${year}`}>{year}</a>)}
-        </div>
-      </aside>
-      <div className="environment-content">
-        <div className="environment-toolbar">
-          <span className="shell-note">Ordine cronologico</span>
-          <div className="density-control" aria-label="Densità temporale">
-            <button disabled={index === 0} onClick={() => setDensity(densityLevels[index - 1])} aria-label="Riduci densità">−</button>
-            <span>{density === 'year' ? 'Anno' : density === 'month' ? 'Mese' : 'Giorno'}</span>
-            <button disabled={index === 2} onClick={() => setDensity(densityLevels[index + 1])} aria-label="Aumenta densità">+</button>
+        <span className="rail-label">Categorie</span>
+        <Categories types={state.types} onChange={(types) => state.update(types)} label="Categorie Timeline" />
+        <div className="rail-sublist">
+          <span className="rail-label">Anni di riferimento</span>
+          <div className="rail-list">
+            {years.map((year) => <a key={year} href={`#timeline-year-${year}`}>{year}</a>)}
           </div>
         </div>
-        <section className={`timeline-shell discovery-grid density-${density}`} aria-label="Timeline shell">
-          {visible.map((item) => <div id={`year-${new Date(item.publishedAt).getFullYear()}`} key={item.id}><DiscoveryCard item={item} /></div>)}
+      </aside>
+
+      <div className="environment-content">
+        <div className="environment-toolbar">
+          <span className="shell-note">Cronologia dei contenuti musicali (per data storica di riferimento)</span>
+          <p className="result-summary"><strong>{visible.length}</strong> eventi / uscite nel tempo</p>
+        </div>
+
+        {/* Vertical Alternating Timeline Container */}
+        <section className="timeline-vertical-spine-container" aria-label="Timeline Cronologica">
+          <div className="timeline-spine-line" aria-hidden="true" />
+
+          {visible.map((item, idx) => {
+            const date = getItemDate(item)
+            const year = date.getFullYear()
+            const dateFormatted = new Intl.DateTimeFormat('it', { month: 'short', year: 'numeric' }).format(date)
+            const isLeft = idx % 2 === 0
+            const kicker = item.kicker ?? (item.tags.includes('guida') ? 'Guida' : categoryLabels[item.type])
+
+            return (
+              <div
+                key={item.id}
+                id={`timeline-year-${year}`}
+                className={`timeline-vertical-node ${isLeft ? 'node-left' : 'node-right'}`}
+              >
+                {/* Center Badge with Event Reference Date */}
+                <div className="timeline-center-marker">
+                  <div className="timeline-dot" />
+                  <span className="timeline-date-chip">{dateFormatted}</span>
+                </div>
+
+                {/* Content Card Side */}
+                <div className="timeline-node-card-wrap">
+                  <article className="discovery-card timeline-card-compact">
+                    <a href={`/item/${item.slug}`} className="card-cover-link" tabIndex={-1} aria-hidden="true">
+                      {item.coverUrl ? (
+                        <img src={item.coverUrl} alt={item.title} className="card-cover-image" loading="lazy" />
+                      ) : (
+                        <div className={`card-cover-placeholder type-${item.type.toLowerCase()}`}>
+                          <span className="placeholder-kicker">{kicker}</span>
+                          <span className="placeholder-brand">Drops</span>
+                        </div>
+                      )}
+                    </a>
+                    <div className="card-content">
+                      <div className="card-meta">
+                        <span className="content-badge">{kicker}</span>
+                        <span>📍 {item.primaryLocation.name}</span>
+                      </div>
+                      <h2>
+                        <a href={`/item/${item.slug}`}>{item.title}</a>
+                      </h2>
+                      <p>{item.summary}</p>
+                      <div className="card-actions">
+                        <a className="card-read-btn" href={`/item/${item.slug}`}>
+                          Approfondisci →
+                        </a>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            )
+          })}
         </section>
       </div>
     </div>
   )
 }
 
+// European Geographic Boundaries for SVG Map Projection
+// Lat: ~34°N (Gibraltar/Cyprus) to 62°N (Scandinavia/Scotland), Lon: -12°W (Lisbon/Ireland) to 32°E (Bucharest/Kyiv)
+const MAP_BOUNDS = { minLon: -12, maxLon: 32, minLat: 34, maxLat: 62 }
+
+function projectCoords(lat: number, lon: number, width: number, height: number) {
+  const x = ((lon - MAP_BOUNDS.minLon) / (MAP_BOUNDS.maxLon - MAP_BOUNDS.minLon)) * width
+  const y = ((MAP_BOUNDS.maxLat - lat) / (MAP_BOUNDS.maxLat - MAP_BOUNDS.minLat)) * height
+  return { x: Math.max(10, Math.min(width - 10, x)), y: Math.max(10, Math.min(height - 10, y)) }
+}
+
 export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
   const state = useArchiveState(false)
-  const [zoom, setZoom] = useState(4)
-  const [selection, setSelection] = useState<string | null>(null)
-  const places = useMemo(() => filterItems(items, state.types).filter((item) => item.mapEligible && item.primaryLocation.kind === 'geographic' && item.primaryLocation.latitude !== undefined && item.primaryLocation.longitude !== undefined), [items, state.types])
-  const countries = [...new Set(places.map((item) => item.primaryLocation.kind === 'geographic' ? item.primaryLocation.countryCode : ''))].filter(Boolean)
+  const [activeCity, setActiveCity] = useState<string | null>(null)
+
+  const places = useMemo(() => {
+    return filterItems(items, state.types).filter(
+      (item) => item.mapEligible && item.primaryLocation.kind === 'geographic' && item.primaryLocation.latitude !== undefined && item.primaryLocation.longitude !== undefined,
+    )
+  }, [items, state.types])
+
+  // Group items by city/location name
+  const cityGroups = useMemo(() => {
+    const map = new Map<string, { name: string; countryCode: string; lat: number; lon: number; items: DiscoveryItem[] }>()
+    places.forEach((item) => {
+      if (item.primaryLocation.kind === 'geographic') {
+        const key = item.primaryLocation.name
+        if (!map.has(key)) {
+          map.set(key, {
+            name: item.primaryLocation.name,
+            countryCode: item.primaryLocation.countryCode,
+            lat: item.primaryLocation.latitude ?? 45,
+            lon: item.primaryLocation.longitude ?? 9,
+            items: [],
+          })
+        }
+        map.get(key)!.items.push(item)
+      }
+    })
+    return Array.from(map.values())
+  }, [places])
+
+  const selectedGroup = useMemo(() => {
+    if (!activeCity) return null
+    return cityGroups.find((g) => g.name === activeCity) ?? null
+  }, [activeCity, cityGroups])
+
+  const countries = useMemo(() => {
+    return [...new Set(places.map((item) => item.primaryLocation.kind === 'geographic' ? item.primaryLocation.countryCode : ''))].filter(Boolean)
+  }, [places])
+
   return (
     <div className="environment-layout">
       <aside className="environment-rail">
         <span className="rail-label">Continenti</span>
-        <button className="rail-choice active">Europa</button>
-        <button className="rail-choice" disabled>Americhe · in arrivo</button>
-        <button className="rail-choice" disabled>Asia · in arrivo</button>
+        <button className="rail-choice active" title="Navigabile">
+          🇪🇺 Europa
+        </button>
+        <button className="rail-choice continent-disabled" disabled title="In arrivo con le prossime release">
+          🌎 Americhe <span className="coming-badge">Soon</span>
+        </button>
+        <button className="rail-choice continent-disabled" disabled title="In arrivo con le prossime release">
+          🌏 Asia & Africa <span className="coming-badge">Soon</span>
+        </button>
+        <button className="rail-choice continent-disabled" disabled title="In arrivo con le prossime release">
+          🌊 Oceania <span className="coming-badge">Soon</span>
+        </button>
+
         <div className="rail-sublist">
-          <span className="rail-label">Paesi</span>
-          {countries.map((country) => <a key={country} href={`#country-${country}`}>{country}</a>)}
+          <span className="rail-label">Scene & Città Attive</span>
+          <div className="rail-list">
+            {cityGroups.map((g) => (
+              <button
+                key={g.name}
+                type="button"
+                className={`rail-choice ${activeCity === g.name ? 'active' : ''}`}
+                onClick={() => setActiveCity(activeCity === g.name ? null : g.name)}
+              >
+                📍 {g.name} ({g.items.length})
+              </button>
+            ))}
+          </div>
         </div>
       </aside>
+
       <div className="environment-content">
         <div className="environment-toolbar">
-          <span className="shell-note">Mappa geografica europea</span>
-          <div className="map-controls" aria-label="Controlli mappa">
-            <button onClick={() => setZoom(Math.max(2, zoom - 1))} aria-label="Zoom indietro"><MinusIcon /></button>
-            <span>zoom {zoom}</span>
-            <button onClick={() => setZoom(Math.min(12, zoom + 1))} aria-label="Zoom avanti"><PlusIcon /></button>
-            <button aria-label="Pan mappa" onClick={() => setSelection(null)}><PanIcon /></button>
+          <span className="shell-note">Mappa geografica europea interattiva · Clicca su un nodo per esplorare le scene locali</span>
+          <div className="map-meta-chips">
+            <span className="chip-pill">{cityGroups.length} città connesse</span>
+            <span className="chip-pill">{places.length} articoli mappati</span>
           </div>
         </div>
-        <section className="map-shell" aria-label="Map shell">
-          <div className="map-placeholder">
-            <strong>Viewport iniziale Europa</strong>
-            <span>Esplorazione per città e scene locali</span>
-            <div className="map-markers">
-              {places.map((item) => <button id={`country-${item.primaryLocation.kind === 'geographic' ? item.primaryLocation.countryCode : ''}`} key={item.id} onClick={() => setSelection(item.primaryLocation.name)}>{item.primaryLocation.name}</button>)}
+
+        {/* Interactive Europe Map Canvas */}
+        <section className="interactive-europe-map-shell" aria-label="Mappa Europea dei Club e delle Scene">
+          <svg className="europe-vector-map" viewBox="0 0 900 580" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <pattern id="grid-pattern" width="30" height="30" patternUnits="userSpaceOnUse">
+                <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+              </pattern>
+              <linearGradient id="map-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#141a15" />
+                <stop offset="100%" stopColor="#0b0f0c" />
+              </linearGradient>
+            </defs>
+
+            {/* Map Background with subtle grid */}
+            <rect width="900" height="580" fill="url(#map-gradient)" rx="16" />
+            <rect width="900" height="580" fill="url(#grid-pattern)" rx="16" />
+
+            {/* Stylized Continental Outlines of Europe */}
+            <g className="map-landmass-layer" fill="rgba(34, 197, 94, 0.04)" stroke="rgba(34, 197, 94, 0.22)" strokeWidth="1.2" strokeLinejoin="round">
+              {/* Iberian Peninsula (Portugal & Spain) */}
+              <path d="M 120 380 L 150 360 L 220 370 L 250 420 L 240 480 L 190 500 L 140 480 L 115 440 Z" />
+              {/* France & Benelux */}
+              <path d="M 230 365 L 290 310 L 350 300 L 370 340 L 340 410 L 260 415 L 230 370 Z" />
+              {/* British Isles (UK & Ireland) */}
+              <path d="M 230 240 L 260 210 L 290 220 L 270 290 L 240 280 Z" />
+              <path d="M 190 230 L 220 230 L 210 270 L 180 260 Z" />
+              {/* Central Europe & Germany */}
+              <path d="M 360 290 L 440 270 L 470 310 L 430 380 L 360 370 Z" />
+              {/* Italy */}
+              <path d="M 370 390 L 430 390 L 470 450 L 510 500 L 490 520 L 450 470 L 410 440 Z" />
+              {/* Scandinavia */}
+              <path d="M 380 180 L 430 110 L 480 90 L 510 160 L 440 250 Z" />
+              {/* Eastern Europe & Balkans */}
+              <path d="M 475 290 L 640 260 L 700 350 L 630 460 L 530 450 L 475 370 Z" />
+            </g>
+
+            {/* City Hotspots & Geolocation Markers */}
+            {cityGroups.map((g) => {
+              const { x, y } = projectCoords(g.lat, g.lon, 900, 580)
+              const isSelected = activeCity === g.name
+
+              return (
+                <g
+                  key={g.name}
+                  className={`map-city-node ${isSelected ? 'is-active' : ''}`}
+                  onClick={() => setActiveCity(isSelected ? null : g.name)}
+                  cursor="pointer"
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Visualizza contenuti per ${g.name}`}
+                  onKeyDown={(e) => { if (e.key === 'Enter') setActiveCity(isSelected ? null : g.name) }}
+                >
+                  {/* Outer Pulsing Ping */}
+                  <circle cx={x} cy={y} r={isSelected ? 22 : 14} className="map-marker-ping" />
+                  {/* Middle Glow */}
+                  <circle cx={x} cy={y} r={isSelected ? 12 : 8} className="map-marker-core" />
+                  {/* Pin Dot */}
+                  <circle cx={x} cy={y} r={isSelected ? 5 : 3.5} className="map-marker-dot" />
+
+                  {/* City Label */}
+                  <text
+                    x={x}
+                    y={y - 14}
+                    textAnchor="middle"
+                    className="map-city-text"
+                  >
+                    {g.name.split(',')[0]} ({g.items.length})
+                  </text>
+                </g>
+              )
+            })}
+          </svg>
+        </section>
+
+        {/* Selected City Drawer / Detail Header */}
+        {selectedGroup && (
+          <div className="map-active-city-panel">
+            <div className="city-panel-head">
+              <div>
+                <span className="eyebrow">Scena Locale Selezionata</span>
+                <h3 className="city-panel-title">📍 {selectedGroup.name}</h3>
+              </div>
+              <button
+                type="button"
+                className="city-panel-close"
+                onClick={() => setActiveCity(null)}
+                aria-label="Chiudi selezione"
+              >
+                ✕ Mostra tutta l'Europa
+              </button>
+            </div>
+            <div className="discovery-grid map-content-grid">
+              {selectedGroup.items.map((item) => (
+                <DiscoveryCard key={item.id} item={item} />
+              ))}
             </div>
           </div>
-          {selection && (
-            <aside className="map-selection">
-              <h2>{selection}</h2>
-              {places.filter((item) => item.primaryLocation.name === selection).map((item) => <a key={item.id} href={`/item/${item.slug}`}>{item.title}</a>)}
-            </aside>
-          )}
-        </section>
-        <div className="discovery-grid map-content-grid">
-          {places.map((item) => <DiscoveryCard key={item.id} item={item} />)}
-        </div>
+        )}
+
+        {/* Default Grid showing all mapped items if no city selected */}
+        {!selectedGroup && (
+          <div className="map-all-items-wrap">
+            <h3 className="section-subhead">Tutte le uscite e le storie mappate</h3>
+            <div className="discovery-grid map-content-grid">
+              {places.map((item) => (
+                <DiscoveryCard key={item.id} item={item} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

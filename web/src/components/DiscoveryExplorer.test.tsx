@@ -17,26 +17,24 @@ describe('ambienti archivio autonomi', () => {
     expect(location.search).toBe('?q=Berlin')
   })
 
-  it('Timeline non ha ricerca, filtra e cambia densità', async () => {
+  it('Timeline non ha ricerca, ordina cronologicamente e filtra categorie', async () => {
     history.replaceState({}, '', '/timeline')
     render(<TimelineEnvironment items={developmentDiscoveryItems} />)
     expect(screen.queryByRole('search')).not.toBeInTheDocument()
     expect(await screen.findByRole('link', { name: '2026' })).toBeInTheDocument()
-    expect(screen.getByText('Mese')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Aumenta densità' }))
-    expect(screen.getByText('Giorno')).toBeInTheDocument()
+    expect(screen.getByLabelText('Timeline Cronologica')).toBeInTheDocument()
   })
 
-  it('Map usa coordinate europee, zoom e selezione luogo senza ricerca', async () => {
+  it('Map usa coordinate europee e selezione interattiva per città', async () => {
     history.replaceState({}, '', '/map')
     render(<MapEnvironment items={developmentDiscoveryItems} />)
     expect(screen.queryByRole('search')).not.toBeInTheDocument()
-    expect(await screen.findByText('Viewport iniziale Europa')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Zoom avanti' }))
-    expect(screen.getByLabelText('Controlli mappa')).toHaveTextContent('zoom 5')
-    await userEvent.click(screen.getByRole('button', { name: 'Berlin' }))
-    expect(screen.getByRole('heading', { name: 'Berlin' })).toBeInTheDocument()
-    expect(screen.queryByText(/Digital release/)).not.toBeInTheDocument()
+    expect(await screen.findByLabelText('Mappa Europea dei Club e delle Scene')).toBeInTheDocument()
+    expect(screen.getByText('🇪🇺 Europa')).toBeInTheDocument()
+    expect(screen.getByText('🌎 Americhe')).toBeInTheDocument()
+    const berlinBtns = screen.getAllByRole('button', { name: /Berlin/ })
+    await userEvent.click(berlinBtns[0])
+    expect(screen.getByRole('heading', { name: '📍 Berlin' })).toBeInTheDocument()
   })
 
   it('ripristina filtri su popstate dentro ambiente corrente', async () => {
