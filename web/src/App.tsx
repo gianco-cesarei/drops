@@ -1005,6 +1005,53 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
     setDownloadedIds((cur) => new Set([...cur, id]))
   }
 
+  function handleRemoveJob(key: string) {
+    setQueue((cur) => cur.filter((x) => x.key !== key))
+  }
+
+  function handleRetryJob(job: QueueJob) {
+    const freshKey = makeKey()
+    setQueue((cur) => cur.map((x) => (x.key === job.key ? {
+      ...x,
+      key: freshKey,
+      id: null,
+      status: 'starting',
+      progress: 0,
+      optimistic: 8,
+      message: undefined,
+    } : x)))
+    api.createDownload(job.url, {
+      artist: job.artist,
+      title: job.title,
+      cover_url: job.coverUrl,
+    })
+      .then((created) => {
+        setQueue((cur) => cur.map((x) => (x.key === freshKey ? {
+          ...x,
+          id: created.id,
+          status: created.status || 'queued',
+          title: created.title ?? x.title,
+          artist: created.artist ?? x.artist,
+          coverUrl: created.coverUrl ?? x.coverUrl,
+          source: created.source ?? x.source,
+        } : x)))
+        if (readyStatuses.has(created.status)) {
+          const record: HistoryItem = { id: created.id, title: created.title ?? created.fileName ?? 'Traccia', artist: created.artist, coverUrl: created.coverUrl, source: created.source, bpm: created.bpm, ts: Date.now() }
+          window.setTimeout(() => {
+            setHistory((h) => [record, ...h.filter((it) => it.id !== record.id)].slice(0, 100))
+            setQueue((cur) => cur.filter((x) => x.key !== freshKey))
+          }, 1000)
+        }
+      })
+      .catch((cause) => {
+        setQueue((cur) => cur.map((x) => (x.key === freshKey ? {
+          ...x,
+          status: 'failed',
+          message: cause instanceof ApiError ? cause.message : 'Avvio non riuscito',
+        } : x)))
+      })
+  }
+
   async function handleExportZip() {
     if (!history.length) return
     setBusy(true)
@@ -1111,7 +1158,16 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
             <span className="eyebrow">In corso / Coda</span>
             <span className="dl-count">{activeCount} attivi · {queue.length} in lista</span>
           </div>
-          <div className="dl-queue-list">{queue.map((job) => <QueueRow key={job.key} job={job} />)}</div>
+          <div className="dl-queue-list">
+            {queue.map((job) => (
+              <QueueRow
+                key={job.key}
+                job={job}
+                onRetry={() => handleRetryJob(job)}
+                onRemove={() => handleRemoveJob(job.key)}
+              />
+            ))}
+          </div>
         </div>
       )}
     </section>
@@ -1200,7 +1256,15 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
   </main>
 }
 
-function QueueRow({ job }: { job: QueueJob }) {
+function QueueRow({
+  job,
+  onRetry,
+  onRemove,
+}: {
+  job: QueueJob
+  onRetry?: () => void
+  onRemove?: () => void
+}) {
   const ready = readyStatuses.has(job.status)
   const failed = failedStatuses.has(job.status)
   const pct = Math.min(100, Math.round(Math.max(job.optimistic, job.progress)))
@@ -1211,6 +1275,16 @@ function QueueRow({ job }: { job: QueueJob }) {
         <div className="dl-job-title">{job.title ?? job.url}</div>
         <div className="dl-job-detail">{failed ? (job.message ?? 'Errore') : ready ? 'Completato' : queueStatusLabel(job.status)}{job.source ? ` · ${job.source}` : ''}</div>
         {!failed && <div className="progress"><span style={{ width: `${ready ? 100 : pct}%` }} /></div>}
+        {failed && (
+          <div className="dl-job-failed-actions">
+            <button type="button" className="dl-retry-btn" onClick={onRetry} title="Riprova download con ricerca SoundCloud / YouTube">
+              🔄 Riprova
+            </button>
+            <button type="button" className="dl-remove-btn" onClick={onRemove} title="Rimuovi dalla lista">
+              ✕
+            </button>
+          </div>
+        )}
       </div>
       <div className={`dl-job-badge ${ready ? 'ok' : failed ? 'err' : ''}`}>{ready ? '✓' : failed ? '!' : `${pct}%`}</div>
     </div>

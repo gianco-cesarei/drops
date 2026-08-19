@@ -495,6 +495,11 @@ footer { padding: 20px 0; color: var(--color-text-muted); font-size: 11px; text-
 .dl-job-badge { flex: none; min-width: 42px; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--color-text-muted); }
 .dl-job-badge.ok { color: var(--color-accent-strong); font-size: 15px; }
 .dl-job-badge.err { color: var(--color-danger); font-size: 15px; }
+.dl-job-failed-actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.dl-retry-btn { height: 26px; padding: 0 10px; font-size: 11px; font-weight: 800; border-radius: 5px; background: var(--color-surface); border: 1px solid var(--color-border-strong); color: var(--color-text); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all .15s; }
+.dl-retry-btn:hover { border-color: var(--color-accent-strong); color: var(--color-accent-strong); background: var(--color-accent-soft); }
+.dl-remove-btn { height: 26px; width: 26px; padding: 0; font-size: 12px; font-weight: 700; border-radius: 5px; background: transparent; border: 1px solid transparent; color: var(--color-text-muted); cursor: pointer; display: inline-grid; place-items: center; }
+.dl-remove-btn:hover { color: var(--color-danger); border-color: var(--color-border); background: var(--color-surface); }
 
 .dl-history-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
 .dl-history-head .eyebrow { margin: 0; }
