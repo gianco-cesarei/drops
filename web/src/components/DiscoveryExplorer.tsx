@@ -174,7 +174,7 @@ export function DiscoveryEnvironment({ items }: { items: DiscoveryItem[] }) {
           </div>
         ) : (
           <div className="discovery-grid">
-            {visible.map((item) => <DiscoveryCard key={item.id} item={item} />)}
+            {visible.map((item, idx) => <DiscoveryCard key={item.id} item={item} isFeatured={idx === 0} />)}
           </div>
         )}
       </div>
@@ -182,13 +182,13 @@ export function DiscoveryEnvironment({ items }: { items: DiscoveryItem[] }) {
   )
 }
 
-function DiscoveryCard({ item }: { item: DiscoveryItem }) {
+function DiscoveryCard({ item, isFeatured = false }: { item: DiscoveryItem; isFeatured?: boolean }) {
   const source = item.sources.find((entry) => entry.kind === 'original') ?? item.sources[0]
   const kicker = item.kicker ?? (item.tags.includes('guida') ? 'Guida' : categoryLabels[item.type])
   const locationShort = item.primaryLocation.name.split(',')[0]
 
   return (
-    <article className="discovery-card poster-card">
+    <article className={`discovery-card poster-card ${isFeatured ? 'is-featured' : ''}`}>
       <div className="card-bg-wrap">
         {item.coverUrl ? (
           <img src={item.coverUrl} alt={item.title} className="card-bg-image" loading="lazy" />

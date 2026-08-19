@@ -936,3 +936,36 @@ footer { padding: 20px 0; color: var(--color-text-muted); font-size: 11px; text-
 .dl-hist-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 2px; }
 .dl-hist-source { font-family: var(--font-mono); font-size: 10.5px; color: var(--color-text-muted); opacity: .8; letter-spacing: .02em; }
 
+/* Featured Discovery Card Styles */
+@media (min-width: 900px) {
+  .discovery-card.poster-card.is-featured {
+    grid-column: span 2;
+    aspect-ratio: 1.85 / 1;
+    min-height: auto;
+    flex-direction: row;
+  }
+  .discovery-card.poster-card.is-featured .card-bg-wrap {
+    position: relative;
+    width: 55%;
+    height: 100%;
+  }
+  .discovery-card.poster-card.is-featured .card-poster-content {
+    width: 45%;
+    height: 100%;
+    padding: 24px 28px;
+    background: #0f1411;
+  }
+  .discovery-card.poster-card.is-featured .card-gradient-overlay {
+    display: none;
+  }
+  .discovery-card.poster-card.is-featured .card-title {
+    font-size: clamp(20px, 1.5vw + 16px, 26px);
+  }
+  .discovery-card.poster-card.is-featured .card-summary {
+    -webkit-line-clamp: 4;
+    font-size: 14px;
+    margin: 6px 0 14px;
+  }
+}
+
+
