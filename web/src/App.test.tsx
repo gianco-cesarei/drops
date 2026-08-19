@@ -156,6 +156,38 @@ describe('autenticazione App', () => {
     expect(await screen.findByRole('link', { name: '↓ Scarica file' }, { timeout: 3000 })).toBeInTheDocument()
   })
 
+  it('mostra metadati ricchi, chip label/anno/stile, bpm e fonte nella scheda traccia', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ username: 'dj' }))
+      .mockResolvedValueOnce(jsonResponse({
+        id: 'job-rich',
+        status: 'ready',
+        title: 'Baby',
+        artist: 'Four Tet',
+        cover_url: 'https://img.test/fourtet.jpg',
+        label: 'Text Records',
+        year: 2020,
+        style: ['Electronic', 'House'],
+        bpm: 122.0,
+        source: 'soundcloud',
+      }))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App section="download" navigate={vi.fn()} />)
+    const user = userEvent.setup()
+    await user.type(await screen.findByLabelText('URL contenuto'), 'https://youtube.com/watch?v=123')
+    await user.click(screen.getByRole('button', { name: 'Scarica' }))
+
+    expect(await screen.findByText('Baby')).toBeInTheDocument()
+    expect(screen.getByText('Four Tet')).toBeInTheDocument()
+    expect(screen.getByText('Text Records')).toBeInTheDocument()
+    expect(screen.getByText('2020')).toBeInTheDocument()
+    expect(screen.getByText('Electronic')).toBeInTheDocument()
+    expect(screen.getByText('House')).toBeInTheDocument()
+    expect(screen.getByText('122 BPM')).toBeInTheDocument()
+    expect(screen.getByText('fonte: soundcloud')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '↓ Scarica file' })).toHaveAttribute('href', expect.stringContaining('/api/v1/downloads/job-rich/file'))
+  })
+
   it('espone navigazione privata approvata senza History o Graph', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ username: 'dj' })))
     render(<App section="brain" navigate={vi.fn()} />)

@@ -44,9 +44,37 @@ describe('API client', () => {
     expect(fetchMock.mock.calls.every(([, options]) => options.credentials === 'include')).toBe(true)
   })
 
-  it('normalizza job wrapped e snake_case', () => {
+  it('normalizza job wrapped e snake_case con metadati', () => {
     expect(normalizeJob({ job: { job_id: 42, state: 'COMPLETED', file_name: 'mix.mp3' } })).toEqual({
-      id: '42', status: 'completed', progress: undefined, title: undefined, fileName: 'mix.mp3', message: undefined,
+      id: '42', status: 'completed', progress: undefined, title: undefined, artist: undefined, fileName: 'mix.mp3', coverUrl: undefined, message: undefined,
+      label: undefined, year: undefined, styles: undefined, bpm: undefined, source: undefined,
+    })
+
+    expect(normalizeJob({
+      id: 'job-99',
+      status: 'ready',
+      title: 'Baby',
+      artist: 'Four Tet',
+      cover_url: 'https://img.test/cover.jpg',
+      label: 'Text Records',
+      year: 2020,
+      style: ['Electronic', 'House'],
+      bpm: 122.4,
+      source: 'soundcloud',
+    })).toEqual({
+      id: 'job-99',
+      status: 'ready',
+      progress: undefined,
+      title: 'Baby',
+      artist: 'Four Tet',
+      fileName: undefined,
+      coverUrl: 'https://img.test/cover.jpg',
+      message: undefined,
+      label: 'Text Records',
+      year: 2020,
+      styles: ['Electronic', 'House'],
+      bpm: 122.4,
+      source: 'soundcloud',
     })
   })
 })

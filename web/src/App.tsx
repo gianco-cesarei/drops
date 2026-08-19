@@ -14,9 +14,14 @@ export type PrivateSection = 'login' | 'download' | 'spotify' | 'radar' | 'brain
 const terminalStatuses = new Set(['completed', 'complete', 'ready', 'failed', 'error', 'cancelled'])
 const readyStatuses = new Set(['completed', 'complete', 'ready'])
 const failedStatuses = new Set(['failed', 'error', 'cancelled'])
-const queuedStatuses = new Set(['queued', 'pending'])
+const queuedStatuses = new Set(['queued', 'pending', 'recognized', 'enriching'])
 const statusLabels: Record<string, string> = {
-  queued: 'In coda', pending: 'In coda', downloading: 'Download in corso', processing: 'Elaborazione…',
+  recognized: 'In coda',
+  enriching: 'Arricchimento metadati…',
+  queued: 'In coda',
+  pending: 'In coda',
+  downloading: 'Download in corso',
+  processing: 'Elaborazione…',
 }
 const browserNavigate = (to: string) => window.location.assign(to)
 
@@ -325,15 +330,56 @@ function TrackCard({ job }: { job: Job }) {
   const queued = queuedStatuses.has(job.status)
   const statusLabel = ready ? 'Pronto' : failed ? 'Download fallito' : statusLabels[job.status] ?? 'Elaborazione…'
   const progress = Math.max(0, Math.min(100, job.progress ?? (ready ? 100 : 0)))
-  return <div className={`track-card ${ready ? 'ready' : failed ? 'failed' : ''}`}>
-    <div className="track-cover" aria-hidden="true">{job.coverUrl ? <img src={job.coverUrl} alt="" /> : <span className="track-cover-fallback">♪</span>}</div>
-    <div className="track-info">
-      <p className="track-title">{job.title ?? job.fileName ?? `Job ${job.id}`}</p>
-      {job.artist && <p className="track-artist">{job.artist}</p>}
-      <div className="track-status-row"><span className="status-dot" /><span className="track-status-label">{statusLabel}</span></div>
-      {!failed && !ready && <><div className="progress"><span style={{ width: `${queued ? 0 : progress}%` }} /></div><small>{!queued && progress ? `${progress}%` : ''}</small></>}
-      {failed && <div className="alert" role="alert">{job.message ?? 'Il job non è stato completato. Riprova.'}</div>}
-      {ready && <a className="primary download-link" href={api.fileUrl(job.id)} download>↓ Scarica file</a>}
+
+  const chips: { key: string; label: string; isBpm?: boolean }[] = []
+  if (job.label) chips.push({ key: `label-${job.label}`, label: job.label })
+  if (job.year) chips.push({ key: `year-${job.year}`, label: String(job.year) })
+  if (job.styles && job.styles.length > 0) {
+    job.styles.forEach((style, idx) => chips.push({ key: `style-${style}-${idx}`, label: style }))
+  }
+  if (job.bpm != null) chips.push({ key: `bpm-${job.bpm}`, label: `${Math.round(job.bpm)} BPM`, isBpm: true })
+
+  return (
+    <div className={`track-card ${ready ? 'ready' : failed ? 'failed' : ''}`}>
+      <div className="track-cover" aria-hidden="true">
+        {job.coverUrl ? <img src={job.coverUrl} alt="" /> : <span className="track-cover-fallback">♪</span>}
+      </div>
+      <div className="track-info">
+        <p className="track-title">{job.title ?? job.fileName ?? `Job ${job.id}`}</p>
+        {job.artist && <p className="track-artist">{job.artist}</p>}
+        {chips.length > 0 && (
+          <div className="track-chips" aria-label="Metadati traccia">
+            {chips.map((chip) => (
+              <span key={chip.key} className={`track-chip ${chip.isBpm ? 'track-chip-bpm' : ''}`}>
+                {chip.label}
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="track-status-row">
+          <span className="status-dot" />
+          <span className="track-status-label">{statusLabel}</span>
+        </div>
+        {!failed && !ready && (
+          <>
+            <div className="progress">
+              <span style={{ width: `${queued ? 0 : progress}%` }} />
+            </div>
+            <small>{!queued && progress ? `${progress}%` : ''}</small>
+          </>
+        )}
+        {failed && <div className="alert" role="alert">{job.message ?? 'Il job non è stato completato. Riprova.'}</div>}
+        {ready && (
+          <a className="primary download-link download-btn-ghost" href={api.fileUrl(job.id)} download>
+            ↓ Scarica file
+          </a>
+        )}
+        {job.source && (
+          <div className="track-source">
+            <span>fonte: {job.source}</span>
+          </div>
+        )}
+      </div>
     </div>
-  </div>
+  )
 }

@@ -14,6 +14,11 @@ export type Job = {
   fileName?: string
   coverUrl?: string
   message?: string
+  label?: string
+  year?: number
+  styles?: string[]
+  bpm?: number
+  source?: string
 }
 
 export type SpotifyTrack = {
@@ -98,6 +103,12 @@ const unwrapUser = (payload: User | { user: User }) => ('user' in payload ? payl
 export const normalizeJob = (payload: unknown): Job => {
   const wrapped = payload as Record<string, unknown>
   const raw = ((wrapped?.job as Record<string, unknown>) ?? wrapped) || {}
+  const rawStyles = raw.style ?? raw.styles
+  const styles = Array.isArray(rawStyles)
+    ? rawStyles.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+    : typeof rawStyles === 'string' && rawStyles.trim().length > 0
+      ? [rawStyles.trim()]
+      : undefined
   return {
     id: String(raw.id ?? raw.job_id ?? ''),
     status: String(raw.status ?? raw.state ?? 'queued').toLowerCase(),
@@ -107,6 +118,11 @@ export const normalizeJob = (payload: unknown): Job => {
     fileName: typeof raw.file_name === 'string' ? raw.file_name : typeof raw.filename === 'string' ? raw.filename : undefined,
     coverUrl: typeof raw.cover_url === 'string' ? raw.cover_url : typeof raw.thumbnail === 'string' ? raw.thumbnail : typeof raw.thumbnail_url === 'string' ? raw.thumbnail_url : undefined,
     message: typeof raw.message === 'string' ? raw.message : typeof raw.error === 'string' ? raw.error : undefined,
+    label: typeof raw.label === 'string' && raw.label.trim() ? raw.label.trim() : undefined,
+    year: typeof raw.year === 'number' ? raw.year : undefined,
+    styles,
+    bpm: typeof raw.bpm === 'number' ? raw.bpm : undefined,
+    source: typeof raw.source === 'string' && raw.source.trim() ? raw.source.trim() : undefined,
   }
 }
 
