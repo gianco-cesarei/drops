@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { brainGraphNodes } from './brainGraph.fixture'
 import type { BrainCluster, BrainLinkFixture, BrainNodeFixture } from './brainGraph.fixture'
 import type { RadarFixture } from './private.fixture'
+import { publishedContentItems } from './content.data'
 
 // PROTOTYPE STORAGE: state lives only in this browser's localStorage. No backend, no real data.
 // When a real API exists, replace the bodies of the functions below — callers never touch
@@ -15,13 +16,14 @@ export type PrototypeState = {
   extraLinks: BrainLinkFixture[]
   radarStatus: Record<string, RadarStatus>
   unlockedIds: string[]
+  contentStatus: Record<string, 'Draft' | 'Published'>
 }
 
 const STORAGE_KEY = 'drops:dev-prototype:radar-brain:v1'
 const isBrowser = () => typeof window !== 'undefined'
 
 function emptyState(): PrototypeState {
-  return { extraNodes: [], extraLinks: [], radarStatus: {}, unlockedIds: [] }
+  return { extraNodes: [], extraLinks: [], radarStatus: {}, unlockedIds: [], contentStatus: {} }
 }
 
 export function loadPrototypeState(): PrototypeState {
@@ -69,6 +71,7 @@ export function linkRadarToBrain(fixture: RadarFixture): PrototypeState {
     extraLinks: [...state.extraLinks, ...newLinks],
     radarStatus: { ...state.radarStatus, [fixture.id]: 'linked' },
     unlockedIds: [...new Set([...state.unlockedIds, ...fixture.unlocks])],
+    contentStatus: state.contentStatus,
   }
   return persist(next)
 }
@@ -76,6 +79,26 @@ export function linkRadarToBrain(fixture: RadarFixture): PrototypeState {
 export function setRadarStatus(id: string, status: RadarStatus): PrototypeState {
   const state = loadPrototypeState()
   const next = { ...state, radarStatus: { ...state.radarStatus, [id]: status } }
+  return persist(next)
+}
+
+export function getArticleStatus(id: string, contentStatus: Record<string, 'Draft' | 'Published'>): 'Draft' | 'Published' {
+  if (id in contentStatus) return contentStatus[id]
+  const isReal = publishedContentItems.some((item) => item.id === id)
+  if (!isReal) return 'Published'
+  if (id === 'festival-houghton-norfolk' || id === 'festival-omana-kalamitsi') return 'Published'
+  return 'Draft'
+}
+
+export function publishArticle(id: string): PrototypeState {
+  const state = loadPrototypeState()
+  const next = { ...state, contentStatus: { ...state.contentStatus, [id]: 'Published' as const } }
+  return persist(next)
+}
+
+export function draftArticle(id: string): PrototypeState {
+  const state = loadPrototypeState()
+  const next = { ...state, contentStatus: { ...state.contentStatus, [id]: 'Draft' as const } }
   return persist(next)
 }
 

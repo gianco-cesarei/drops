@@ -4,6 +4,7 @@ import { categoryLabels, DiscoveryType } from '../domain/discovery'
 import type { DiscoveryItem } from '../domain/discovery'
 import { parseArchiveQuery, serializeArchiveQuery } from '../lib/discovery-query'
 import { MinusIcon, PanIcon, PlusIcon, SearchIcon } from './icons'
+import { usePrototypeState, getArticleStatus } from '../data/brainStore'
 
 const sorted = (items: DiscoveryItem[]) => [...items].sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
 
@@ -125,7 +126,12 @@ export function DiscoveryEnvironment({ items }: { items: DiscoveryItem[] }) {
   const [draft, setDraft] = useState('')
   useEffect(() => setDraft(state.query), [state.query])
 
-  const visible = useMemo(() => filterItems(items, state.types, state.query), [items, state.query, state.types])
+  const [protoState] = usePrototypeState()
+  const publishedItems = useMemo(() => {
+    return items.filter((item) => getArticleStatus(item.id, protoState.contentStatus) === 'Published')
+  }, [items, protoState.contentStatus])
+
+  const visible = useMemo(() => filterItems(publishedItems, state.types, state.query), [publishedItems, state.query, state.types])
 
   const handleQueryChange = (val: string) => {
     setDraft(val)
@@ -235,9 +241,15 @@ export function TimelineEnvironment({ items }: { items: DiscoveryItem[] }) {
   const state = useArchiveState(false)
   // Sort items based on originalPublishedAt (content reference date) or publishedAt
   const getItemDate = (item: DiscoveryItem) => new Date(item.originalPublishedAt ?? item.publishedAt)
+
+  const [protoState] = usePrototypeState()
+  const publishedItems = useMemo(() => {
+    return items.filter((item) => getArticleStatus(item.id, protoState.contentStatus) === 'Published')
+  }, [items, protoState.contentStatus])
+
   const visible = useMemo(() => {
-    return filterItems(items, state.types).sort((a, b) => getItemDate(b).getTime() - getItemDate(a).getTime())
-  }, [items, state.types])
+    return filterItems(publishedItems, state.types).sort((a, b) => getItemDate(b).getTime() - getItemDate(a).getTime())
+  }, [publishedItems, state.types])
 
   const years = useMemo(() => {
     return [...new Set(visible.map((item) => getItemDate(item).getFullYear()))].sort((a, b) => b - a)
@@ -247,7 +259,7 @@ export function TimelineEnvironment({ items }: { items: DiscoveryItem[] }) {
     <div className="environment-layout">
       <aside className="environment-rail">
         <span className="rail-label">Categorie</span>
-        <Categories types={state.types} onChange={(types) => state.update(types)} label="Categorie Timeline" items={items} />
+        <Categories types={state.types} onChange={(types) => state.update(types)} label="Categorie Timeline" items={publishedItems} />
         <div className="rail-sublist">
           <span className="rail-label">Anni di riferimento</span>
           <div className="rail-list">
@@ -412,11 +424,16 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
   const [activeCity, setActiveCity] = useState<string | null>(null)
   const [mapElement, setMapElement] = useState<HTMLDivElement | null>(null)
 
+  const [protoState] = usePrototypeState()
+  const publishedItems = useMemo(() => {
+    return items.filter((item) => getArticleStatus(item.id, protoState.contentStatus) === 'Published')
+  }, [items, protoState.contentStatus])
+
   const places = useMemo(() => {
-    return filterItems(items, state.types).filter(
+    return filterItems(publishedItems, state.types).filter(
       (item) => item.mapEligible && item.primaryLocation.kind === 'geographic' && item.primaryLocation.latitude !== undefined && item.primaryLocation.longitude !== undefined,
     )
-  }, [items, state.types])
+  }, [publishedItems, state.types])
 
   // Merge active items with comprehensive European city baseline
   const allCities = useMemo(() => {

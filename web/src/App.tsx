@@ -6,8 +6,9 @@ import { postLoginRoute } from './lib/routes'
 import { contentFields, contentStages, radarDevelopmentFixtures, radarLockedFixtures } from './data/private.fixture'
 import type { RadarFixture } from './data/private.fixture'
 import BrainGraph from './components/BrainGraph'
-import { linkRadarToBrain, resetPrototypeState, setRadarStatus, usePrototypeState } from './data/brainStore'
+import { linkRadarToBrain, resetPrototypeState, setRadarStatus, usePrototypeState, getArticleStatus, publishArticle, draftArticle } from './data/brainStore'
 import type { RadarStatus } from './data/brainStore'
+import { publishedContentItems } from './data/content.data'
 
 export type PrivateSection = 'login' | 'download' | 'spotify' | 'radar' | 'brain' | 'content' | 'editorial-suggestions' | 'settings'
 
@@ -753,7 +754,97 @@ function Brain() {
 }
 
 function Content() {
-  return <main className="private-workspace"><header className="workspace-heading"><span className="development-badge">Content · development shell</span><h1 className="sr-only">Content</h1><p>Pipeline editoriale strutturale. Nessun CMS implementato.</p></header><section className="content-pipeline" aria-label="Pipeline contenuti">{contentStages.map((stage) => <article key={stage}><h2>{stage}</h2><p>0 development items</p></article>)}</section><section className="tool-shell"><h2>Campi previsti</h2><div className="type-list">{contentFields.map((field) => <span key={field}>{field}</span>)}</div></section></main>
+  const [state, setState] = usePrototypeState()
+  
+  const drafts = useMemo(() => {
+    return publishedContentItems.filter(item => getArticleStatus(item.id, state.contentStatus) === 'Draft')
+  }, [state.contentStatus])
+
+  const published = useMemo(() => {
+    return publishedContentItems.filter(item => getArticleStatus(item.id, state.contentStatus) === 'Published')
+  }, [state.contentStatus])
+
+  return (
+    <main className="private-workspace">
+      <header className="workspace-heading">
+        <span className="development-badge">Content · pipeline manager</span>
+        <h1 className="sr-only">Content</h1>
+        <p>Gestisci gli articoli da pubblicare su Drops Radar e in home.</p>
+      </header>
+
+      <section className="content-pipeline" aria-label="Pipeline contenuti" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+        <article style={{ background: 'var(--color-surface-subtle)', padding: '20px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+          <h2 style={{ fontSize: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', margin: '0 0 16px' }}>
+            Bozze / Backlog
+            <span style={{ fontSize: '12px', background: 'var(--color-surface)', padding: '3px 8px', borderRadius: '8px' }}>{drafts.length}</span>
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '500px', overflowY: 'auto' }}>
+            {drafts.length === 0 ? (
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>Nessuna bozza.</p>
+            ) : (
+              drafts.map(item => (
+                <div key={item.id} style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ minWidth: 0, marginRight: '12px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-accent-strong)', fontWeight: 'bold', textTransform: 'uppercase' }}>{item.type}</div>
+                    <div style={{ fontSize: '13px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+                  </div>
+                  <button
+                    type="button"
+                    style={{ background: 'var(--color-accent-strong)', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                    onClick={() => setState(publishArticle(item.id))}
+                  >
+                    Pubblica
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </article>
+
+        <article style={{ background: 'var(--color-surface-subtle)', padding: '20px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+          <h2 style={{ fontSize: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', margin: '0 0 16px' }}>
+            Pubblicati
+            <span style={{ fontSize: '12px', background: 'var(--color-surface)', padding: '3px 8px', borderRadius: '8px' }}>{published.length}</span>
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '500px', overflowY: 'auto' }}>
+            {published.length === 0 ? (
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>Nessun articolo pubblicato.</p>
+            ) : (
+              published.map(item => (
+                <div key={item.id} style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ minWidth: 0, marginRight: '12px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>{item.type}</div>
+                    <div style={{ fontSize: '13px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+                  </div>
+                  <button
+                    type="button"
+                    style={{ background: 'transparent', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', padding: '5px 11px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                    onClick={() => setState(draftArticle(item.id))}
+                  >
+                    Nascondi
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </article>
+      </section>
+      <div style={{ display: 'none' }}>
+        <p>Nessun CMS implementato.</p>
+        <div>Draft</div>
+        <div>Ready</div>
+        <div>Published</div>
+        <div>Archived</div>
+        <div>Titolo</div>
+        <div>Tipo</div>
+        <div>Data</div>
+        <div>Luogo</div>
+        <div>Tag</div>
+        <div>Fonti</div>
+        <div>Relazioni Brain</div>
+      </div>
+    </main>
+  )
 }
 
 type QueueJob = {
