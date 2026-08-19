@@ -169,13 +169,12 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([])
   const [playlistId, setPlaylistId] = useState('')
   const [busy, setBusy] = useState(false)
-  const [modeView, setModeView] = useState<'recent' | 'labels' | 'bpm'>('recent')
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [selectMode, setSelectMode] = useState(false)
   const [bpmState, setBpmState] = useState<Record<string, 'queued' | 'running' | 'error'>>({})
   const [dlState, setDlState] = useState<Record<string, 'queued' | 'done' | 'error'>>({})
-  const [pendingLabels, setPendingLabels] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
+  const [exportingZip, setExportingZip] = useState(false)
   const discogsRequested = useRef(new Set<string>())
   const { playingUrl, toggle: toggleAudio } = useAudioPlayer()
 
@@ -208,12 +207,10 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
     if (!status?.connected) return
     tracks.filter((track) => !track.label && !discogsRequested.current.has(track.id)).forEach((track) => {
       discogsRequested.current.add(track.id)
-      setPendingLabels((current) => new Set(current).add(track.id))
       api.discogsEnrich(track).then((metadata) => {
         if (!metadata?.label) return
         setTracks((current) => current.map((item) => item.id === track.id ? { ...item, label: metadata.label, year: metadata.year, country: metadata.country, styles: metadata.styles, catalog_no: metadata.catalog_no, discogs_url: metadata.discogs_url } : item))
-      }).catch(() => { /* Discogs optional; Spotify rows stay visible. */ })
-        .finally(() => setPendingLabels((current) => { const next = new Set(current); next.delete(track.id); return next }))
+      }).catch(() => { /* Discogs optional */ })
     })
   }, [status?.connected, tracks])
 
@@ -221,9 +218,17 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
     setSelected((current) => {
       const next = new Set(current)
       if (next.has(id)) next.delete(id)
-      else if (next.size < 3) next.add(id)
+      else next.add(id)
       return next
     })
+  }
+
+  function toggleSelectAll(items: SpotifyTrack[]) {
+    if (selected.size === items.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(items.map((t) => t.id)))
+    }
   }
 
   async function calculateSingleBpm(track: SpotifyTrack) {
@@ -284,11 +289,15 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
     }
   }
 
+  async function handleDownloadSelected() {
+    const chosen = tracks.filter((t) => selected.has(t.id))
+    await Promise.all(chosen.map((t) => handleDownloadTrack(t)))
+  }
+
   if (!status) return <main className="spotify-workspace">{error ? <div className="alert" role="alert">{error}</div> : <p className="spotify-state" role="status">Controllo Spotify…</p>}</main>
   if (!status.connected) return <main className="spotify-workspace spotify-connect"><p>Collega account Premium per leggere preferiti e playlist.</p><a className="primary spotify-connect-button" href={api.spotifyConnectUrl()}>Connetti Spotify</a></main>
 
-  const baseTracks = selectedLabel === null ? tracks : tracks.filter((track) => (track.label?.trim() || 'Senza label') === selectedLabel)
-  const visibleTracks = baseTracks.filter((t) => {
+  const visibleTracks = tracks.filter((t) => {
     if (!searchQuery.trim()) return true
     const q = searchQuery.toLowerCase().trim()
     return (
@@ -309,9 +318,25 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
             <strong>{status.display_name}</strong>
           </div>
           <div className="spotify-toggle" role="group" aria-label="Libreria Spotify">
-            <button className={mode === 'liked' ? 'active' : ''} onClick={() => { setMode('liked'); setSelectedLabel(null) }}>Preferiti</button>
-            <button className={mode === 'playlists' ? 'active' : ''} onClick={() => { setMode('playlists'); setSelectedLabel(null) }}>Playlist</button>
+            <button className={mode === 'liked' ? 'active' : ''} onClick={() => { setMode('liked'); setSelected(new Set()) }}>Recenti</button>
+            <button className={mode === 'playlists' ? 'active' : ''} onClick={() => { setMode('playlists'); setSelected(new Set()) }}>Playlist</button>
           </div>
+          {mode === 'playlists' && (
+            <div className="spotify-playlist-select-wrap">
+              <select
+                aria-label="Seleziona playlist"
+                className="spotify-playlist-dropdown"
+                value={playlistId}
+                onChange={(event) => setPlaylistId(event.target.value)}
+              >
+                {playlists.map((playlist) => (
+                  <option key={playlist.id} value={playlist.id}>
+                    {playlist.name} ({playlist.tracks_total})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <div className="spotify-toolbar-right">
           <div className="spotify-search-wrap">
@@ -325,41 +350,54 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          {mode === 'playlists' && (
-            <label className="playlist-picker">
-              <select aria-label="Seleziona playlist" value={playlistId} onChange={(event) => setPlaylistId(event.target.value)}>
-                {playlists.map((playlist) => (
-                  <option key={playlist.id} value={playlist.id}>
-                    {playlist.name} ({playlist.tracks_total})
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
         </div>
       </div>
 
       <div className="spotify-subbar">
-        <div className="spotify-sort" role="group" aria-label="Vista Spotify">
-          <button className={modeView === 'recent' ? 'active' : ''} onClick={() => { setModeView('recent'); setSelectedLabel(null) }}>Recenti</button>
-          <button className={modeView === 'labels' ? 'active' : ''} onClick={() => { setModeView('labels'); setSelectedLabel(null) }}>Label</button>
-          <button className={modeView === 'bpm' ? 'active' : ''} onClick={() => { setModeView('bpm'); setSelectedLabel(null) }}>BPM</button>
+        <div className="spotify-subbar-left">
+          <button
+            type="button"
+            className={`spotify-mode-btn ${selectMode ? 'active' : ''}`}
+            onClick={() => { setSelectMode(!selectMode); if (selectMode) setSelected(new Set()) }}
+          >
+            {selectMode ? 'Chiudi selezione' : '☑ Seleziona tracce'}
+          </button>
+          {selectMode && (
+            <>
+              <button
+                type="button"
+                className="spotify-mode-btn secondary"
+                onClick={() => toggleSelectAll(visibleTracks)}
+              >
+                {selected.size === visibleTracks.length ? 'Deseleziona tutte' : 'Seleziona tutte'}
+              </button>
+              <span className="spotify-select-count">{selected.size} selezionate</span>
+            </>
+          )}
         </div>
         <div className="spotify-subbar-actions">
+          {selectMode && selected.size > 0 && (
+            <>
+              <button
+                type="button"
+                className="primary spotify-action-btn"
+                onClick={calculateBpm}
+              >
+                ⚡ Calcola BPM ({selected.size})
+              </button>
+              <button
+                type="button"
+                className="primary spotify-action-btn"
+                onClick={handleDownloadSelected}
+              >
+                ↓ Scarica selezione ({selected.size})
+              </button>
+            </>
+          )}
           <span className="spotify-stats">
             {visibleTracks.length} {visibleTracks.length === 1 ? 'traccia' : 'tracce'}
             {total > visibleTracks.length && mode === 'liked' ? ` di ${total}` : ''}
           </span>
-          {visibleTracks.length > 0 && (
-            <button
-              type="button"
-              className="spotify-export-btn"
-              onClick={() => exportCrate(visibleTracks, `spotify-${mode}`)}
-              title="Esporta playlist in formato .m3u8 per Rekordbox / Traktor"
-            >
-              📥 Esporta Crate (.m3u8)
-            </button>
-          )}
         </div>
       </div>
 
@@ -367,49 +405,16 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
 
       {busy && tracks.length === 0 ? (
         <p className="spotify-state" role="status">Caricamento tracce…</p>
-      ) : modeView === 'labels' && selectedLabel === null ? (
-        <LabelBrowser tracks={tracks} pendingCount={pendingLabels.size} onSelect={setSelectedLabel} />
-      ) : modeView === 'labels' ? (
-        <div>
-          <button className="spotify-back" onClick={() => setSelectedLabel(null)}>← Tutte le label</button>
-          <TrackGroups
-            tracks={visibleTracks}
-            mode="recent"
-            dlState={dlState}
-            playingUrl={playingUrl}
-            onToggleAudio={toggleAudio}
-            onDownload={handleDownloadTrack}
-            onCalculateBpm={calculateSingleBpm}
-          />
-        </div>
-      ) : modeView === 'bpm' ? (
-        <div>
-          <div className="bpm-selection-bar">
-            <span>Selezionate {selected.size}/3</span>
-            <button className="primary" disabled={!selected.size} onClick={calculateBpm}>
-              Calcola BPM ({selected.size}/3)
-            </button>
-          </div>
-          <TrackGroups
-            tracks={visibleTracks}
-            mode="bpm-select"
-            selected={selected}
-            bpmState={bpmState}
-            dlState={dlState}
-            playingUrl={playingUrl}
-            onToggleAudio={toggleAudio}
-            onToggle={toggleSelected}
-            onDownload={handleDownloadTrack}
-            onCalculateBpm={calculateSingleBpm}
-          />
-        </div>
       ) : (
         <TrackGroups
           tracks={visibleTracks}
-          mode="recent"
+          mode={selectMode ? 'bpm-select' : 'recent'}
+          selected={selected}
+          bpmState={bpmState}
           dlState={dlState}
           playingUrl={playingUrl}
           onToggleAudio={toggleAudio}
+          onToggle={toggleSelected}
           onDownload={handleDownloadTrack}
           onCalculateBpm={calculateSingleBpm}
         />
@@ -420,12 +425,6 @@ function SpotifyLibrary({ onError, error }: { onError: (error: unknown) => void;
       )}
     </main>
   )
-}
-
-function LabelBrowser({ tracks, pendingCount, onSelect }: { tracks: SpotifyTrack[]; pendingCount: number; onSelect: (label: string) => void }) {
-  const groups = Object.entries(tracks.reduce<Record<string, SpotifyTrack[]>>((result, track) => { const label = track.label?.trim() || 'Senza label'; (result[label] ||= []).push(track); return result }, {})).sort(([a], [b]) => a === 'Senza label' ? 1 : b === 'Senza label' ? -1 : a.localeCompare(b))
-  if (!tracks.length) return <p className="spotify-state">Nessuna traccia.</p>
-  return <div className="label-browser-wrap">{pendingCount > 0 && <p className="spotify-state label-enrich-note" role="status">Arricchimento label in corso… {pendingCount} {pendingCount === 1 ? 'traccia' : 'tracce'}</p>}<div className="label-browser">{groups.map(([label, entries]) => <button key={label} onClick={() => onSelect(label)}><strong>{label}</strong><span>{entries.length} {entries.length === 1 ? 'traccia' : 'tracce'} →</span></button>)}</div></div>
 }
 
 function TrackGroups({
@@ -939,6 +938,31 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
   const who = user.name ?? user.username ?? 'utente'
   const { playingUrl, toggle: toggleAudio } = useAudioPlayer()
 
+  async function handleExportZip() {
+    if (!history.length) return
+    setBusy(true)
+    try {
+      const resp = await fetch(`${api.fileUrl('')}`.replace(/\/downloads\/.*\/file$/, '/downloads/zip'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_ids: history.map((h) => h.id) }),
+        credentials: 'include',
+      })
+      if (!resp.ok) throw new Error('Errore durante creazione ZIP')
+      const blob = await resp.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `drops-tracks-${new Date().toISOString().slice(0, 10)}.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Errore export ZIP')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return <main className="shell"><div className="workspace">
     <section className="card hero-card download-hero">
       <div><span className="eyebrow">DOWNLOAD PRIVATO</span><p className="lead">Area personale di {who}. Incolla uno o più link e aggiungili alla coda.</p></div>
@@ -966,10 +990,10 @@ function Download({ user, onError, error, setError }: { user: User; onError: (er
             <button
               type="button"
               className="dl-export-btn"
-              onClick={() => exportCrate(history, 'drops-downloads')}
-              title="Esporta playlist in formato .m3u8 per Rekordbox / Traktor"
+              onClick={handleExportZip}
+              title="Scarica archivio ZIP con tutti i file MP3 taggati e copertine"
             >
-              📥 Crate (.m3u8)
+              📦 Scarica Pacchetto (.ZIP)
             </button>
           )}
           {history.length > 0 && <button className="dl-clear" onClick={() => setHistory([])}>Svuota</button>}

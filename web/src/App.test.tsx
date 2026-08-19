@@ -192,7 +192,7 @@ describe('autenticazione App', () => {
     expect(within(nav).queryByText('Graph')).not.toBeInTheDocument()
   })
 
-  it('mostra Spotify collegato raggruppato per label e BPM catalogo', async () => {
+  it('mostra Spotify collegato con Recenti, ricerca e selezione multipla per BPM/Download', async () => {
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce(jsonResponse({ username: 'dj' }))
       .mockResolvedValueOnce(jsonResponse({ connected: true, display_name: 'Gianco' }))
@@ -206,15 +206,17 @@ describe('autenticazione App', () => {
     expect(await screen.findByText('Gianco')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Recenti' })).toHaveClass('active')
     expect(await screen.findByText('Signal A')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Apri Signal A su YouTube' })).toHaveAttribute('target', '_blank')
-    await userEvent.click(screen.getByRole('button', { name: 'Label' }))
-    await screen.findByText('Night Label')
-    await userEvent.click(screen.getByRole('button', { name: /Night Label/ }))
-    expect(screen.getByText('Signal A')).toBeInTheDocument()
     expect(screen.getByText('124')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'BPM' }))
+    expect(screen.getByRole('link', { name: 'Apri Signal A su YouTube' })).toHaveAttribute('target', '_blank')
+    
+    // Attiva selezione tracce
+    await userEvent.click(screen.getByRole('button', { name: '☑ Seleziona tracce' }))
     expect(screen.getAllByRole('checkbox')).toHaveLength(2)
-    expect(screen.getByRole('button', { name: 'Calcola BPM (0/3)' })).toBeDisabled()
+    
+    // Seleziona la prima traccia
+    await userEvent.click(screen.getAllByRole('checkbox')[0])
+    expect(screen.getByRole('button', { name: '⚡ Calcola BPM (1)' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '↓ Scarica selezione (1)' })).toBeInTheDocument()
   })
 
   it('mostra connessione Spotify quando account non collegato', async () => {

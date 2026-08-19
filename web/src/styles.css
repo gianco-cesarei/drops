@@ -208,45 +208,47 @@ footer { padding: 20px 0; color: var(--color-text-muted); font-size: 11px; text-
 .spotify-connect p, .spotify-state { color: var(--color-text-muted); font-size: 14px; }
 .spotify-connect-button { min-height: 48px; display: inline-flex; align-items: center; text-decoration: none; font-weight: 800; }
 
-.spotify-toolbar { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--color-border); }
+.spotify-toolbar { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--color-border); }
 .spotify-toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .spotify-toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
 .spotify-account { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-muted); padding: 6px 12px; border-radius: 999px; background: var(--color-surface-subtle); border: 1px solid var(--color-border); }
 .spotify-account strong { color: var(--color-text); font-weight: 700; }
 
-.spotify-search-wrap { position: relative; min-width: min(280px, 100%); }
-.spotify-search-input { width: 100%; height: 38px; padding: 0 14px 0 34px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 13px; outline: none; }
+.spotify-toggle { display: flex; padding: 3px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface-subtle); }
+.spotify-toggle button { padding: 6px 13px; border: 0; border-radius: 7px; background: transparent; color: var(--color-text-muted); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.spotify-toggle button:hover { color: var(--color-text); }
+.spotify-toggle button.active { background: var(--color-surface); color: var(--color-text); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+.spotify-playlist-select-wrap { display: flex; align-items: center; }
+.spotify-playlist-dropdown { height: 36px; padding: 0 30px 0 12px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-text); font-size: 13px; font-weight: 600; cursor: pointer; }
+.spotify-playlist-dropdown:focus { border-color: var(--color-accent-strong); outline: none; }
+
+.spotify-search-wrap { position: relative; min-width: min(260px, 100%); }
+.spotify-search-input { width: 100%; height: 36px; padding: 0 14px 0 34px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 13px; outline: none; }
 .spotify-search-input:focus { border-color: var(--color-accent-strong); box-shadow: 0 0 0 3px var(--color-accent-soft); }
 .spotify-search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted); font-size: 13px; pointer-events: none; }
 
-.spotify-subbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-.spotify-subbar-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.spotify-subbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; padding: 6px 0; }
+.spotify-subbar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.spotify-subbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.spotify-mode-btn { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 12px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); color: var(--color-text); font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s; }
+.spotify-mode-btn:hover { border-color: var(--color-border-strong); }
+.spotify-mode-btn.active { border-color: var(--color-accent-strong); background: var(--color-accent-soft); color: var(--color-accent-strong); }
+.spotify-mode-btn.secondary { background: var(--color-surface-subtle); color: var(--color-text-muted); }
+.spotify-mode-btn.secondary:hover { color: var(--color-text); }
+.spotify-select-count { font-family: var(--font-mono); font-size: 12px; color: var(--color-accent-strong); font-weight: 700; }
+
+.spotify-action-btn { height: 32px; padding: 0 13px; font-size: 12px; font-weight: 800; }
 .spotify-stats { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-muted); }
-.spotify-export-btn, .dl-export-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); color: var(--color-text); font-size: 11.5px; font-weight: 700; cursor: pointer; transition: all .15s; }
-.spotify-export-btn:hover, .dl-export-btn:hover { border-color: var(--color-accent-strong); background: var(--color-accent-soft); color: var(--color-accent-strong); }
-
-.spotify-toggle, .spotify-sort { display: flex; padding: 3px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface-subtle); }
-.spotify-toggle button, .spotify-sort button { padding: 6px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--color-text-muted); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all .15s; }
-.spotify-toggle button:hover, .spotify-sort button:hover { color: var(--color-text); }
-.spotify-toggle button.active, .spotify-sort button.active { background: var(--color-surface); color: var(--color-text); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-
-.label-enrich-note { margin-bottom: 10px; }
-.label-browser { display: grid; gap: 8px; }
-.label-browser button { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 15px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-text); text-align: left; cursor: pointer; }
-.label-browser button:hover, .label-browser button:focus-visible { border-color: var(--color-border-strong); }
-.label-browser span, .spotify-back { color: var(--color-text-muted); font: 11px var(--font-mono); }
-.spotify-back { margin-bottom: 12px; padding: 0; border: 0; background: transparent; cursor: pointer; font-weight: 700; }
-.bpm-selection-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; color: var(--color-text-muted); font: 11px var(--font-mono); }
-.bpm-selection-bar .primary { padding: 9px 12px; border: 0; border-radius: var(--radius-control); cursor: pointer; }
-.playlist-picker { min-width: min(240px, 100%); }
-.playlist-picker select { max-width: 100%; height: 38px; padding: 0 32px 0 10px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-text); }
+.dl-export-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border: 1px solid var(--color-accent); border-radius: 7px; background: var(--color-surface); color: var(--color-accent-strong); font-size: 12px; font-weight: 800; cursor: pointer; transition: all .15s; }
+.dl-export-btn:hover { background: var(--color-accent-soft); border-color: var(--color-accent-strong); }
 
 .track-list { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .track-list-sentinel { display: grid; place-items: center; padding: 20px 0; }
 .track-load-more { font-size: 12.5px; font-weight: 700; cursor: pointer; }
 
-/* Unified Spotify Track Card - Flexbox Layout (handles with and without checkbox gracefully) */
+/* Unified Spotify Track Card - Flexbox Layout */
 .spotify-track-card { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); transition: border-color .15s, box-shadow .15s; }
 .spotify-track-card:hover { border-color: var(--color-border-strong); box-shadow: 0 2px 8px rgba(0,0,0,.04); }
 .spotify-track-card.selected { border-color: var(--color-accent-strong); background: linear-gradient(0deg, var(--color-accent-soft), var(--color-surface) 70%); }

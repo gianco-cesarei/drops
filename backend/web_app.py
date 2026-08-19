@@ -517,4 +517,52 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail="File not found")
         return FileResponse(path, filename=row["filename"], media_type="audio/mpeg")
 
+    @app.post("/api/v1/downloads/zip")
+    def export_zip(
+        request: Request,
+        owner: str = Depends(current_owner),
+        _: None = Depends(require_csrf_origin),
+    ):
+        import io
+        import zipfile
+        from starlette.responses import StreamingResponse
+
+        # Get list of job_ids from body (or all ready jobs if empty)
+        try:
+            body = request.json() if hasattr(request, "json") else {}
+        except Exception:
+            body = {}
+        job_ids = body.get("job_ids") if isinstance(body, dict) else None
+
+        ready_jobs = store.list_jobs(owner)
+        if job_ids:
+            ready_jobs = [j for j in ready_jobs if j["id"] in job_ids and j["status"] == "ready" and j["file_path"]]
+        else:
+            ready_jobs = [j for j in ready_jobs if j["status"] == "ready" and j["file_path"]]
+
+        if not ready_jobs:
+            raise HTTPException(status_code=400, detail="Nessun file pronto da esportare")
+
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            m3u_lines = ["#EXTM3U"]
+            for job in ready_jobs:
+                p = Path(job["file_path"]).resolve()
+                if p.is_file():
+                    fname = job.get("filename") or p.name
+                    zip_file.write(p, arcname=fname)
+                    artist = job.get("artist") or ""
+                    title = job.get("title") or fname
+                    m3u_lines.append(f"#EXTINF:-1,{f'{artist} - ' if artist else ''}{title}")
+                    m3u_lines.append(fname)
+            zip_file.writestr("playlist.m3u8", "\n".join(m3u_lines).encode("utf-8"))
+
+        zip_buffer.seek(0)
+        filename = f"drops-export-{time.strftime('%Y%m%d-%H%M')}.zip"
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
     return app
