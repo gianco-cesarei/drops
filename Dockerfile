@@ -39,6 +39,7 @@ COPY --chown=drops:drops \
     backend/discogs_agent.py \
     backend/bpm_analyzer.py \
     backend/bpm_jobs.py \
+    backend/download_engine.py \
     backend/media_core.py \
     backend/run_web.py \
     backend/spotify_agent.py \
