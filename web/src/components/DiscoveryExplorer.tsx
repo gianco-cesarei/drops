@@ -424,15 +424,6 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
   const state = useArchiveState(false)
   const [activeCity, setActiveCity] = useState<string | null>(null)
   const [mapElement, setMapElement] = useState<HTMLDivElement | null>(null)
-  const [geoJsonData, setGeoJsonData] = useState<any>(null)
-
-  // Load GeoJSON data on mount
-  useEffect(() => {
-    fetch('/europe.geojson')
-      .then((res) => res.json())
-      .then((data) => setGeoJsonData(data))
-      .catch((err) => console.error('Failed to load Europe GeoJSON:', err))
-  }, [])
 
   const places = useMemo(() => {
     return filterItems(items, state.types).filter(
@@ -492,7 +483,7 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
   // Initialize Leaflet real geographic map on mount
   useEffect(() => {
     const el = document.getElementById('europe-leaflet-map')
-    if (!el || !geoJsonData || typeof window === 'undefined') return
+    if (!el || typeof window === 'undefined') return
 
     let leafletMap: any = null
 
@@ -518,35 +509,12 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
         maxBoundsViscosity: 0.9,
       })
 
-      // Add solid styled GeoJSON country vector polygons (Lush pastel green land and clean dark borders)
-      L.geoJSON(geoJsonData, {
-        style: {
-          fillColor: '#cbe6d8',
-          fillOpacity: 1.0,
-          color: '#5b856f',
-          weight: 1.5,
-        }
+      // Standard Google Maps Tile Layer with Terrain/Road styling (matches the user's reference image exactly)
+      L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        attribution: '&copy; Google Maps'
       }).addTo(leafletMap)
-
-      // Add Country labels (Apple Maps style) at their pre-calculated centroids
-      geoJsonData.features.forEach((feature: any) => {
-        const props = feature.properties
-        if (props && props.LAT !== undefined && props.LON !== undefined) {
-          const lat = parseFloat(props.LAT)
-          const lon = parseFloat(props.LON)
-          const nameEn = props.NAME
-          const nameIt = COUNTRY_TRANSLATIONS[nameEn] || nameEn
-
-          const labelIcon = L.divIcon({
-            className: 'country-label-marker-wrap',
-            html: `<div class="country-label-text">${nameIt}</div>`,
-            iconSize: [120, 30],
-            iconAnchor: [60, 15],
-          })
-
-          L.marker([lat, lon], { icon: labelIcon, interactive: false }).addTo(leafletMap)
-        }
-      })
 
       // Add City Markers directly onto the map
       allCities.forEach((city) => {
@@ -587,7 +555,7 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
         leafletMap.remove()
       }
     }
-  }, [allCities, geoJsonData])
+  }, [allCities])
 
   return (
     <div className="environment-layout">
