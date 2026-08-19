@@ -508,8 +508,8 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
         maxBoundsViscosity: 0.9,
       })
 
-      // CartoDB Positron Light Monochrome basemap for a super clean and minimalist look
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      // CartoDB Voyager No Labels basemap: provides beautiful, clean, minimalist pastel colors (sea vs land) with no text clutter or roads
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
         maxZoom: 20,
         subdomains: 'abcd',
         attribution: '&copy; OpenStreetMap &copy; CARTO'
