@@ -1,179 +1,438 @@
 ---
-import { developmentDiscoveryItems } from '../../data/discovery.fixture'
 import { publishedContentItems } from '../../data/content.data'
 import { categoryLabels } from '../../domain/discovery'
 import PublicLayout from '../../layouts/PublicLayout.astro'
 
 export function getStaticPaths() {
-  return [...publishedContentItems, ...developmentDiscoveryItems].map((item) => ({
+  return publishedContentItems.map((item) => ({
     params: { slug: item.slug },
     props: { item },
   }))
 }
 
 const { item } = Astro.props
-const isFixture = item.id.startsWith('dev-')
 const body = item.body ?? []
 const hasBody = body.length > 0
-const original = item.sources.find((source) => source.kind === 'original') ?? item.sources[0]
+const primaryDirectSource = item.sources.find((source) => source.kind === 'original') ?? item.sources[0]
+const otherSources = item.sources.filter((source) => source !== primaryDirectSource)
 const kicker = item.kicker ?? (item.tags.includes('guida') ? 'Guida' : categoryLabels[item.type])
 const published = new Intl.DateTimeFormat('it', { dateStyle: 'long' }).format(new Date(item.publishedAt))
 ---
 
 <PublicLayout title={`${item.title} — Drops`} description={item.summary}>
-  <main class="public-main narrow-page">
-    {isFixture ? (
-      <span class="development-badge">Development fixture · {categoryLabels[item.type]}</span>
-    ) : (
-      <span class="article-kicker">{kicker}</span>
-    )}
-    <h1>{item.title}</h1>
-    <p class={hasBody ? 'article-standfirst' : ''}>{item.summary}</p>
-    <dl class="item-meta">
-      <div>
-        <dt>Pubblicato su Drops</dt>
-        <dd>{published}</dd>
-      </div>
-      <div>
-        <dt>Luogo</dt>
-        <dd>{item.primaryLocation.name}</dd>
-      </div>
-      {item.tags && item.tags.length > 0 && (
-        <div>
-          <dt>Temi & Tag</dt>
-          <dd>{item.tags.join(' · ')}</dd>
+  <main class="public-main article-page-container">
+    <div class="article-layout-grid">
+      <!-- COLONNA SINISTRA: STICKY (Cover + CTA Primaria + Piattaforme + Metadati) -->
+      <aside class="article-sidebar-sticky">
+        <a href="/" class="back-to-catalog">← Torna a Discovery</a>
+
+        <div class="article-cover-wrap">
+          {item.coverUrl ? (
+            <img src={item.coverUrl} alt={item.title} class="article-cover-img" />
+          ) : (
+            <div class={`article-cover-fallback type-${item.type.toLowerCase()}`}>
+              <span class="fallback-kicker">{kicker}</span>
+              <span class="fallback-brand">Drops</span>
+            </div>
+          )}
         </div>
-      )}
-    </dl>
 
-    {hasBody && (
-      <article class="article-body">
-        {body.map((block) => (
-          <section>
-            {block.heading && <h2>{block.heading}</h2>}
-            <div set:html={block.html} />
-          </section>
-        ))}
-      </article>
-    )}
+        <!-- PULSANTE PRINCIPALE DIRETTO SUBITO SOTTO L'IMMAGINE -->
+        <a class="primary-direct-cta" href={primaryDirectSource.url} target="_blank" rel="noreferrer">
+          <span class="cta-label">{primaryDirectSource.label}</span>
+          <span class="cta-arrow">↗</span>
+        </a>
 
-    {hasBody && item.sources.length > 0 && (
-      <div class="article-sources-box">
-        <span class="sources-title">Piattaforme e collegamenti diretti:</span>
-        <div class="sources-list">
-          {item.sources.map((source) => (
-            <a class="source-chip" href={source.url} target="_blank" rel="noreferrer">
-              {source.label} ↗
-            </a>
-          ))}
+        {otherSources.length > 0 && (
+          <div class="sidebar-box platforms-box">
+            <span class="box-title">Altre piattaforme & fonti:</span>
+            <div class="platforms-list">
+              {otherSources.map((source) => (
+                <a class="source-chip" href={source.url} target="_blank" rel="noreferrer">
+                  {source.label} ↗
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div class="sidebar-box meta-box">
+          <dl class="meta-list">
+            <div>
+              <dt>Pubblicato</dt>
+              <dd>{published}</dd>
+            </div>
+            <div>
+              <dt>Luogo</dt>
+              <dd>📍 {item.primaryLocation.name}</dd>
+            </div>
+            {item.tags && item.tags.length > 0 && (
+              <div>
+                <dt>Temi & Tag</dt>
+                <dd class="tags-row">{item.tags.join(' · ')}</dd>
+              </div>
+            )}
+          </dl>
         </div>
-      </div>
-    )}
+      </aside>
 
-    {!hasBody && (
-      <a class="source-cta" href={original.url} target="_blank" rel="noreferrer">
-        Apri fonte originale ↗
-      </a>
-    )}
+      <!-- COLONNA DESTRA: SCROLLABILE (Kicker + Titolo + Standfirst + Corpo Articolo) -->
+      <section class="article-content-scrollable">
+        <span class="article-kicker">{kicker}</span>
+        <h1 class="article-headline">{item.title}</h1>
+        <p class="article-standfirst">{item.summary}</p>
+
+        <div class="article-separator"></div>
+
+        {hasBody ? (
+          <article class="article-body">
+            {body.map((block) => (
+              <section class="body-block">
+                {block.heading && <h2>{block.heading}</h2>}
+                <div class="block-html" set:html={block.html} />
+              </section>
+            ))}
+          </article>
+        ) : (
+          <div class="article-fallback-body">
+            <p>Scheda informativa del catalogo Drops. Per consultare tutti i dettagli completi, accedi direttamente alla fonte originale collegata nella colonna di sinistra.</p>
+          </div>
+        )}
+
+        {item.relations && item.relations.length > 0 && (
+          <div class="article-relations-box">
+            <h3>Connessioni nel grafo:</h3>
+            <ul>
+              {item.relations.map((rel) => (
+                <li>
+                  <strong>{rel.label}</strong>
+                  {rel.reason && <span> — {rel.reason}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+    </div>
   </main>
 </PublicLayout>
 
 <style>
-  .article-kicker {
-    display: inline-block;
-    font-size: 0.75rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    font-weight: 800;
-    color: var(--color-accent-strong, #15803d);
-    margin-bottom: 0.6rem;
+  .article-page-container {
+    width: min(100%, 1240px);
+    margin: 0 auto;
+    padding: clamp(1rem, 2.5vw, 2rem) clamp(1rem, 3vw, 2.5rem) 5rem;
   }
-  .article-standfirst {
-    font-size: 1.15rem;
-    line-height: 1.6;
-    color: var(--color-text, #151815);
-    margin: 0.5rem 0 1.4rem;
-    font-weight: 500;
+
+  .article-layout-grid {
+    display: grid;
+    grid-template-columns: 360px minmax(0, 1fr);
+    gap: clamp(2rem, 4vw, 4.5rem);
+    align-items: start;
   }
-  .article-body {
-    margin-top: 2rem;
-  }
-  .article-body section {
-    margin-bottom: 1.8rem;
-  }
-  .article-body h2 {
-    font-size: 1.25rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    margin: 0 0 0.6rem;
-    color: var(--color-text, #151815);
-  }
-  .article-body p,
-  .article-body li {
-    font-size: 1.02rem;
-    line-height: 1.7;
-    color: #2b302b;
-  }
-  .article-body ul {
-    margin: 0.4rem 0 0;
-    padding-left: 1.2rem;
-  }
-  .article-body li {
-    margin-bottom: 0.4rem;
-  }
-  .article-body .lead {
-    font-size: 1.08rem;
-    color: var(--color-text, #151815);
-    line-height: 1.65;
-  }
-  .article-body .pop {
-    color: #c07a12;
-    font-weight: 600;
-  }
-  .article-body a {
-    color: var(--color-accent-strong, #15803d);
-    text-underline-offset: 2px;
-    font-weight: 600;
-  }
-  .article-sources-box {
-    margin-top: 2.2rem;
-    padding: 1.2rem;
-    border: 1px solid var(--color-border, #dce1dc);
-    border-radius: var(--radius-card, 14px);
-    background: var(--color-surface, #ffffff);
+
+  /* COLONNA SINISTRA STICKY */
+  .article-sidebar-sticky {
+    position: sticky;
+    top: 90px;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 1.1rem;
   }
-  .sources-title {
+
+  .back-to-catalog {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-text-muted, #626862);
+    text-decoration: none;
+    transition: color 0.15s;
+    margin-bottom: 0.2rem;
+  }
+  .back-to-catalog:hover {
+    color: var(--color-accent-strong, #15803d);
+  }
+
+  .article-cover-wrap {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #151815;
+    border: 1px solid var(--color-border, #dce1dc);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  }
+
+  .article-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .article-cover-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1.25rem;
+    background: linear-gradient(135deg, #18201a 0%, #0d120e 100%);
+    border-left: 4px solid var(--color-accent, #22c55e);
+  }
+
+  .fallback-kicker {
     font-size: 0.8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-accent, #22c55e);
+  }
+
+  .fallback-brand {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: -0.04em;
+    opacity: 0.85;
+  }
+
+  /* PULSANTE PRINCIPALE DIRETTO */
+  .primary-direct-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 52px;
+    padding: 0 1.25rem;
+    border-radius: 12px;
+    background: var(--color-accent, #22c55e);
+    color: #05230f;
+    font-size: 0.98rem;
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: 0 3px 12px rgba(34, 197, 94, 0.28);
+    transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+  }
+
+  .primary-direct-cta:hover {
+    background: #16a34a;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(34, 197, 94, 0.38);
+  }
+
+  .cta-arrow {
+    font-size: 1.2rem;
+    font-weight: 900;
+  }
+
+  .sidebar-box {
+    padding: 1.1rem;
+    border: 1px solid var(--color-border, #dce1dc);
+    border-radius: 14px;
+    background: var(--color-surface, #ffffff);
+  }
+
+  .box-title {
+    display: block;
+    font-size: 0.75rem;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--color-text-muted, #626862);
+    margin-bottom: 0.6rem;
   }
-  .sources-list {
+
+  .platforms-list {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
+    flex-direction: column;
+    gap: 0.4rem;
   }
+
   .source-chip {
     display: inline-flex;
     align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 0.75rem;
     border: 1px solid var(--color-border-strong, #c8cec8);
-    border-radius: 999px;
-    padding: 0.35rem 0.85rem;
+    border-radius: 8px;
     color: var(--color-text, #151815);
     background: var(--color-surface-subtle, #f2f4f1);
-    font-size: 0.88rem;
+    font-size: 0.84rem;
     font-weight: 600;
     text-decoration: none;
-    transition: all 0.15s ease;
+    transition: all 0.15s;
   }
+
   .source-chip:hover {
     border-color: var(--color-accent-strong, #15803d);
     color: var(--color-accent-strong, #15803d);
     background: var(--color-accent-soft, #dcfce7);
+  }
+
+  .meta-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    margin: 0;
+  }
+
+  .meta-list div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .meta-list dt {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted, #626862);
+  }
+
+  .meta-list dd {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--color-text, #151815);
+  }
+
+  .tags-row {
+    color: var(--color-text-muted, #626862) !important;
+    font-size: 0.82rem !important;
+  }
+
+  /* COLONNA DESTRA SCROLLABILE */
+  .article-content-scrollable {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .article-kicker {
+    display: inline-block;
+    font-size: 0.82rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 800;
+    color: var(--color-accent-strong, #15803d);
+    margin-bottom: 0.75rem;
+  }
+
+  .article-headline {
+    font-size: clamp(2rem, 3.2vw, 2.85rem);
+    font-weight: 900;
+    letter-spacing: -0.035em;
+    line-height: 1.15;
+    color: var(--color-text, #151815);
+    margin: 0 0 1.25rem;
+  }
+
+  .article-standfirst {
+    font-size: clamp(1.15rem, 1.4vw, 1.32rem);
+    line-height: 1.6;
+    color: #2b302b;
+    font-weight: 500;
+    margin: 0 0 1.75rem;
+  }
+
+  .article-separator {
+    height: 1px;
+    background: var(--color-border, #dce1dc);
+    margin-bottom: 2.2rem;
+  }
+
+  .article-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .body-block h2 {
+    font-size: clamp(1.35rem, 1.8vw, 1.65rem);
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    line-height: 1.25;
+    margin: 0 0 0.85rem;
+    color: var(--color-text, #151815);
+  }
+
+  .block-html {
+    font-size: 1.06rem;
+    line-height: 1.75;
+    color: #242924;
+  }
+
+  .block-html :global(p) {
+    margin: 0 0 1.1rem;
+  }
+
+  .block-html :global(p.lead) {
+    font-size: 1.16rem;
+    line-height: 1.7;
+    color: #121512;
+    font-weight: 500;
+  }
+
+  .block-html :global(ul) {
+    margin: 0.6rem 0 1.2rem;
+    padding-left: 1.4rem;
+  }
+
+  .block-html :global(li) {
+    margin-bottom: 0.45rem;
+  }
+
+  .block-html :global(a) {
+    color: var(--color-accent-strong, #15803d);
+    text-underline-offset: 3px;
+    font-weight: 700;
+  }
+
+  .block-html :global(span.pop) {
+    color: #b45309;
+    font-weight: 700;
+  }
+
+  .article-relations-box {
+    margin-top: 3rem;
+    padding: 1.5rem;
+    background: var(--color-surface-subtle, #f2f4f1);
+    border: 1px solid var(--color-border, #dce1dc);
+    border-radius: 14px;
+  }
+
+  .article-relations-box h3 {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text, #151815);
+  }
+
+  .article-relations-box ul {
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+
+  .article-relations-box li {
+    margin-bottom: 0.4rem;
+    font-size: 0.95rem;
+    color: #333833;
+  }
+
+  /* RESPONSIVE LAYOUT */
+  @media (max-width: 960px) {
+    .article-layout-grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 2.5rem;
+    }
+
+    .article-sidebar-sticky {
+      position: static;
+      max-width: 520px;
+    }
   }
 </style>

@@ -70,6 +70,7 @@ const baseSchema = z.object({
   id: z.string().min(1),
   slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   kicker: z.string().min(1).optional(),
+  coverUrl: z.string().min(1).optional(),
   title: z.string().min(1),
   summary: z.string().min(1),
   publishedAt: z.iso.datetime(),

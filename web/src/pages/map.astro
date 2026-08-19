@@ -1,10 +1,9 @@
 ---
 import { MapEnvironment } from '../components/DiscoveryExplorer'
-import { developmentDiscoveryItems } from '../data/discovery.fixture'
 import { publishedContentItems } from '../data/content.data'
 import PublicLayout from '../layouts/PublicLayout.astro'
 ---
 
 <PublicLayout title="Map — Drops">
-  <main class="public-main"><MapEnvironment items={[...publishedContentItems, ...developmentDiscoveryItems]} client:load /></main>
+  <main class="public-main"><MapEnvironment items={publishedContentItems} client:load /></main>
 </PublicLayout>

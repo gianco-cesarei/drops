@@ -37,12 +37,71 @@ export function DiscoveryEnvironment({ items }: { items: DiscoveryItem[] }) {
   useEffect(() => setDraft(state.query), [state.query])
   const visible = useMemo(() => filterItems(items, state.types, state.query), [items, state.query, state.types])
   const submit = (event: SyntheticEvent) => { event.preventDefault(); state.update(state.types, draft.trim()) }
-  return <div className="environment-layout"><aside className="environment-rail"><span className="rail-label">Categorie</span><Categories types={state.types} onChange={(types) => state.update(types)} label="Categorie Grid" /></aside><div className="environment-content"><div className="environment-toolbar"><form className="catalog-search" role="search" onSubmit={submit}><label className="sr-only" htmlFor="catalog-query">Ricerca</label><div className="search-field"><SearchIcon className="search-icon" /><input id="catalog-query" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Cerca label, artisti, set, storie…" /></div><button>Cerca</button></form><p className="result-summary"><strong>{visible.length}</strong> contenuti · development fixture</p></div><div className="discovery-grid">{visible.map((item) => <DiscoveryCard key={item.id} item={item} />)}</div></div></div>
+  return (
+    <div className="environment-layout">
+      <aside className="environment-rail">
+        <span className="rail-label">Categorie</span>
+        <Categories types={state.types} onChange={(types) => state.update(types)} label="Categorie Grid" />
+      </aside>
+      <div className="environment-content">
+        <div className="environment-toolbar">
+          <form className="catalog-search" role="search" onSubmit={submit}>
+            <label className="sr-only" htmlFor="catalog-query">Ricerca</label>
+            <div className="search-field">
+              <SearchIcon className="search-icon" />
+              <input id="catalog-query" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Cerca label, artisti, set, storie, guide…" />
+            </div>
+            <button>Cerca</button>
+          </form>
+          <p className="result-summary"><strong>{visible.length}</strong> contenuti pubblicati</p>
+        </div>
+        <div className="discovery-grid">
+          {visible.map((item) => <DiscoveryCard key={item.id} item={item} />)}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function DiscoveryCard({ item }: { item: DiscoveryItem }) {
   const source = item.sources.find((entry) => entry.kind === 'original') ?? item.sources[0]
-  return <article className="discovery-card"><div className="card-meta"><span className="content-badge">{categoryLabels[item.type]}</span><time>{new Intl.DateTimeFormat('it', { dateStyle: 'medium' }).format(new Date(item.publishedAt))}</time></div><h2><a href={`/item/${item.slug}`}>{item.title}</a></h2><p>{item.summary}</p><div className="card-details"><span>{item.primaryLocation.name}</span><span>{item.tags.slice(0, 2).join(' · ')}</span></div><a className="source-link" href={source.url}>{source.label} ↗</a></article>
+  const kicker = item.kicker ?? (item.tags.includes('guida') ? 'Guida' : categoryLabels[item.type])
+  return (
+    <article className="discovery-card">
+      <a href={`/item/${item.slug}`} className="card-cover-link" tabIndex={-1} aria-hidden="true">
+        {item.coverUrl ? (
+          <img src={item.coverUrl} alt={item.title} className="card-cover-image" loading="lazy" />
+        ) : (
+          <div className={`card-cover-placeholder type-${item.type.toLowerCase()}`}>
+            <span className="placeholder-kicker">{kicker}</span>
+            <span className="placeholder-brand">Drops</span>
+          </div>
+        )}
+      </a>
+      <div className="card-content">
+        <div className="card-meta">
+          <span className="content-badge">{kicker}</span>
+          <time>{new Intl.DateTimeFormat('it', { dateStyle: 'medium' }).format(new Date(item.publishedAt))}</time>
+        </div>
+        <h2>
+          <a href={`/item/${item.slug}`}>{item.title}</a>
+        </h2>
+        <p>{item.summary}</p>
+        <div className="card-details">
+          <span>📍 {item.primaryLocation.name}</span>
+          <span>{item.tags.slice(0, 2).join(' · ')}</span>
+        </div>
+        <div className="card-actions">
+          <a className="card-read-btn" href={`/item/${item.slug}`}>
+            Leggi articolo →
+          </a>
+          <a className="card-source-link" href={source.url} target="_blank" rel="noreferrer" title={`Apri ${source.label}`}>
+            {source.label} ↗
+          </a>
+        </div>
+      </div>
+    </article>
+  )
 }
 
 const densityLevels = ['year', 'month', 'day'] as const
@@ -54,7 +113,29 @@ export function TimelineEnvironment({ items }: { items: DiscoveryItem[] }) {
   const visible = useMemo(() => filterItems(items, state.types), [items, state.types])
   const index = densityLevels.indexOf(density)
   const years = [...new Set(visible.map((item) => new Date(item.publishedAt).getFullYear()))].sort((a, b) => b - a)
-  return <div className="environment-layout"><aside className="environment-rail"><span className="rail-label">Anni</span><div className="rail-list">{years.map((year) => <a key={year} href={`#year-${year}`}>{year}</a>)}</div></aside><div className="environment-content"><div className="environment-toolbar"><span className="shell-note">Development fixture · ordine cronologico</span><div className="density-control" aria-label="Densità temporale"><button disabled={index === 0} onClick={() => setDensity(densityLevels[index - 1])} aria-label="Riduci densità">−</button><span>{density === 'year' ? 'Anno' : density === 'month' ? 'Mese' : 'Giorno'}</span><button disabled={index === 2} onClick={() => setDensity(densityLevels[index + 1])} aria-label="Aumenta densità">+</button></div></div><section className={`timeline-shell discovery-grid density-${density}`} aria-label="Timeline development shell">{visible.map((item) => <div id={`year-${new Date(item.publishedAt).getFullYear()}`} key={item.id}><DiscoveryCard item={item} /></div>)}</section></div></div>
+  return (
+    <div className="environment-layout">
+      <aside className="environment-rail">
+        <span className="rail-label">Anni</span>
+        <div className="rail-list">
+          {years.map((year) => <a key={year} href={`#year-${year}`}>{year}</a>)}
+        </div>
+      </aside>
+      <div className="environment-content">
+        <div className="environment-toolbar">
+          <span className="shell-note">Ordine cronologico</span>
+          <div className="density-control" aria-label="Densità temporale">
+            <button disabled={index === 0} onClick={() => setDensity(densityLevels[index - 1])} aria-label="Riduci densità">−</button>
+            <span>{density === 'year' ? 'Anno' : density === 'month' ? 'Mese' : 'Giorno'}</span>
+            <button disabled={index === 2} onClick={() => setDensity(densityLevels[index + 1])} aria-label="Aumenta densità">+</button>
+          </div>
+        </div>
+        <section className={`timeline-shell discovery-grid density-${density}`} aria-label="Timeline shell">
+          {visible.map((item) => <div id={`year-${new Date(item.publishedAt).getFullYear()}`} key={item.id}><DiscoveryCard item={item} /></div>)}
+        </section>
+      </div>
+    </div>
+  )
 }
 
 export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
@@ -63,7 +144,49 @@ export function MapEnvironment({ items }: { items: DiscoveryItem[] }) {
   const [selection, setSelection] = useState<string | null>(null)
   const places = useMemo(() => filterItems(items, state.types).filter((item) => item.mapEligible && item.primaryLocation.kind === 'geographic' && item.primaryLocation.latitude !== undefined && item.primaryLocation.longitude !== undefined), [items, state.types])
   const countries = [...new Set(places.map((item) => item.primaryLocation.kind === 'geographic' ? item.primaryLocation.countryCode : ''))].filter(Boolean)
-  return <div className="environment-layout"><aside className="environment-rail"><span className="rail-label">Continenti</span><button className="rail-choice active">Europa</button><button className="rail-choice" disabled>Americhe · in arrivo</button><button className="rail-choice" disabled>Asia · in arrivo</button><div className="rail-sublist"><span className="rail-label">Paesi</span>{countries.map((country) => <a key={country} href={`#country-${country}`}>{country}</a>)}</div></aside><div className="environment-content"><div className="environment-toolbar"><span className="shell-note">Development fixture · Europa aperta</span><div className="map-controls" aria-label="Controlli mappa"><button onClick={() => setZoom(Math.max(2, zoom - 1))} aria-label="Zoom indietro"><MinusIcon /></button><span>zoom {zoom}</span><button onClick={() => setZoom(Math.min(12, zoom + 1))} aria-label="Zoom avanti"><PlusIcon /></button><button aria-label="Pan mappa" onClick={() => setSelection(null)}><PanIcon /></button></div></div><section className="map-shell" aria-label="Map development shell"><div className="map-placeholder"><strong>Viewport iniziale Europa</strong><span>Shell pan/zoom · marker {zoom < 7 ? 'raggruppati' : 'singoli'}</span><div className="map-markers">{places.map((item) => <button id={`country-${item.primaryLocation.kind === 'geographic' ? item.primaryLocation.countryCode : ''}`} key={item.id} onClick={() => setSelection(item.primaryLocation.name)}>{item.primaryLocation.name}</button>)}</div></div>{selection && <aside className="map-selection"><h2>{selection}</h2>{places.filter((item) => item.primaryLocation.name === selection).map((item) => <a key={item.id} href={`/item/${item.slug}`}>{item.title}</a>)}</aside>}</section><div className="discovery-grid map-content-grid">{places.map((item) => <DiscoveryCard key={item.id} item={item} />)}</div></div></div>
+  return (
+    <div className="environment-layout">
+      <aside className="environment-rail">
+        <span className="rail-label">Continenti</span>
+        <button className="rail-choice active">Europa</button>
+        <button className="rail-choice" disabled>Americhe · in arrivo</button>
+        <button className="rail-choice" disabled>Asia · in arrivo</button>
+        <div className="rail-sublist">
+          <span className="rail-label">Paesi</span>
+          {countries.map((country) => <a key={country} href={`#country-${country}`}>{country}</a>)}
+        </div>
+      </aside>
+      <div className="environment-content">
+        <div className="environment-toolbar">
+          <span className="shell-note">Mappa geografica europea</span>
+          <div className="map-controls" aria-label="Controlli mappa">
+            <button onClick={() => setZoom(Math.max(2, zoom - 1))} aria-label="Zoom indietro"><MinusIcon /></button>
+            <span>zoom {zoom}</span>
+            <button onClick={() => setZoom(Math.min(12, zoom + 1))} aria-label="Zoom avanti"><PlusIcon /></button>
+            <button aria-label="Pan mappa" onClick={() => setSelection(null)}><PanIcon /></button>
+          </div>
+        </div>
+        <section className="map-shell" aria-label="Map shell">
+          <div className="map-placeholder">
+            <strong>Viewport iniziale Europa</strong>
+            <span>Esplorazione per città e scene locali</span>
+            <div className="map-markers">
+              {places.map((item) => <button id={`country-${item.primaryLocation.kind === 'geographic' ? item.primaryLocation.countryCode : ''}`} key={item.id} onClick={() => setSelection(item.primaryLocation.name)}>{item.primaryLocation.name}</button>)}
+            </div>
+          </div>
+          {selection && (
+            <aside className="map-selection">
+              <h2>{selection}</h2>
+              {places.filter((item) => item.primaryLocation.name === selection).map((item) => <a key={item.id} href={`/item/${item.slug}`}>{item.title}</a>)}
+            </aside>
+          )}
+        </section>
+        <div className="discovery-grid map-content-grid">
+          {places.map((item) => <DiscoveryCard key={item.id} item={item} />)}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default DiscoveryEnvironment
