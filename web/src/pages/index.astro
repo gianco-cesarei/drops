@@ -1,9 +1,10 @@
 ---
 import { DiscoveryEnvironment } from '../components/DiscoveryExplorer'
 import { developmentDiscoveryItems } from '../data/discovery.fixture'
+import { publishedContentItems } from '../data/content.data'
 import PublicLayout from '../layouts/PublicLayout.astro'
 ---
 
 <PublicLayout title="Discovery — Drops">
-  <main class="public-main"><DiscoveryEnvironment items={developmentDiscoveryItems} client:load /></main>
+  <main class="public-main"><DiscoveryEnvironment items={[...publishedContentItems, ...developmentDiscoveryItems]} client:load /></main>
 </PublicLayout>

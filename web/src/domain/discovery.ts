@@ -61,9 +61,15 @@ const relationSchema = z.object({
   reason: z.string().min(1).optional(),
 })
 
+const bodyBlockSchema = z.object({
+  heading: z.string().min(1).optional(),
+  html: z.string().min(1),
+})
+
 const baseSchema = z.object({
   id: z.string().min(1),
   slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  kicker: z.string().min(1).optional(),
   title: z.string().min(1),
   summary: z.string().min(1),
   publishedAt: z.iso.datetime(),
@@ -73,6 +79,7 @@ const baseSchema = z.object({
   sources: z.array(sourceSchema).min(1),
   relations: z.array(relationSchema),
   mapEligible: z.boolean(),
+  body: z.array(bodyBlockSchema).optional(),
 })
 
 const standardItemSchema = baseSchema.extend({
@@ -102,6 +109,7 @@ export const discoveryItemSchema = z.discriminatedUnion('type', [standardItemSch
 })
 export const discoveryDatasetSchema = z.array(discoveryItemSchema)
 export type DiscoveryItem = z.infer<typeof discoveryItemSchema>
+export type DiscoveryBodyBlock = z.infer<typeof bodyBlockSchema>
 
 export const categoryLabels: Record<DiscoveryType, string> = {
   [DiscoveryType.Label]: 'Labels',

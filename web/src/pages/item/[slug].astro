@@ -1,22 +1,179 @@
 ---
 import { developmentDiscoveryItems } from '../../data/discovery.fixture'
+import { publishedContentItems } from '../../data/content.data'
 import { categoryLabels } from '../../domain/discovery'
 import PublicLayout from '../../layouts/PublicLayout.astro'
 
 export function getStaticPaths() {
-  return developmentDiscoveryItems.map((item) => ({ params: { slug: item.slug }, props: { item } }))
+  return [...publishedContentItems, ...developmentDiscoveryItems].map((item) => ({
+    params: { slug: item.slug },
+    props: { item },
+  }))
 }
 
 const { item } = Astro.props
+const isFixture = item.id.startsWith('dev-')
+const body = item.body ?? []
+const hasBody = body.length > 0
 const original = item.sources.find((source) => source.kind === 'original') ?? item.sources[0]
+const kicker = item.kicker ?? (item.tags.includes('guida') ? 'Guida' : categoryLabels[item.type])
+const published = new Intl.DateTimeFormat('it', { dateStyle: 'long' }).format(new Date(item.publishedAt))
 ---
 
-<PublicLayout title={`${item.title} — Drops`}>
+<PublicLayout title={`${item.title} — Drops`} description={item.summary}>
   <main class="public-main narrow-page">
-    <span class="development-badge">Development fixture · {categoryLabels[item.type]}</span>
+    {isFixture ? (
+      <span class="development-badge">Development fixture · {categoryLabels[item.type]}</span>
+    ) : (
+      <span class="article-kicker">{kicker}</span>
+    )}
     <h1>{item.title}</h1>
-    <p>{item.summary}</p>
-    <dl class="item-meta"><div><dt>Pubblicato su Drops</dt><dd>{item.publishedAt}</dd></div><div><dt>Luogo</dt><dd>{item.primaryLocation.name}</dd></div></dl>
-    <a class="source-cta" href={original.url} target="_blank" rel="noreferrer">Apri fonte originale ↗</a>
+    <p class={hasBody ? 'article-standfirst' : ''}>{item.summary}</p>
+    <dl class="item-meta">
+      <div>
+        <dt>Pubblicato su Drops</dt>
+        <dd>{published}</dd>
+      </div>
+      <div>
+        <dt>Luogo</dt>
+        <dd>{item.primaryLocation.name}</dd>
+      </div>
+      {item.tags && item.tags.length > 0 && (
+        <div>
+          <dt>Temi & Tag</dt>
+          <dd>{item.tags.join(' · ')}</dd>
+        </div>
+      )}
+    </dl>
+
+    {hasBody && (
+      <article class="article-body">
+        {body.map((block) => (
+          <section>
+            {block.heading && <h2>{block.heading}</h2>}
+            <div set:html={block.html} />
+          </section>
+        ))}
+      </article>
+    )}
+
+    {hasBody && item.sources.length > 0 && (
+      <div class="article-sources-box">
+        <span class="sources-title">Piattaforme e collegamenti diretti:</span>
+        <div class="sources-list">
+          {item.sources.map((source) => (
+            <a class="source-chip" href={source.url} target="_blank" rel="noreferrer">
+              {source.label} ↗
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {!hasBody && (
+      <a class="source-cta" href={original.url} target="_blank" rel="noreferrer">
+        Apri fonte originale ↗
+      </a>
+    )}
   </main>
 </PublicLayout>
+
+<style>
+  .article-kicker {
+    display: inline-block;
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 800;
+    color: var(--color-accent-strong, #15803d);
+    margin-bottom: 0.6rem;
+  }
+  .article-standfirst {
+    font-size: 1.15rem;
+    line-height: 1.6;
+    color: var(--color-text, #151815);
+    margin: 0.5rem 0 1.4rem;
+    font-weight: 500;
+  }
+  .article-body {
+    margin-top: 2rem;
+  }
+  .article-body section {
+    margin-bottom: 1.8rem;
+  }
+  .article-body h2 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.6rem;
+    color: var(--color-text, #151815);
+  }
+  .article-body p,
+  .article-body li {
+    font-size: 1.02rem;
+    line-height: 1.7;
+    color: #2b302b;
+  }
+  .article-body ul {
+    margin: 0.4rem 0 0;
+    padding-left: 1.2rem;
+  }
+  .article-body li {
+    margin-bottom: 0.4rem;
+  }
+  .article-body .lead {
+    font-size: 1.08rem;
+    color: var(--color-text, #151815);
+    line-height: 1.65;
+  }
+  .article-body .pop {
+    color: #c07a12;
+    font-weight: 600;
+  }
+  .article-body a {
+    color: var(--color-accent-strong, #15803d);
+    text-underline-offset: 2px;
+    font-weight: 600;
+  }
+  .article-sources-box {
+    margin-top: 2.2rem;
+    padding: 1.2rem;
+    border: 1px solid var(--color-border, #dce1dc);
+    border-radius: var(--radius-card, 14px);
+    background: var(--color-surface, #ffffff);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .sources-title {
+    font-size: 0.8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-muted, #626862);
+  }
+  .sources-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .source-chip {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--color-border-strong, #c8cec8);
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    color: var(--color-text, #151815);
+    background: var(--color-surface-subtle, #f2f4f1);
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+  .source-chip:hover {
+    border-color: var(--color-accent-strong, #15803d);
+    color: var(--color-accent-strong, #15803d);
+    background: var(--color-accent-soft, #dcfce7);
+  }
+</style>
