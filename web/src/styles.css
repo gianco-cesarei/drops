@@ -118,7 +118,7 @@ footer { padding: 20px 0; color: var(--color-text-muted); font-size: 11px; text-
 .environment-nav a:hover { color: var(--chrome-ink); }
 .environment-nav a.active { display: inline-flex; align-items: center; gap: 7px; color: var(--color-accent); }
 .environment-nav a.active::before { content: ""; width: 6px; height: 6px; border-radius: 50%; border: 1.4px solid var(--color-accent); }
-.public-main { width: min(1440px, calc(100% - 40px)); margin: auto; padding: 18px 0 80px; }
+.public-main { width: min(1180px, calc(100% - 40px)); margin: auto; padding: 18px 0 80px; }
 .narrow-page > p { color: var(--color-text-muted); font-size: 17px; line-height: 1.55; }
 .environment-layout { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 22px; align-items: start; }
 .environment-rail { position: sticky; top: var(--public-header-height); z-index: 10; display: flex; flex-direction: column; gap: 6px; padding-top: 4px; background: var(--color-canvas); }

@@ -155,7 +155,7 @@ export function DiscoveryEnvironment({ items }: { items: DiscoveryItem[] }) {
     <div className="environment-layout">
       <aside className="environment-rail">
         <span className="rail-label">Categorie</span>
-        <Categories types={state.types} onChange={(types) => state.update(types)} label="Categorie Grid" items={items} />
+        <Categories types={state.types} onChange={(types) => state.update(types)} label="Categorie Grid" items={publishedItems} />
       </aside>
       <div className="environment-content">
         <div className="environment-toolbar">
